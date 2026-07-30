@@ -1,277 +1,381 @@
+<meta charset="utf-8">
 <title>2KDOME 2026 — Live Auction Console</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%8F%88%3C/text%3E%3C/svg%3E">
 <style>
 :root{
-  --ground:#13171c; --panel:#1b2129; --panel2:#242d37; --line:#2d3742;
-  --ink:#eaedf1; --muted:#8b93a0; --faint:#5a6472;
-  --accent:#e0ab48; --accent-ink:#151006; --accent-dim:#7d6329;
-  --good:#45b985; --good-bg:#123329; --good-ink:#7fe0b3;
-  --bad:#d76048; --bad-bg:#38201a; --bad-ink:#f0a08c;
-  --shadow:0 1px 0 rgba(255,255,255,.03), 0 6px 20px rgba(0,0,0,.35);
+  /* neutrals — the whole page is grayscale slate; color is reserved for meaning */
+  --ground:#0F1318; --panel:#161B21; --panel2:#1C232B; --raise:#222B34;
+  --line:#28313B; --line2:#354049;
+  --ink:#EAEEF3; --muted:#8A94A2; --faint:#59626F;
+  /* decision colors — the ONLY loud color on the page */
+  --go:#2FD39C; --go-bg:#0E2A22; --go-ink:#74E4BE; --go-line:#1F5D48;
+  --stop:#F26A54; --stop-bg:#2B1712; --stop-ink:#F8A491; --stop-line:#743126;
+  --warn:#E6B24A; --warn-ink:#F0C878; --warn-bg:#2A2313;
+  /* position identity — quiet tints, never compete with decision color */
+  --rb:#E79A54; --rb-bg:rgba(231,154,84,.15);
+  --wr:#5B98EA; --wr-bg:rgba(91,152,234,.16);
+  --te:#B98CEC; --te-bg:rgba(185,140,236,.16);
+  --qb:#3EB8C0; --qb-bg:rgba(62,184,192,.16);
+  --shadow:0 1px 0 rgba(255,255,255,.02), 0 8px 24px rgba(0,0,0,.34);
+  --shadow-dock:0 10px 24px -12px rgba(0,0,0,.6);
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --r:12px;
+}
+:root[data-theme="light"], .light-tokens{
+  --ground:#EFEBE2; --panel:#FBF9F4; --panel2:#F1EDE4; --raise:#E7E1D4;
+  --line:#DED7C9; --line2:#CFC6B4;
+  --ink:#1D2229; --muted:#6C7480; --faint:#9AA0AA;
+  --go:#15966B; --go-bg:#E1F1E9; --go-ink:#0E7A52; --go-line:#9CD3BC;
+  --stop:#C9492E; --stop-bg:#F7E6DF; --stop-ink:#A33A22; --stop-line:#E2AE9C;
+  --warn:#B07D1E; --warn-ink:#8A6114; --warn-bg:#F2E7CE;
+  --rb:#B4661C; --rb-bg:rgba(180,102,28,.12);
+  --wr:#2E63A8; --wr-bg:rgba(46,99,168,.12);
+  --te:#6E3D9E; --te-bg:rgba(110,61,158,.12);
+  --qb:#1B7C84; --qb-bg:rgba(27,124,132,.12);
+  --shadow:0 1px 0 rgba(0,0,0,.02), 0 6px 16px rgba(70,58,34,.10);
+  --shadow-dock:0 10px 22px -14px rgba(70,58,34,.35);
 }
 @media (prefers-color-scheme: light){
-  :root{
-    --ground:#f4f1ea; --panel:#fffdf9; --panel2:#f0ece2; --line:#e0d9cb;
-    --ink:#20242a; --muted:#6b7280; --faint:#9aa1ab;
-    --accent:#b07d1e; --accent-ink:#fff; --accent-dim:#d8c191;
-    --good:#1f8f5f; --good-bg:#e4f3ec; --good-ink:#15774e;
-    --bad:#c04a2e; --bad-bg:#f7e6df; --bad-ink:#a53c22;
-    --shadow:0 1px 0 rgba(0,0,0,.02), 0 4px 14px rgba(60,50,30,.10);
+  :root:not([data-theme="dark"]){
+    --ground:#EFEBE2; --panel:#FBF9F4; --panel2:#F1EDE4; --raise:#E7E1D4;
+    --line:#DED7C9; --line2:#CFC6B4;
+    --ink:#1D2229; --muted:#6C7480; --faint:#9AA0AA;
+    --go:#15966B; --go-bg:#E1F1E9; --go-ink:#0E7A52; --go-line:#9CD3BC;
+    --stop:#C9492E; --stop-bg:#F7E6DF; --stop-ink:#A33A22; --stop-line:#E2AE9C;
+    --warn:#B07D1E; --warn-ink:#8A6114; --warn-bg:#F2E7CE;
+    --rb:#B4661C; --rb-bg:rgba(180,102,28,.12);
+    --wr:#2E63A8; --wr-bg:rgba(46,99,168,.12);
+    --te:#6E3D9E; --te-bg:rgba(110,61,158,.12);
+    --qb:#1B7C84; --qb-bg:rgba(27,124,132,.12);
+    --shadow:0 1px 0 rgba(0,0,0,.02), 0 6px 16px rgba(70,58,34,.10);
+    --shadow-dock:0 10px 22px -14px rgba(70,58,34,.35);
   }
 }
-:root[data-theme="dark"]{
-  --ground:#13171c; --panel:#1b2129; --panel2:#242d37; --line:#2d3742;
-  --ink:#eaedf1; --muted:#8b93a0; --faint:#5a6472; --accent:#e0ab48; --accent-ink:#151006;
-  --accent-dim:#7d6329; --good:#45b985; --good-bg:#123329; --good-ink:#7fe0b3;
-  --bad:#d76048; --bad-bg:#38201a; --bad-ink:#f0a08c;
-  --shadow:0 1px 0 rgba(255,255,255,.03), 0 6px 20px rgba(0,0,0,.35);
-}
-:root[data-theme="light"]{
-  --ground:#f4f1ea; --panel:#fffdf9; --panel2:#f0ece2; --line:#e0d9cb;
-  --ink:#20242a; --muted:#6b7280; --faint:#9aa1ab; --accent:#b07d1e; --accent-ink:#fff;
-  --accent-dim:#d8c191; --good:#1f8f5f; --good-bg:#e4f3ec; --good-ink:#15774e;
-  --bad:#c04a2e; --bad-bg:#f7e6df; --bad-ink:#a53c22;
-  --shadow:0 1px 0 rgba(0,0,0,.02), 0 4px 14px rgba(60,50,30,.10);
-}
 *{box-sizing:border-box}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
-  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  font-feature-settings:"cv08","ss01"}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 h1,h2,h3{margin:0;text-wrap:balance}
-button{font-family:var(--sans);cursor:pointer}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.wrap{max-width:1400px;margin:0 auto;padding:14px 16px 40px}
+button{font-family:inherit;cursor:pointer;color:inherit}
+:focus-visible{outline:2px solid var(--go);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1460px;margin:0 auto;padding:0 18px 44px}
 
-/* status rail */
-.rail{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin-bottom:14px}
-.brand{display:flex;flex-direction:column;justify-content:center;padding:6px 14px 6px 0;margin-right:4px}
-.brand .t{font-size:15px;font-weight:700;letter-spacing:.02em}
-.brand .s{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 13px;
-  min-width:96px;box-shadow:var(--shadow)}
-.stat .k{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
-.stat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;margin-top:2px}
-.stat .v small{font-size:12px;color:var(--muted);font-weight:400}
-.stat.accent{border-color:var(--accent-dim)}
-.stat.accent .v{color:var(--accent)}
-.phase-note{font-size:11px;color:var(--muted);margin-top:1px}
+/* ============ TOP DOCK — vitals + the decision, always pinned ============ */
+.dock{position:sticky;top:0;z-index:30;background:var(--ground);
+  padding:12px 0 12px;margin-bottom:16px}
+.dock.stuck{box-shadow:var(--shadow-dock);border-bottom:1px solid var(--line)}
+
+/* vitals strip */
+.vitals{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin-bottom:11px}
+.brand{display:flex;flex-direction:column;justify-content:center;padding-right:6px;margin-right:2px}
+.brand .t{font-size:15px;font-weight:750;letter-spacing:.04em}
+.brand .s{font-size:9.5px;text-transform:uppercase;letter-spacing:.22em;color:var(--faint);margin-top:2px}
+.vital{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 14px;
+  min-width:104px;display:flex;flex-direction:column;justify-content:center}
+.vital .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+.vital .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;
+  line-height:1.15;margin-top:1px}
+.vital .v small{font-size:12px;color:var(--muted);font-weight:400}
+.vital .note{font-size:10.5px;color:var(--faint);margin-top:1px;letter-spacing:.01em}
+.vital.hot .v{color:var(--stop-ink)} .vital.hot .note{color:var(--stop-ink)}
+.vital.cold .v{color:var(--go-ink)} .vital.cold .note{color:var(--go-ink)}
 .themebtn{margin-left:auto;align-self:center;background:var(--panel);border:1px solid var(--line);
-  color:var(--muted);border-radius:8px;padding:8px 11px;font-size:12px}
+  color:var(--muted);border-radius:9px;padding:0 13px;height:38px;font-size:16px}
+.themebtn:hover{color:var(--ink);border-color:var(--line2)}
 
-/* layout */
-.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
-@media(max-width:920px){.grid{grid-template-columns:1fr}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);overflow:hidden}
-#block-panel{overflow:visible;position:relative;z-index:5}
-.phead{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line);background:var(--panel2)}
-.phead h2{font-size:12px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:600}
-.pbody{padding:12px 13px}
-.stack{display:flex;flex-direction:column;gap:14px}
-.sticky-col{position:sticky;top:14px;align-self:start}
-@media(max-width:920px){.sticky-col{position:static}}
-
-/* on the block */
-.block-input{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-input,select{background:var(--ground);border:1px solid var(--line);color:var(--ink);border-radius:7px;
-  padding:8px 10px;font-size:13px}
-input.search{flex:1;min-width:160px}
-.suggest{position:relative}
-.sug-list{position:absolute;z-index:20;top:100%;left:0;right:0;background:var(--panel);border:1px solid var(--line);
-  border-radius:8px;margin-top:3px;max-height:260px;overflow:auto;box-shadow:var(--shadow)}
-.sug-list div{padding:7px 10px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;border-bottom:1px solid var(--line)}
-.sug-list div:hover,.sug-list div.hi{background:var(--panel2)}
+/* the block — the command surface */
+.block{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:visible;position:relative}
+.block-bar{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid transparent;flex-wrap:wrap}
+.eval.on ~ .block-bar,.block:has(.eval.on) .block-bar{border-bottom-color:var(--line)}
+.onblock{font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);
+  font-weight:600;white-space:nowrap}
+.suggest{position:relative;flex:1;min-width:180px}
+input,select{background:var(--ground);border:1px solid var(--line);color:var(--ink);border-radius:8px;
+  padding:9px 11px;font-size:13px;font-family:inherit}
+input.search{width:100%;font-size:14px}
+input::placeholder{color:var(--faint)}
+.sug-list{position:absolute;z-index:40;top:100%;left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line2);border-radius:9px;margin-top:5px;max-height:280px;overflow:auto;box-shadow:var(--shadow)}
+.sug-list div{padding:8px 11px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;
+  border-bottom:1px solid var(--line)}
+.sug-list div:last-child{border-bottom:none}
+.sug-list div:hover,.sug-list div.hi{background:var(--raise)}
 .sug-list .pos{color:var(--muted);font-size:11px}
+.pill{font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:3px 9px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted);white-space:nowrap;font-weight:600}
+.block-bar .pill.live{background:var(--go);color:#04160f;border-color:var(--go)}
 
-.eval{margin-top:12px;display:none}
-.eval.on{display:block}
-.eval-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.eval-top .nm{font-size:20px;font-weight:700}
-.pill{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:999px;
-  border:1px solid var(--line);color:var(--muted)}
-.evgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
-.ev{background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
-.ev .k{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.ev .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:2px}
-.ev.worth .v{color:var(--accent)}
-.ev .v.sm{font-size:13px;line-height:1.35;font-weight:600;margin-top:4px}
-.ev .v.over{color:var(--bad-ink)}
-.verdict{border-radius:9px;padding:11px 13px;font-weight:600;font-size:15px;display:flex;
-  justify-content:space-between;align-items:center;gap:10px}
-.verdict small{font-weight:400;font-size:12px;opacity:.85}
-.v-target{background:var(--good-bg);color:var(--good-ink);border:1px solid var(--good)}
-.v-fair{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
-.v-fade{background:var(--bad-bg);color:var(--bad-ink);border:1px solid var(--bad)}
-.maxrec{background:var(--panel2);border:1px solid var(--accent-dim)}
-.maxrec>span{color:var(--accent);font-size:17px}
-.logrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
-.logrow label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.btn{background:var(--accent);color:var(--accent-ink);border:none;border-radius:8px;padding:9px 15px;font-weight:700;font-size:13px}
-.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:500}
-.bidrow{margin-top:12px}
-.btn.bid{width:100%;padding:11px;font-size:14px;letter-spacing:.02em}
-.btn.bid.live{background:var(--good);color:#fff}
-.pill.live{background:var(--good);color:#fff;border-color:var(--good)}
-.eval.live{outline:2px solid var(--good);outline-offset:2px;border-radius:9px}
+/* eval body */
+.eval{display:none}
+.eval.on{display:block;padding:15px 14px 13px}
+.eval-grid{display:grid;grid-template-columns:minmax(330px,1.05fr) 1.35fr;gap:18px;align-items:stretch}
+@media(max-width:900px){.eval-grid{grid-template-columns:1fr}}
+
+/* decision column */
+.eval-decision{display:flex;flex-direction:column;gap:11px;min-width:0}
+.who{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.who .nm{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.tierpill{font-family:var(--mono);letter-spacing:.04em}
+
+/* THE CEILING — the scoreboard / auction paddle. The one loud element. */
+.ceiling{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
+  column-gap:16px;align-items:center;
+  border:1.5px solid var(--line2);border-radius:12px;padding:12px 18px;background:var(--panel2)}
+.ceiling .c-k{grid-column:1;grid-row:1;align-self:end;
+  font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:600}
+.ceiling .c-v{grid-column:1;grid-row:2;align-self:start;
+  font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:680;
+  font-size:60px;line-height:.94;letter-spacing:-.03em}
+.ceiling .c-state{grid-column:2;grid-row:1 / span 2;justify-self:start;align-self:center;
+  font-size:15px;font-weight:750;text-transform:uppercase;letter-spacing:.06em;
+  padding:6px 12px;border-radius:8px;border:1px solid transparent}
+.ceiling.s-go{border-color:var(--go-line);background:var(--go-bg)}
+.ceiling.s-go .c-v{color:var(--go-ink)}
+.ceiling.s-go .c-state{color:var(--go-ink);border-color:var(--go-line);background:rgba(47,211,156,.10)}
+.ceiling.s-stop{border-color:var(--stop-line);background:var(--stop-bg)}
+.ceiling.s-stop .c-v{color:var(--stop-ink)}
+.ceiling.s-stop .c-state{color:var(--stop-ink);border-color:var(--stop-line);background:rgba(242,106,84,.10)}
+.ceiling.s-hold .c-v{color:var(--ink)}
+.ceiling.s-hold .c-state{color:var(--muted);border-color:var(--line2)}
+.ceiling.pop .c-v{animation:ceilingpop .34s cubic-bezier(.2,.9,.25,1.05)}
+@keyframes ceilingpop{from{transform:translateY(4px) scale(.94);opacity:.3}to{transform:none;opacity:1}}
+.eval.live .ceiling{animation:livepulse 1.7s ease-in-out infinite}
+@keyframes livepulse{0%,100%{box-shadow:0 0 0 0 rgba(47,211,156,0)}50%{box-shadow:0 0 0 4px rgba(47,211,156,.16)}}
+
+.verdict{font-size:12.5px;line-height:1.4;padding:9px 12px;border-radius:9px;font-weight:500;
+  border:1px solid var(--line)}
+.verdict.s-go{color:var(--go-ink);background:var(--go-bg);border-color:var(--go-line)}
+.verdict.s-stop{color:var(--stop-ink);background:var(--stop-bg);border-color:var(--stop-line)}
+.verdict.s-hold{color:var(--muted);background:var(--panel2)}
+
+/* facts column */
+.eval-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;align-content:start}
+.fact{background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:8px 11px;min-width:0}
+.fact.wide{grid-column:span 3}
+.fact .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted)}
+.fact .v{font-family:var(--mono);font-size:19px;font-weight:600;margin-top:2px;color:var(--ink)}
+.fact.wide .v{font-size:13px;font-weight:600;line-height:1.35;margin-top:3px}
+.fact .v.over{color:var(--stop-ink)}
+.fact .v .chase{display:inline-flex;gap:5px;align-items:baseline;margin-right:12px;font-family:var(--sans);font-weight:600}
+.fact .v .chase b{color:var(--ink)} .fact .v .chase .mono{color:var(--muted);font-size:12px}
+.fact .v .chase.quiet{color:var(--faint);font-weight:400}
+
+/* actions */
+.eval-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.btn{background:var(--raise);color:var(--ink);border:1px solid var(--line2);border-radius:9px;
+  padding:9px 16px;font-weight:650;font-size:13px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--go);color:#04160f;border-color:var(--go)}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--muted);font-weight:500}
+.btn.ghost:hover{color:var(--ink);border-color:var(--line2)}
+.btn.bid{flex:1;min-width:220px;padding:12px;font-size:14px;letter-spacing:.02em;
+  background:var(--panel2);border:1px dashed var(--line2);color:var(--ink)}
+.btn.bid:hover{border-color:var(--go-line);border-style:solid}
+.btn.bid.live{background:var(--go);color:#04160f;border:1px solid var(--go)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
+.logrow{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.logrow label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.logrow input{width:64px}
+
+/* ============ MAIN GRID ============ */
+.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start}
+@media(max-width:1040px){.grid{grid-template-columns:1fr}}
+.col-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden}
+.phead{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);
+  background:var(--panel2)}
+.phead h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:650}
+.phead .pill{margin-left:auto}
+.pbody{padding:12px 14px}
 
 /* value board */
-.filters{display:flex;gap:6px;flex-wrap:wrap;padding:9px 13px;border-bottom:1px solid var(--line)}
-.filters.split{justify-content:space-between;align-items:center}
-.filters.split>span{display:inline-flex;gap:6px;flex-wrap:wrap}
-tr.tgrp td{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:uppercase;
-  letter-spacing:.08em;font-weight:600;padding:5px 10px}
-tr.tgrp td .cliff{color:var(--bad-ink);font-weight:700}
-.scar{color:var(--muted)}
-.scar.hot{color:var(--bad-ink);font-weight:700}
+.filters{display:flex;gap:6px;flex-wrap:wrap;padding:9px 14px;border-bottom:1px solid var(--line);align-items:center}
+.filters.split{justify-content:space-between}
+.filters.split>span{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;
+  padding:5px 13px;font-size:12px;font-weight:600;letter-spacing:.02em}
+.chip:hover{color:var(--ink);border-color:var(--line2)}
+.chip.on{background:var(--ink);color:var(--ground);border-color:var(--ink)}
 .rgroup{display:inline-flex;gap:12px;align-items:center}
-.hidepick{display:inline-flex;gap:5px;align-items:center;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);cursor:pointer}
-.hidepick input{width:13px;height:13px;padding:0;accent-color:var(--accent)}
-.tierrow{padding-top:0;border-bottom:1px solid var(--line)}
-tr.gone{opacity:.4}
-tr.gone .l{text-decoration:line-through}
-tr.gone .sold{margin-left:8px;font-size:11px;color:var(--faint);text-decoration:none;font-variant-numeric:tabular-nums}
-.chip{background:var(--ground);border:1px solid var(--line);color:var(--muted);border-radius:999px;
-  padding:5px 12px;font-size:12px;font-weight:600}
-.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hidepick{display:inline-flex;gap:6px;align-items:center;font-size:11px;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none}
+.hidepick input{width:14px;height:14px;padding:0;accent-color:var(--go)}
+.tierrow{padding-top:0}
+.tbl-scroll{max-height:calc(100vh - 140px);overflow:auto}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
-.tbl-scroll{max-height:calc(100vh - 250px);overflow:auto}
-th{position:sticky;top:0;background:var(--panel2);text-align:right;font-size:10px;text-transform:uppercase;
-  letter-spacing:.08em;color:var(--muted);padding:8px 10px;font-weight:600;z-index:1}
+th{position:sticky;top:0;background:var(--panel2);text-align:right;font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);padding:9px 11px;font-weight:650;z-index:1;border-bottom:1px solid var(--line)}
 th.l,td.l{text-align:left}
-th[data-tip],td[data-tip]{cursor:help;text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--faint)}
-.tip{position:fixed;z-index:1000;max-width:280px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-  border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.45;box-shadow:var(--shadow);pointer-events:none;
-  text-transform:none;letter-spacing:0;font-weight:400;text-decoration:none}
-td{padding:7px 10px;border-bottom:1px solid var(--line);font-size:13px}
+th[data-tip],td[data-tip]{cursor:help}
+th[data-tip]{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--faint)}
+.tip{position:fixed;z-index:1000;max-width:280px;background:var(--raise);color:var(--ink);
+  border:1px solid var(--line2);border-radius:9px;padding:9px 11px;font-size:11.5px;line-height:1.45;
+  box-shadow:var(--shadow);pointer-events:none;text-transform:none;letter-spacing:0;font-weight:400}
+td{padding:8px 11px;border-bottom:1px solid var(--line);font-size:13px}
 tr.prow{cursor:pointer}
 tr.prow:hover{background:var(--panel2)}
 td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
 .tier{font-family:var(--mono);font-size:11px;color:var(--muted)}
-.gap-pos{color:var(--good-ink);font-weight:600}
-.gap-neg{color:var(--faint)}
-.pocket{color:var(--accent);font-weight:700}
-.posdot{display:inline-block;width:26px;font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;
-  border-radius:4px;padding:1px 0;margin-right:6px}
-.p-RB{background:#2a3a2f;color:#8fd6a8}.p-WR{background:#2a3340;color:#8fb6e0}
-.p-TE{background:#3a2f2a;color:#e0b48f}.p-QB{background:#352a3a;color:#c99fe0}
-:root[data-theme="light"] .p-RB{background:#dcecdf;color:#1f6b3f}
-:root[data-theme="light"] .p-WR{background:#dbe6f2;color:#2a5680}
-:root[data-theme="light"] .p-TE{background:#f2e5db;color:#8a552a}
-:root[data-theme="light"] .p-QB{background:#ece0f2;color:#6a3a80}
+tr.tgrp td{background:var(--panel2);color:var(--muted);font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.09em;font-weight:650;padding:5px 11px}
+tr.tgrp td .cliff{color:var(--stop-ink);font-weight:700}
+.scar{color:var(--muted)} .scar.hot{color:var(--stop-ink);font-weight:700}
+tr.gone{opacity:.42} tr.gone .l{text-decoration:line-through}
+tr.gone .sold{margin-left:8px;font-size:11px;color:var(--faint);text-decoration:none;font-variant-numeric:tabular-nums}
+.gap-pos{color:var(--go-ink);font-weight:600} .gap-neg{color:var(--faint)}
+.pocket{color:var(--go-ink);font-weight:700}
+td.edge-cell{position:relative}
 
-/* teams */
-.team{padding:8px 13px;border-bottom:1px solid var(--line)}
-.team-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.team .nm{font-size:13px;font-weight:600}
-.team .nm .tag{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);
-  border:1px solid var(--accent-dim);border-radius:4px;padding:0 5px;margin-left:6px;font-weight:700}
-.team .bud{font-family:var(--mono);font-size:14px;font-weight:600}
-.bar{height:5px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
-.needs{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
-.need{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
-.need.open{color:var(--ink);border-color:var(--faint)}
-.team.threat{background:linear-gradient(90deg,var(--bad-bg),transparent 60%)}
-.team.me{background:linear-gradient(90deg,rgba(224,171,72,.12),transparent 60%)}
-.maxbid{font-family:var(--mono);font-size:11px;color:var(--muted)}
+/* position tag — quiet identity, used everywhere a player appears */
+.posdot{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:17px;padding:0 4px;
+  font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.02em;border-radius:5px;margin-right:8px;
+  vertical-align:middle}
+.p-RB{background:var(--rb-bg);color:var(--rb)} .p-WR{background:var(--wr-bg);color:var(--wr)}
+.p-TE{background:var(--te-bg);color:var(--te)} .p-QB{background:var(--qb-bg);color:var(--qb)}
+.who .posdot{height:22px;min-width:34px;font-size:12px}
 
-/* recs */
-.rec{padding:10px 13px;border-bottom:1px solid var(--line);font-size:13px}
-.rec .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
-.rec b{color:var(--accent)}
-.runway{display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:12.5px;border-bottom:1px dotted var(--line)}
+/* the room */
+.team{padding:9px 14px;border-bottom:1px solid var(--line)}
+.team:last-child{border-bottom:none}
+.team-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.team .nm{font-size:13px;font-weight:650}
+.team .nm .tag{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--go-ink);
+  border:1px solid var(--go-line);border-radius:4px;padding:0 5px;margin-left:6px;font-weight:700}
+.team .bud{font-family:var(--mono);font-size:15px;font-weight:650}
+.bar{height:4px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--muted);border-radius:3px}
+.team.me .bar i{background:var(--go)}
+.needs{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.need{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.need.open{color:var(--ink);border-color:var(--line2)}
+.team.threat{background:linear-gradient(90deg,rgba(242,106,84,.09),transparent 62%);
+  box-shadow:inset 2px 0 0 var(--stop)}
+.team.me{background:linear-gradient(90deg,rgba(47,211,156,.08),transparent 62%);
+  box-shadow:inset 2px 0 0 var(--go)}
+.maxbid{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400}
+
+/* recs / runway */
+.rec{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.5}
+.rec:last-child{border-bottom:none}
+.rec .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);margin-bottom:4px;font-weight:600}
+.rec b{color:var(--ink);font-weight:700}
+.rec .hi{color:var(--go-ink);font-weight:700}
+.runway{display:flex;justify-content:space-between;gap:8px;padding:6px 0;font-size:12.5px;border-bottom:1px dotted var(--line)}
 .runway:last-child{border:none}
 .runway .n{font-family:var(--mono);font-weight:600}
-.log-list{max-height:180px;overflow:auto;font-size:12px}
-.log-list .lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 13px;border-bottom:1px solid var(--line);color:var(--muted)}
-.log-list .lrow:hover{background:var(--panel2)}
-.log-list .mono{color:var(--ink)}
-.log-list .rm{background:transparent;border:1px solid var(--line);color:var(--faint);border-radius:5px;
-  padding:1px 7px;font-size:12px;line-height:1.3;flex:none}
-.log-list .rm:hover{border-color:var(--bad);color:var(--bad-ink)}
-.log-list .lmid{flex:1;display:flex;justify-content:space-between;gap:8px}
+
 /* build vs target */
-.brow{display:flex;align-items:center;gap:8px;padding:5px 13px;border-bottom:1px solid var(--line);font-size:12.5px}
-.brow .blab{flex:1}
+.brow{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--line);font-size:12.5px}
+.brow .blab{flex:1;display:flex;align-items:center}
 .brow .btgt{color:var(--muted);font-size:11px}
-.brow .bgot{width:120px;text-align:right}
-.brow .bgot.ok{color:var(--good-ink)}
-.brow .bgot.over{color:var(--bad-ink)}
-.brow .bgot.open{color:var(--faint)}
-.bbudrow{display:grid;grid-template-columns:32px 90px 1fr;align-items:center;gap:8px;padding:3px 0;font-size:12px}
+.brow .bgot{width:128px;text-align:right;font-variant-numeric:tabular-nums}
+.brow .bgot.ok{color:var(--go-ink)} .brow .bgot.over{color:var(--stop-ink)} .brow .bgot.open{color:var(--faint)}
+.bbudrow{display:grid;grid-template-columns:34px 92px 1fr;align-items:center;gap:9px;padding:4px 0;font-size:12px}
 .bbudrow .mono{color:var(--muted)}
 .bbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
 .bbar i{display:block;height:100%;border-radius:3px}
+
 /* advisor */
-.adv-body{padding:12px 13px}
+.adv-body{padding:12px 14px}
 .adv-in{display:flex;gap:8px}
 .adv-in input{flex:1}
-.adv-quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.adv-quick button{background:var(--ground);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 10px;font-size:11px}
-.adv-quick button:hover{border-color:var(--accent-dim);color:var(--ink)}
-.adv-out{margin-top:11px;background:var(--ground);border:1px solid var(--line);border-radius:9px;
-  font-size:13px;line-height:1.5;max-height:360px;overflow:auto}
-.adv-out.intro{padding:11px;color:var(--muted);white-space:pre-wrap}
-.modelsel{margin-left:auto;font-size:11px;padding:4px 8px;border-radius:7px;background:var(--ground);
-  border:1px solid var(--line);color:var(--muted);max-width:150px}
-.adv-item{padding:10px 12px;border-bottom:1px solid var(--line);white-space:pre-wrap}
+.adv-quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.adv-quick button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;
+  padding:5px 11px;font-size:11px}
+.adv-quick button:hover{border-color:var(--line2);color:var(--ink)}
+.modelsel{margin-left:auto;font-size:11px;padding:5px 8px;border-radius:8px;max-width:150px}
+.adv-out{margin-top:12px;background:var(--ground);border:1px solid var(--line);border-radius:10px;
+  font-size:13px;line-height:1.5;max-height:340px;overflow:auto}
+.adv-out.intro{padding:12px;color:var(--muted)}
+.adv-item{padding:11px 13px;border-bottom:1px solid var(--line);white-space:pre-wrap}
 .adv-item:last-child{border-bottom:none}
-.adv-item:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.adv-item:first-child{box-shadow:inset 3px 0 0 var(--go)}
 .adv-item.loading{color:var(--muted)}
-.adv-item .auto-tag{display:block;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600}
+.adv-item .auto-tag{display:block;margin-bottom:6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--go-ink);font-weight:650}
 .adv-item .stamp{float:right;font-size:10px;color:var(--faint);text-transform:none;letter-spacing:0;font-weight:400}
 .adv-item strong{color:var(--ink)}
-.foot{color:var(--faint);font-size:11px;text-align:center;margin-top:18px;line-height:1.6}
-.empty{color:var(--faint);font-size:13px;padding:14px;text-align:center}
+
+/* log */
+.log-list{max-height:210px;overflow:auto;font-size:12px}
+.log-list .lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 14px;
+  border-bottom:1px solid var(--line);color:var(--muted)}
+.log-list .lrow:last-child{border-bottom:none}
+.log-list .lrow:hover{background:var(--panel2)}
+.log-list .mono{color:var(--ink)}
+.log-list .lmid{flex:1;display:flex;justify-content:space-between;gap:8px}
+.log-list .rm{background:transparent;border:1px solid var(--line);color:var(--faint);border-radius:6px;
+  padding:1px 8px;font-size:12px;line-height:1.3;flex:none}
+.log-list .rm:hover{border-color:var(--stop);color:var(--stop-ink)}
+
+.empty{color:var(--faint);font-size:13px;padding:16px;text-align:center}
+.foot{color:var(--faint);font-size:11px;text-align:center;margin-top:22px;line-height:1.6;max-width:900px;margin-inline:auto}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0s !important;animation-iteration-count:1 !important;transition:none !important}
+}
 </style>
 
 <div class="wrap">
-  <div class="rail">
-    <div class="brand"><div class="t">2KDOME · 2026</div><div class="s">Live Auction Console</div></div>
-    <div class="stat accent"><div class="k">Your budget</div><div class="v mono" id="s-budget">$200</div></div>
-    <div class="stat"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="phase-note">$1/open slot reserved</div></div>
-    <div class="stat"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="phase-note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
-    <div class="stat"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="phase-note" id="s-phase">pre-draft</div></div>
-    <button class="themebtn" id="themebtn">◐ theme</button>
-  </div>
+  <div class="dock" id="dock">
+    <div class="vitals">
+      <div class="brand"><div class="t">2KDOME · 2026</div><div class="s">Live Auction Console</div></div>
+      <div class="vital"><div class="k">Budget</div><div class="v mono" id="s-budget">$200</div></div>
+      <div class="vital"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="note">reserves $1 / open slot</div></div>
+      <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
+      <div class="vital"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="note" id="s-phase">pre-draft</div></div>
+      <button class="themebtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+    </div>
 
-  <div class="grid">
-    <div class="stack sticky-col">
-      <!-- ON THE BLOCK -->
-      <div class="panel" id="block-panel">
-        <div class="phead"><h2>On the block</h2><span class="pill" id="block-hint">type a player</span></div>
-        <div class="pbody">
-          <div class="block-input">
-            <div class="suggest" style="flex:1"><input class="search" id="block-search" placeholder="Search a player…" autocomplete="off"><div class="sug-list" id="block-sug" style="display:none"></div></div>
-          </div>
-          <div class="eval" id="eval">
-            <div class="eval-top"><span class="nm" id="ev-name"></span><span class="pill" id="ev-tier"></span><span class="pill" id="ev-pos"></span></div>
-            <div class="evgrid">
-              <div class="ev worth"><div class="k">Worth (proj $)</div><div class="v mono" id="ev-worth"></div></div>
-              <div class="ev"><div class="k">Will go for ≈</div><div class="v mono" id="ev-pred"></div></div>
-              <div class="ev"><div class="k">Your max bid</div><div class="v mono" id="ev-max"></div></div>
-              <div class="ev"><div class="k">VORP (value/repl)</div><div class="v mono" id="ev-vorp"></div></div>
-              <div class="ev"><div class="k">Scarcity if taken</div><div class="v mono sm" id="ev-scar"></div></div>
-              <div class="ev"><div class="k">Left at pos</div><div class="v mono sm" id="ev-left"></div></div>
+    <div class="block" id="block-panel">
+      <div class="block-bar">
+        <span class="onblock">On the block</span>
+        <div class="suggest"><input class="search" id="block-search" placeholder="Search a player to evaluate…" autocomplete="off"><div class="sug-list" id="block-sug" style="display:none"></div></div>
+        <span class="pill" id="block-hint">type a player</span>
+      </div>
+      <div class="eval" id="eval">
+        <div class="eval-grid">
+          <div class="eval-decision">
+            <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span></div>
+            <div class="ceiling" id="ceiling">
+              <div class="c-k">Bid up to</div>
+              <div class="c-v mono" id="ev-max"></div>
+              <div class="c-state" id="ev-state"></div>
             </div>
             <div class="verdict" id="ev-verdict"></div>
-            <div class="bidrow">
-              <button class="btn bid" id="bid-btn">🔨 Bidding now — live read</button>
-            </div>
-            <div class="logrow">
-              <label>Sold for $</label><input class="mono" id="log-price" style="width:70px" inputmode="numeric">
-              <label>to</label>
-              <select id="log-team"></select>
-              <button class="btn" id="log-btn">Log pick</button>
-              <button class="btn ghost" id="undo-btn">✕ Clear</button>
-            </div>
+          </div>
+          <div class="eval-facts">
+            <div class="fact"><div class="k">Worth</div><div class="v mono" id="ev-worth"></div></div>
+            <div class="fact"><div class="k">Will go ≈</div><div class="v mono" id="ev-pred"></div></div>
+            <div class="fact"><div class="k">VORP</div><div class="v mono" id="ev-vorp"></div></div>
+            <div class="fact wide"><div class="k">Scarcity if taken</div><div class="v mono" id="ev-scar"></div></div>
+            <div class="fact wide"><div class="k">Pool left</div><div class="v mono" id="ev-left"></div></div>
+            <div class="fact wide"><div class="k">Who's chasing this</div><div class="v" id="ev-chase"></div></div>
+          </div>
+        </div>
+        <div class="eval-actions">
+          <button class="btn bid" id="bid-btn">🔨 Bidding now — live read</button>
+          <div class="logrow">
+            <label>Sold $</label><input class="mono" id="log-price" inputmode="numeric">
+            <label>to</label>
+            <select id="log-team"></select>
+            <button class="btn primary" id="log-btn">Log pick</button>
+            <button class="btn ghost" id="undo-btn">Clear</button>
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
+  <div class="grid">
+    <div class="col-main">
       <!-- VALUE BOARD -->
       <div class="panel">
         <div class="phead"><h2 id="board-title">Value board — best available</h2><span class="pill" id="board-count"></span></div>
@@ -292,7 +396,20 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:righ
       </div>
     </div>
 
-    <div class="stack">
+    <div class="col-side">
+      <!-- THE ROOM -->
+      <div class="panel">
+        <div class="phead"><h2>The room — budgets &amp; needs</h2><span class="pill" id="teams-hint">threats highlighted</span></div>
+        <div id="teams"></div>
+      </div>
+
+      <!-- MY BUILD vs TARGET -->
+      <div class="panel">
+        <div class="phead"><h2>Your build vs target</h2><span class="pill" id="build-spent"></span></div>
+        <div id="build-slots"></div>
+        <div class="pbody" id="build-budget"></div>
+      </div>
+
       <!-- ADVISOR (LLM) -->
       <div class="panel">
         <div class="phead"><h2>Advisor</h2>
@@ -306,42 +423,29 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:righ
         <div class="adv-body">
           <div class="adv-in">
             <input id="adv-q" placeholder="Ask: who'll chase the next elite RB? should I bid?" autocomplete="off">
-            <button class="btn" id="adv-ask">Ask</button>
+            <button class="btn primary" id="adv-ask">Ask</button>
           </div>
           <div class="adv-quick">
             <button data-q="Given the draft so far and each manager's tendencies, predict what the top 3 threats will do next and where value will fall to me.">Predict the room</button>
             <button data-q="Who still has budget and a need that will drive up prices, and which position should I target now?">Where's the value?</button>
             <button data-q="Should I bid on the player currently on the block, and up to what price? Factor who else is likely bidding.">Bid check</button>
           </div>
-          <div class="adv-out intro" id="adv-out">Ask about the draft — the advisor reads the live board, budgets, and each manager's calibrated tendencies from the analysis. Each answer stays in the feed below.</div>
+          <div class="adv-out intro" id="adv-out">Ask about the draft — the advisor reads the live board, budgets, and each manager's calibrated tendencies. Each answer stays in the feed below.</div>
         </div>
-      </div>
-
-      <!-- MY BUILD vs TARGET -->
-      <div class="panel">
-        <div class="phead"><h2>Your build vs target</h2><span class="pill" id="build-spent"></span></div>
-        <div id="build-slots"></div>
-        <div class="pbody" id="build-budget"></div>
       </div>
 
       <!-- RECOMMENDATIONS -->
       <div class="panel">
         <div class="phead"><h2>Read &amp; recommend</h2></div>
         <div id="recs"></div>
-        <div class="phead" style="border-top:1px solid var(--line)"><h2>Runway (startable left ÷ teams needing)</h2></div>
+        <div class="phead" style="border-top:1px solid var(--line)"><h2>Runway — startable left ÷ teams needing</h2></div>
         <div class="pbody" id="runway"></div>
-      </div>
-
-      <!-- TEAMS -->
-      <div class="panel">
-        <div class="phead"><h2>The room — budgets &amp; needs</h2><span class="pill" id="teams-hint">threats highlighted</span></div>
-        <div id="teams"></div>
       </div>
 
       <!-- LOG -->
       <div class="panel">
         <div class="phead"><h2>Draft log</h2>
-          <button class="btn ghost" id="undo-last" style="margin-left:auto;padding:4px 10px;font-size:11px">↶ Undo last</button></div>
+          <button class="btn ghost" id="undo-last" style="margin-left:auto;padding:5px 11px;font-size:11px">↶ Undo last</button></div>
         <div class="log-list" id="loglist"><div class="empty">No picks logged yet.</div></div>
       </div>
     </div>
@@ -492,7 +596,10 @@ function renderStatus(){
   for(let i=0;i<t.flex;i++)needs.push("FLX");
   if(t.bench>0)needs.push("·","+"+t.bench+" bench");
   $("#s-need").textContent="need: "+(needs.join(" ")||"—");
-  $("#s-infl").textContent=inflation().toFixed(2)+"×";
+  const infl=inflation();
+  $("#s-infl").textContent=infl.toFixed(2)+"×";
+  const mv=$("#s-infl").closest(".vital");
+  if(mv){mv.classList.toggle("hot",infl>1.12);mv.classList.toggle("cold",infl<0.88);}
   const picks=log.length, tot=Object.keys(teams).length*SPEND_SLOTS;
   const pct=picks/tot;
   let phase = pct<0.01?"pre-draft":pct<0.2?"opening — studs fly, pay for your anchor":
@@ -505,22 +612,46 @@ function showEval(p){
   $("#eval").classList.add("on");
   clearLive();                       // a fresh nomination isn't "live" until you hit Bidding now
   $("#block-hint").textContent="evaluating";
+  const infl=inflation();
+  const pred=predictPrice(p), mb=harryMaxBid(p);
+  // identity
   $("#ev-name").textContent=p.name;
   $("#ev-tier").textContent=p.tier;
   $("#ev-pos").textContent=p.pos;
+  $("#ev-pos").className="posdot p-"+p.pos;
+  // supporting facts
   $("#ev-worth").textContent=money(p.worth);
-  $("#ev-pred").textContent=money(predictPrice(p));
-  $("#ev-max").textContent=money(harryMaxBid(p));
-  const sc=scarcity(p);
+  $("#ev-pred").textContent=money(pred);
   $("#ev-vorp").textContent=Math.round(p.vbd);
-  $("#ev-scar").textContent=sc.next?((sc.cliff>0?"−"+sc.cliff:"0")+" VBD to next "+p.pos):"last "+p.pos+" of value";
-  $("#ev-scar").className="v mono sm"+(sc.cliff>=15?" over":"");
+  const sc=scarcity(p);
+  $("#ev-scar").textContent=sc.next?((sc.cliff>0?"−"+sc.cliff:"0")+" to next "+p.pos):"last "+p.pos+" of value";
+  $("#ev-scar").classList.toggle("over",sc.cliff>=15);
   $("#ev-left").textContent=sc.posLeft+" "+p.pos+" left · "+sc.tierLeft+" in "+p.tier;
-  const mb=harryMaxBid(p);
-  const el=$("#ev-verdict");
-  el.className="verdict maxrec"+(mb<=0?" v-fade":"");
-  el.innerHTML="<span>"+(mb>0?"Bid up to "+money(mb):"Don't bid")+"</span><small>"+maxRationale(p)+"</small>";
-  $("#log-price").value=Math.round(predictPrice(p));
+  // who's chasing — the opponents most likely to drive this price up right now
+  const chasers=Object.values(teams).filter(t=>t.name!==ME)
+    .map(t=>({t,bid:teamBid(t,p,infl)})).filter(x=>x.bid>=Math.max(2,pred*0.55))
+    .sort((a,b)=>b.bid-a.bid).slice(0,3);
+  $("#ev-chase").innerHTML = chasers.length
+    ? chasers.map(c=>`<span class="chase"><b>${shortName(c.t.name)}</b> <span class="mono">${money(c.bid)}</span></span>`).join("")
+    : `<span class="chase quiet">room is quiet here — no rival with budget + need</span>`;
+  // the ceiling — your bid number + a plain go / hold / stop call
+  $("#ev-max").textContent=money(mb);
+  // the call answers the glance question: can I land him at/under my ceiling?
+  const gap=mb-pred;                 // headroom of your max over the likely sale price
+  let state,word;
+  if(slotFor(teams[ME],p.pos)===null){state="stop";word="No slot";}
+  else if(mb<=0){state="stop";word="Can't afford";}
+  else if(gap>=5){state="go";word="Target";}
+  else if(gap<=-5){state="stop";word="Let it go";}
+  else{state="hold";word="Fair value";}
+  const cc=$("#ceiling");
+  cc.className="ceiling s-"+state;
+  cc.classList.remove("pop"); void cc.offsetWidth; cc.classList.add("pop");   // replay the count-in
+  $("#ev-state").textContent=word;
+  const v=$("#ev-verdict");
+  v.className="verdict s-"+state;
+  v.textContent=maxRationale(p);
+  $("#log-price").value=Math.round(pred);
 }
 
 function renderTierFilters(){
@@ -595,16 +726,17 @@ function renderBoard(){
     `<th data-tip="Projected auction value (Elboberto/FantasyPros). What the player is worth on a $200 board.">Worth</th>`+
     `<th data-tip="Predicted sale price right now — a second-price estimate from every opponent who still has budget + a need at this position, times market inflation.">Will go ≈</th>`+
     `<th data-tip="The most YOU should bid up to right now — your conversion-aware value adjusted for live scarcity, market inflation, your budget and roster. Moves as the draft moves.">Your max</th>`+
-    `<th data-tip="Your value minus predicted price. Positive (green/amber) = a bargain worth chasing; grey/negative = the room will overpay. Turns positive live as budgets drain.">Edge</th>`+
+    `<th data-tip="Your max minus the likely sale price — your headroom. Positive (green) = you can land him at or under your ceiling; grey/negative = the room will push past your max. Turns positive live as budgets drain.">Edge</th>`+
     `</tr>`;
-  let list=base.map(p=>{const pred=predictPrice(p),val=harryValue(p);return {p,pred,val,edge:val-pred};})
+  // Edge = your max − likely price: headroom under your ceiling. Same story the eval ceiling tells.
+  let list=base.map(p=>{const pred=predictPrice(p),mb=harryMaxBid(p);return {p,pred,mb,edge:mb-pred};})
     .sort((a,b)=>b.p.worth-a.p.worth).slice(0,hidePicked?60:220);
   tb.innerHTML="";
-  list.forEach(({p,pred,val,edge})=>{
+  list.forEach(({p,pred,mb,edge})=>{
     const gone=p.drafted!==null;
     const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"");
     const need=slotFor(teams[ME],p.pos)!==null;
-    const pocket=!gone&&edge>=8&&need;
+    const pocket=!gone&&edge>=5&&need;
     tr.innerHTML=`<td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
       <td class="num tier">${p.tier}</td>
       <td class="num">${money(p.worth)}</td>
@@ -997,6 +1129,11 @@ $("#themebtn").onclick=()=>{
   document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");
 };
 $("#foot").innerHTML="Prices are live estimates: each remaining player is re-priced from the calibrated bids of every opponent who still has budget + a need for that position (§11/§18), scaled by live market inflation. Worth = Elboberto 2026 projection. Model, not gospel — trust your read in the room.";
+
+// lift the dock with a shadow once the board scrolls beneath it
+const _dock=$("#dock");
+const _onScroll=()=>_dock.classList.toggle("stuck",window.scrollY>4);
+window.addEventListener("scroll",_onScroll,{passive:true});_onScroll();
 
 initTeamSelect();initFilters();initModes();renderAll();
 </script>
