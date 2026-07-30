@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────
+# Keep the reusable framework tracked; keep everything specific to
+# YOUR league, your analysis, your data, and your secrets LOCAL.
+# ─────────────────────────────────────────────────────────────
+
+# ── Secrets & credentials ──
+**/.env
+**/.env.local
+!**/.env.example
+scraping/.espn_auth.json
+*.pem
+
+# ── Advisor briefing (league-specific: opponent names, your plan) ──
+draft_app/briefing.md
+!draft_app/briefing.example.md
+
+# ── Scraped league data (re-generate from your own ESPN account) ──
+scraping/raw/
+scraping/har_extracted/
+*.har
+
+# ── Projection sheets & derived data (source-specific / copyrighted) ──
+draft_sheets/*.xlsm
+draft_sheets/*.xlsx
+draft_sheets/*.csv
+draft_sheets/elboberto_projections.json
+draft_sheets/tool_data.json
+
+# ── Generated app payload (built by the inject step from the template) ──
+draft_app/static/index.html
+draft_app/static/data.json
+
+# ── Analysis (scripts contain real manager names) & outputs & private notes ──
+analysis/
+reports/
+league/
+draft_app/eval_report.md
+
+# ── Python env & caches ──
+.venv/
+venv/
+**/__pycache__/
+*.py[cod]
+
+# ── Local tooling / scratch / OS ──
+.claude/
+.playwright-mcp/
+review-*.png
+.DS_Store

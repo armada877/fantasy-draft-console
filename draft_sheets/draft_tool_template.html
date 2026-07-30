@@ -1,0 +1,1002 @@
+<title>2KDOME 2026 — Live Auction Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%8F%88%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --ground:#13171c; --panel:#1b2129; --panel2:#242d37; --line:#2d3742;
+  --ink:#eaedf1; --muted:#8b93a0; --faint:#5a6472;
+  --accent:#e0ab48; --accent-ink:#151006; --accent-dim:#7d6329;
+  --good:#45b985; --good-bg:#123329; --good-ink:#7fe0b3;
+  --bad:#d76048; --bad-bg:#38201a; --bad-ink:#f0a08c;
+  --shadow:0 1px 0 rgba(255,255,255,.03), 0 6px 20px rgba(0,0,0,.35);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ground:#f4f1ea; --panel:#fffdf9; --panel2:#f0ece2; --line:#e0d9cb;
+    --ink:#20242a; --muted:#6b7280; --faint:#9aa1ab;
+    --accent:#b07d1e; --accent-ink:#fff; --accent-dim:#d8c191;
+    --good:#1f8f5f; --good-bg:#e4f3ec; --good-ink:#15774e;
+    --bad:#c04a2e; --bad-bg:#f7e6df; --bad-ink:#a53c22;
+    --shadow:0 1px 0 rgba(0,0,0,.02), 0 4px 14px rgba(60,50,30,.10);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#13171c; --panel:#1b2129; --panel2:#242d37; --line:#2d3742;
+  --ink:#eaedf1; --muted:#8b93a0; --faint:#5a6472; --accent:#e0ab48; --accent-ink:#151006;
+  --accent-dim:#7d6329; --good:#45b985; --good-bg:#123329; --good-ink:#7fe0b3;
+  --bad:#d76048; --bad-bg:#38201a; --bad-ink:#f0a08c;
+  --shadow:0 1px 0 rgba(255,255,255,.03), 0 6px 20px rgba(0,0,0,.35);
+}
+:root[data-theme="light"]{
+  --ground:#f4f1ea; --panel:#fffdf9; --panel2:#f0ece2; --line:#e0d9cb;
+  --ink:#20242a; --muted:#6b7280; --faint:#9aa1ab; --accent:#b07d1e; --accent-ink:#fff;
+  --accent-dim:#d8c191; --good:#1f8f5f; --good-bg:#e4f3ec; --good-ink:#15774e;
+  --bad:#c04a2e; --bad-bg:#f7e6df; --bad-ink:#a53c22;
+  --shadow:0 1px 0 rgba(0,0,0,.02), 0 4px 14px rgba(60,50,30,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance}
+button{font-family:var(--sans);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.wrap{max-width:1400px;margin:0 auto;padding:14px 16px 40px}
+
+/* status rail */
+.rail{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin-bottom:14px}
+.brand{display:flex;flex-direction:column;justify-content:center;padding:6px 14px 6px 0;margin-right:4px}
+.brand .t{font-size:15px;font-weight:700;letter-spacing:.02em}
+.brand .s{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 13px;
+  min-width:96px;box-shadow:var(--shadow)}
+.stat .k{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.stat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;margin-top:2px}
+.stat .v small{font-size:12px;color:var(--muted);font-weight:400}
+.stat.accent{border-color:var(--accent-dim)}
+.stat.accent .v{color:var(--accent)}
+.phase-note{font-size:11px;color:var(--muted);margin-top:1px}
+.themebtn{margin-left:auto;align-self:center;background:var(--panel);border:1px solid var(--line);
+  color:var(--muted);border-radius:8px;padding:8px 11px;font-size:12px}
+
+/* layout */
+.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+@media(max-width:920px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);overflow:hidden}
+#block-panel{overflow:visible;position:relative;z-index:5}
+.phead{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.phead h2{font-size:12px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:600}
+.pbody{padding:12px 13px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.sticky-col{position:sticky;top:14px;align-self:start}
+@media(max-width:920px){.sticky-col{position:static}}
+
+/* on the block */
+.block-input{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{background:var(--ground);border:1px solid var(--line);color:var(--ink);border-radius:7px;
+  padding:8px 10px;font-size:13px}
+input.search{flex:1;min-width:160px}
+.suggest{position:relative}
+.sug-list{position:absolute;z-index:20;top:100%;left:0;right:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;margin-top:3px;max-height:260px;overflow:auto;box-shadow:var(--shadow)}
+.sug-list div{padding:7px 10px;display:flex;justify-content:space-between;gap:8px;cursor:pointer;border-bottom:1px solid var(--line)}
+.sug-list div:hover,.sug-list div.hi{background:var(--panel2)}
+.sug-list .pos{color:var(--muted);font-size:11px}
+
+.eval{margin-top:12px;display:none}
+.eval.on{display:block}
+.eval-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.eval-top .nm{font-size:20px;font-weight:700}
+.pill{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted)}
+.evgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.ev{background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.ev .k{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.ev .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:2px}
+.ev.worth .v{color:var(--accent)}
+.ev .v.sm{font-size:13px;line-height:1.35;font-weight:600;margin-top:4px}
+.ev .v.over{color:var(--bad-ink)}
+.verdict{border-radius:9px;padding:11px 13px;font-weight:600;font-size:15px;display:flex;
+  justify-content:space-between;align-items:center;gap:10px}
+.verdict small{font-weight:400;font-size:12px;opacity:.85}
+.v-target{background:var(--good-bg);color:var(--good-ink);border:1px solid var(--good)}
+.v-fair{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+.v-fade{background:var(--bad-bg);color:var(--bad-ink);border:1px solid var(--bad)}
+.maxrec{background:var(--panel2);border:1px solid var(--accent-dim)}
+.maxrec>span{color:var(--accent);font-size:17px}
+.logrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.logrow label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.btn{background:var(--accent);color:var(--accent-ink);border:none;border-radius:8px;padding:9px 15px;font-weight:700;font-size:13px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:500}
+.bidrow{margin-top:12px}
+.btn.bid{width:100%;padding:11px;font-size:14px;letter-spacing:.02em}
+.btn.bid.live{background:var(--good);color:#fff}
+.pill.live{background:var(--good);color:#fff;border-color:var(--good)}
+.eval.live{outline:2px solid var(--good);outline-offset:2px;border-radius:9px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* value board */
+.filters{display:flex;gap:6px;flex-wrap:wrap;padding:9px 13px;border-bottom:1px solid var(--line)}
+.filters.split{justify-content:space-between;align-items:center}
+.filters.split>span{display:inline-flex;gap:6px;flex-wrap:wrap}
+tr.tgrp td{background:var(--panel2);color:var(--muted);font-size:10px;text-transform:uppercase;
+  letter-spacing:.08em;font-weight:600;padding:5px 10px}
+tr.tgrp td .cliff{color:var(--bad-ink);font-weight:700}
+.scar{color:var(--muted)}
+.scar.hot{color:var(--bad-ink);font-weight:700}
+.rgroup{display:inline-flex;gap:12px;align-items:center}
+.hidepick{display:inline-flex;gap:5px;align-items:center;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);cursor:pointer}
+.hidepick input{width:13px;height:13px;padding:0;accent-color:var(--accent)}
+.tierrow{padding-top:0;border-bottom:1px solid var(--line)}
+tr.gone{opacity:.4}
+tr.gone .l{text-decoration:line-through}
+tr.gone .sold{margin-left:8px;font-size:11px;color:var(--faint);text-decoration:none;font-variant-numeric:tabular-nums}
+.chip{background:var(--ground);border:1px solid var(--line);color:var(--muted);border-radius:999px;
+  padding:5px 12px;font-size:12px;font-weight:600}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+table{width:100%;border-collapse:collapse;color:var(--ink)}
+.tbl-scroll{max-height:calc(100vh - 250px);overflow:auto}
+th{position:sticky;top:0;background:var(--panel2);text-align:right;font-size:10px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);padding:8px 10px;font-weight:600;z-index:1}
+th.l,td.l{text-align:left}
+th[data-tip],td[data-tip]{cursor:help;text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--faint)}
+.tip{position:fixed;z-index:1000;max-width:280px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.45;box-shadow:var(--shadow);pointer-events:none;
+  text-transform:none;letter-spacing:0;font-weight:400;text-decoration:none}
+td{padding:7px 10px;border-bottom:1px solid var(--line);font-size:13px}
+tr.prow{cursor:pointer}
+tr.prow:hover{background:var(--panel2)}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.tier{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.gap-pos{color:var(--good-ink);font-weight:600}
+.gap-neg{color:var(--faint)}
+.pocket{color:var(--accent);font-weight:700}
+.posdot{display:inline-block;width:26px;font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;
+  border-radius:4px;padding:1px 0;margin-right:6px}
+.p-RB{background:#2a3a2f;color:#8fd6a8}.p-WR{background:#2a3340;color:#8fb6e0}
+.p-TE{background:#3a2f2a;color:#e0b48f}.p-QB{background:#352a3a;color:#c99fe0}
+:root[data-theme="light"] .p-RB{background:#dcecdf;color:#1f6b3f}
+:root[data-theme="light"] .p-WR{background:#dbe6f2;color:#2a5680}
+:root[data-theme="light"] .p-TE{background:#f2e5db;color:#8a552a}
+:root[data-theme="light"] .p-QB{background:#ece0f2;color:#6a3a80}
+
+/* teams */
+.team{padding:8px 13px;border-bottom:1px solid var(--line)}
+.team-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.team .nm{font-size:13px;font-weight:600}
+.team .nm .tag{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);
+  border:1px solid var(--accent-dim);border-radius:4px;padding:0 5px;margin-left:6px;font-weight:700}
+.team .bud{font-family:var(--mono);font-size:14px;font-weight:600}
+.bar{height:5px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.needs{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.need{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.need.open{color:var(--ink);border-color:var(--faint)}
+.team.threat{background:linear-gradient(90deg,var(--bad-bg),transparent 60%)}
+.team.me{background:linear-gradient(90deg,rgba(224,171,72,.12),transparent 60%)}
+.maxbid{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* recs */
+.rec{padding:10px 13px;border-bottom:1px solid var(--line);font-size:13px}
+.rec .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:3px}
+.rec b{color:var(--accent)}
+.runway{display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:12.5px;border-bottom:1px dotted var(--line)}
+.runway:last-child{border:none}
+.runway .n{font-family:var(--mono);font-weight:600}
+.log-list{max-height:180px;overflow:auto;font-size:12px}
+.log-list .lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 13px;border-bottom:1px solid var(--line);color:var(--muted)}
+.log-list .lrow:hover{background:var(--panel2)}
+.log-list .mono{color:var(--ink)}
+.log-list .rm{background:transparent;border:1px solid var(--line);color:var(--faint);border-radius:5px;
+  padding:1px 7px;font-size:12px;line-height:1.3;flex:none}
+.log-list .rm:hover{border-color:var(--bad);color:var(--bad-ink)}
+.log-list .lmid{flex:1;display:flex;justify-content:space-between;gap:8px}
+/* build vs target */
+.brow{display:flex;align-items:center;gap:8px;padding:5px 13px;border-bottom:1px solid var(--line);font-size:12.5px}
+.brow .blab{flex:1}
+.brow .btgt{color:var(--muted);font-size:11px}
+.brow .bgot{width:120px;text-align:right}
+.brow .bgot.ok{color:var(--good-ink)}
+.brow .bgot.over{color:var(--bad-ink)}
+.brow .bgot.open{color:var(--faint)}
+.bbudrow{display:grid;grid-template-columns:32px 90px 1fr;align-items:center;gap:8px;padding:3px 0;font-size:12px}
+.bbudrow .mono{color:var(--muted)}
+.bbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.bbar i{display:block;height:100%;border-radius:3px}
+/* advisor */
+.adv-body{padding:12px 13px}
+.adv-in{display:flex;gap:8px}
+.adv-in input{flex:1}
+.adv-quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.adv-quick button{background:var(--ground);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 10px;font-size:11px}
+.adv-quick button:hover{border-color:var(--accent-dim);color:var(--ink)}
+.adv-out{margin-top:11px;background:var(--ground);border:1px solid var(--line);border-radius:9px;
+  font-size:13px;line-height:1.5;max-height:360px;overflow:auto}
+.adv-out.intro{padding:11px;color:var(--muted);white-space:pre-wrap}
+.modelsel{margin-left:auto;font-size:11px;padding:4px 8px;border-radius:7px;background:var(--ground);
+  border:1px solid var(--line);color:var(--muted);max-width:150px}
+.adv-item{padding:10px 12px;border-bottom:1px solid var(--line);white-space:pre-wrap}
+.adv-item:last-child{border-bottom:none}
+.adv-item:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.adv-item.loading{color:var(--muted)}
+.adv-item .auto-tag{display:block;margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600}
+.adv-item .stamp{float:right;font-size:10px;color:var(--faint);text-transform:none;letter-spacing:0;font-weight:400}
+.adv-item strong{color:var(--ink)}
+.foot{color:var(--faint);font-size:11px;text-align:center;margin-top:18px;line-height:1.6}
+.empty{color:var(--faint);font-size:13px;padding:14px;text-align:center}
+</style>
+
+<div class="wrap">
+  <div class="rail">
+    <div class="brand"><div class="t">2KDOME · 2026</div><div class="s">Live Auction Console</div></div>
+    <div class="stat accent"><div class="k">Your budget</div><div class="v mono" id="s-budget">$200</div></div>
+    <div class="stat"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="phase-note">$1/open slot reserved</div></div>
+    <div class="stat"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="phase-note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
+    <div class="stat"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="phase-note" id="s-phase">pre-draft</div></div>
+    <button class="themebtn" id="themebtn">◐ theme</button>
+  </div>
+
+  <div class="grid">
+    <div class="stack sticky-col">
+      <!-- ON THE BLOCK -->
+      <div class="panel" id="block-panel">
+        <div class="phead"><h2>On the block</h2><span class="pill" id="block-hint">type a player</span></div>
+        <div class="pbody">
+          <div class="block-input">
+            <div class="suggest" style="flex:1"><input class="search" id="block-search" placeholder="Search a player…" autocomplete="off"><div class="sug-list" id="block-sug" style="display:none"></div></div>
+          </div>
+          <div class="eval" id="eval">
+            <div class="eval-top"><span class="nm" id="ev-name"></span><span class="pill" id="ev-tier"></span><span class="pill" id="ev-pos"></span></div>
+            <div class="evgrid">
+              <div class="ev worth"><div class="k">Worth (proj $)</div><div class="v mono" id="ev-worth"></div></div>
+              <div class="ev"><div class="k">Will go for ≈</div><div class="v mono" id="ev-pred"></div></div>
+              <div class="ev"><div class="k">Your max bid</div><div class="v mono" id="ev-max"></div></div>
+              <div class="ev"><div class="k">VORP (value/repl)</div><div class="v mono" id="ev-vorp"></div></div>
+              <div class="ev"><div class="k">Scarcity if taken</div><div class="v mono sm" id="ev-scar"></div></div>
+              <div class="ev"><div class="k">Left at pos</div><div class="v mono sm" id="ev-left"></div></div>
+            </div>
+            <div class="verdict" id="ev-verdict"></div>
+            <div class="bidrow">
+              <button class="btn bid" id="bid-btn">🔨 Bidding now — live read</button>
+            </div>
+            <div class="logrow">
+              <label>Sold for $</label><input class="mono" id="log-price" style="width:70px" inputmode="numeric">
+              <label>to</label>
+              <select id="log-team"></select>
+              <button class="btn" id="log-btn">Log pick</button>
+              <button class="btn ghost" id="undo-btn">✕ Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VALUE BOARD -->
+      <div class="panel">
+        <div class="phead"><h2 id="board-title">Value board — best available</h2><span class="pill" id="board-count"></span></div>
+        <div class="filters split">
+          <span id="pos-filters"></span>
+          <span class="rgroup">
+            <label class="hidepick"><input type="checkbox" id="hide-picked" checked> hide picked</label>
+            <span id="board-modes"></span>
+          </span>
+        </div>
+        <div class="filters tierrow" id="tier-filters" style="display:none"></div>
+        <div class="tbl-scroll">
+          <table>
+            <thead id="board-head"></thead>
+            <tbody id="board-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <!-- ADVISOR (LLM) -->
+      <div class="panel">
+        <div class="phead"><h2>Advisor</h2>
+          <span class="pill">reads live state</span>
+          <select id="adv-model" class="modelsel" title="Which Claude model powers the advisor">
+            <option value="claude-haiku-4-5">Haiku 4.5 · fast</option>
+            <option value="claude-sonnet-5">Sonnet 5 · balanced</option>
+            <option value="claude-opus-4-8">Opus 4.8 · deepest</option>
+          </select>
+        </div>
+        <div class="adv-body">
+          <div class="adv-in">
+            <input id="adv-q" placeholder="Ask: who'll chase the next elite RB? should I bid?" autocomplete="off">
+            <button class="btn" id="adv-ask">Ask</button>
+          </div>
+          <div class="adv-quick">
+            <button data-q="Given the draft so far and each manager's tendencies, predict what the top 3 threats will do next and where value will fall to me.">Predict the room</button>
+            <button data-q="Who still has budget and a need that will drive up prices, and which position should I target now?">Where's the value?</button>
+            <button data-q="Should I bid on the player currently on the block, and up to what price? Factor who else is likely bidding.">Bid check</button>
+          </div>
+          <div class="adv-out intro" id="adv-out">Ask about the draft — the advisor reads the live board, budgets, and each manager's calibrated tendencies from the analysis. Each answer stays in the feed below.</div>
+        </div>
+      </div>
+
+      <!-- MY BUILD vs TARGET -->
+      <div class="panel">
+        <div class="phead"><h2>Your build vs target</h2><span class="pill" id="build-spent"></span></div>
+        <div id="build-slots"></div>
+        <div class="pbody" id="build-budget"></div>
+      </div>
+
+      <!-- RECOMMENDATIONS -->
+      <div class="panel">
+        <div class="phead"><h2>Read &amp; recommend</h2></div>
+        <div id="recs"></div>
+        <div class="phead" style="border-top:1px solid var(--line)"><h2>Runway (startable left ÷ teams needing)</h2></div>
+        <div class="pbody" id="runway"></div>
+      </div>
+
+      <!-- TEAMS -->
+      <div class="panel">
+        <div class="phead"><h2>The room — budgets &amp; needs</h2><span class="pill" id="teams-hint">threats highlighted</span></div>
+        <div id="teams"></div>
+      </div>
+
+      <!-- LOG -->
+      <div class="panel">
+        <div class="phead"><h2>Draft log</h2>
+          <button class="btn ghost" id="undo-last" style="margin-left:auto;padding:4px 10px;font-size:11px">↶ Undo last</button></div>
+        <div class="log-list" id="loglist"><div class="empty">No picks logged yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const DATA = /*DATA*/;
+/* ---------- state ---------- */
+const ME = "Harry Davis";
+const STARTERS = DATA.starters, FLEX = DATA.flex, BENCH = DATA.bench;
+const SPEND_SLOTS = Object.values(STARTERS).reduce((a,b)=>a+b,0)+FLEX; // 8 startable
+const ROSTER_SLOTS = SPEND_SLOTS + BENCH;
+const players = DATA.players.map((p,i)=>({...p,id:i,drafted:null,price:0}));
+const teams = {};
+DATA.managers.forEach(m=>{
+  teams[m.name]={...m, budget:DATA.budget, players:[],
+    need:{...STARTERS}, flex:FLEX, bench:BENCH};
+});
+const harryMult={QB:0.9,RB:1.4,WR:1.15,TE:1.05}; // validated strategy tilt
+let log=[];
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const money=v=>"$"+Math.max(0,Math.round(v));
+// short display name; add last initial when a first name is shared (e.g. two Dylans)
+let _firstCounts=null;
+function shortName(full){
+  if(!_firstCounts){_firstCounts={};Object.keys(teams).forEach(n=>{const f=n.split(" ")[0];_firstCounts[f]=(_firstCounts[f]||0)+1;});}
+  const parts=full.split(" "),first=parts[0];
+  return (_firstCounts[first]>1&&parts.length>1)?first+" "+parts[parts.length-1][0]+".":first;
+}
+function openSlots(t){return Object.values(t.need).reduce((a,b)=>a+b,0)+t.flex+t.bench;}
+function slotFor(t,pos){
+  if(t.need[pos]>0)return "start";
+  if((pos==="RB"||pos==="WR"||pos==="TE")&&t.flex>0)return "flex";
+  if(t.bench>0)return "bench";
+  return null;
+}
+function inflation(){
+  let paid=0,worth=0;
+  log.forEach(l=>{const p=players[l.id];paid+=l.price;worth+=Math.max(p.worth,1);});
+  if(worth<40)return 1;                 // not enough signal yet
+  return Math.min(1.5,Math.max(0.6,paid/worth));
+}
+// what a team would bid for a player right now
+function teamBid(t,p,infl){
+  const slot=slotFor(t,p.pos);
+  if(slot===null||t.budget<1)return 0;
+  const base=Math.max(0.5,p.worth);
+  let bid=base*(t.mult[p.pos]||1)*infl;
+  if(t.conc>72){ if(base>=25)bid*=1.12; else if(base>=8)bid*=0.82; }
+  if(slot==="bench")bid*=0.35;
+  bid=Math.min(bid,t.budget-(openSlots(t)-1),t.maxbuy);
+  return Math.max(0,bid);
+}
+// predicted market price = second-highest field bid + 1
+function predictPrice(p){
+  const infl=inflation();
+  const bids=Object.values(teams).filter(t=>t.name!==ME).map(t=>teamBid(t,p,infl))
+    .filter(b=>b>=1).sort((a,b)=>b-a);
+  if(bids.length===0)return 1;
+  const second=bids.length>1?bids[1]:1;
+  return Math.max(1,Math.min(bids[0],second+1));
+}
+// DYNAMIC max bid — how high it's worth going RIGHT NOW, given your value, live scarcity,
+// the market trend, your budget, and your roster makeup. Recomputes every render as the draft moves.
+function harryMaxBid(p){
+  const t=teams[ME];
+  const slot=slotFor(t,p.pos);
+  if(slot===null)return 0;
+  // (1) worth to YOU — conversion-aware value × validated positional tilt (RB up, elite QB/TE up, WR-mid down)
+  let mb = harryValue(p) * (harryMult[p.pos]||1);
+  // (2) SCARCITY — pay up as the position/tier thins relative to what you still need
+  // scarcity here = the POSITION getting thin relative to what you still need (not the local gap between two
+  // studs — that would over-reward the guy before a cliff and invert two elites). Local cliff stays an info signal.
+  const sc=scarcity(p);
+  const stillNeed=(t.need[p.pos]||0)+(["RB","WR","TE"].includes(p.pos)?t.flex:0);
+  let scar=1;
+  if(sc.tierLeft===0)scar+=0.10;                                       // last of its tier → pay up
+  if(stillNeed>0&&sc.posLeft<=stillNeed+2)scar+=0.18;                  // barely enough startable bodies left for your slots
+  else if(stillNeed>0&&sc.posLeft>stillNeed+10&&p.worth<30)scar-=0.10; // deep pool of REPLACEABLE bodies → hold lower (never elites)
+  mb*=Math.max(0.8,scar);
+  // (3) MARKET TREND — nudge with league inflation (room hot → pay a touch more to land him; cold → hold)
+  mb*=0.9+0.1*Math.min(1.4,Math.max(0.6,inflation()));
+  // (4) roster makeup — a slot you've already filled is bench luxury only
+  if(slot==="bench")mb*=0.4;
+  // (5) AFFORDABILITY — never exceed budget after reserving $1 for every other open slot
+  const affordable=t.budget-(openSlots(t)-1);
+  return Math.max(0,Math.min(mb,affordable));
+}
+// one-line, non-judgmental reason for the max number (drives the eval card)
+function maxRationale(p){
+  const t=teams[ME];
+  if(slotFor(t,p.pos)===null) return "roster full at "+p.pos+" — no open slot";
+  const sc=scarcity(p), infl=inflation();
+  const stillNeed=(t.need[p.pos]||0)+(["RB","WR","TE"].includes(p.pos)?t.flex:0);
+  const affordable=t.budget-(openSlots(t)-1), mb=harryMaxBid(p);
+  const elite=p.worth>=35;
+  const bits=[];
+  if(stillNeed===0) bits.push("bench depth only");
+  else if(elite&&p.pos==="RB") bits.push("elite RB anchor — pay up");
+  else if(elite) bits.push("elite — worth pushing");
+  else if(sc.tierLeft===0||sc.posLeft<=stillNeed+2) bits.push("scarce — worth pushing");
+  else if(sc.posLeft>stillNeed+10) bits.push("deep pool — don't chase");
+  if(p.pos==="WR"&&p.worth>=8&&p.worth<25) bits.push("WR-middle trap");
+  else if((p.pos==="QB"||p.pos==="TE")&&p.worth>=20) bits.push("room underpays here — grab it");
+  if(mb>=affordable-0.5&&mb>0) bits.push("capped by your budget");
+  if(infl>1.15) bits.push("market hot"); else if(infl<0.85) bits.push("market cold");
+  return bits.slice(0,3).join(" · ")||"fair value vs the board";
+}
+function harryValue(p){ // worth to Harry (conversion-aware, §10)
+  let v=p.worth;
+  if(p.pos==="WR"&&p.worth>=8&&p.worth<25)v*=0.75;  // mid-WR doesn't convert
+  if(p.pos==="QB"&&p.worth<25)v*=0.4;               // sub-elite QB fades
+  if(p.pos==="TE"&&p.worth>=8&&p.worth<15)v*=0.7;
+  return v;
+}
+
+/* ---------- rendering ---------- */
+let filterPos="ALL", selected=null, boardMode="value", filterTier="ALL", hidePicked=true;
+function avail(){return players.filter(p=>p.drafted===null);}
+// live scarcity: what the position looks like once this player is gone
+function posAvailByVbd(pos){return avail().filter(p=>p.pos===pos).sort((a,b)=>b.vbd-a.vbd);}
+function scarcity(p){
+  const pool=posAvailByVbd(p.pos);
+  const i=pool.findIndex(x=>x.id===p.id);
+  const next=(i>=0)?pool[i+1]:pool[0];
+  const cliff=next?Math.round(p.vbd-next.vbd):Math.round(Math.max(0,p.vbd));
+  const tierLeft=avail().filter(x=>x.pos===p.pos&&x.tier===p.tier&&x.id!==p.id).length;
+  const posLeft=Math.max(0,pool.length-1);
+  return {cliff,next,tierLeft,posLeft};
+}
+
+function renderStatus(){
+  const t=teams[ME];
+  $("#s-budget").textContent=money(t.budget);
+  const open=openSlots(t);
+  $("#s-maxbid").textContent=money(t.budget-(open-1));
+  const filledStart=SPEND_SLOTS-(Object.values(t.need).reduce((a,b)=>a+b,0)+t.flex);
+  const benchFilled=BENCH-t.bench;
+  $("#s-roster").innerHTML=t.players.length+"<small>/"+ROSTER_SLOTS+"</small>"+
+    " <small>("+filledStart+" start · "+benchFilled+"/"+BENCH+" bench)</small>";
+  const needs=[];
+  Object.entries(t.need).forEach(([k,v])=>{for(let i=0;i<v;i++)needs.push(k);});
+  for(let i=0;i<t.flex;i++)needs.push("FLX");
+  if(t.bench>0)needs.push("·","+"+t.bench+" bench");
+  $("#s-need").textContent="need: "+(needs.join(" ")||"—");
+  $("#s-infl").textContent=inflation().toFixed(2)+"×";
+  const picks=log.length, tot=Object.keys(teams).length*SPEND_SLOTS;
+  const pct=picks/tot;
+  let phase = pct<0.01?"pre-draft":pct<0.2?"opening — studs fly, pay for your anchor":
+    pct<0.4?"early — trap zone, hold budget":pct<0.6?"VALUE WINDOW — pounce":"late — $1 darts";
+  $("#s-phase").textContent=phase+" · "+picks+"/"+tot;
+}
+
+function showEval(p){
+  selected=p;
+  $("#eval").classList.add("on");
+  clearLive();                       // a fresh nomination isn't "live" until you hit Bidding now
+  $("#block-hint").textContent="evaluating";
+  $("#ev-name").textContent=p.name;
+  $("#ev-tier").textContent=p.tier;
+  $("#ev-pos").textContent=p.pos;
+  $("#ev-worth").textContent=money(p.worth);
+  $("#ev-pred").textContent=money(predictPrice(p));
+  $("#ev-max").textContent=money(harryMaxBid(p));
+  const sc=scarcity(p);
+  $("#ev-vorp").textContent=Math.round(p.vbd);
+  $("#ev-scar").textContent=sc.next?((sc.cliff>0?"−"+sc.cliff:"0")+" VBD to next "+p.pos):"last "+p.pos+" of value";
+  $("#ev-scar").className="v mono sm"+(sc.cliff>=15?" over":"");
+  $("#ev-left").textContent=sc.posLeft+" "+p.pos+" left · "+sc.tierLeft+" in "+p.tier;
+  const mb=harryMaxBid(p);
+  const el=$("#ev-verdict");
+  el.className="verdict maxrec"+(mb<=0?" v-fade":"");
+  el.innerHTML="<span>"+(mb>0?"Bid up to "+money(mb):"Don't bid")+"</span><small>"+maxRationale(p)+"</small>";
+  $("#log-price").value=Math.round(predictPrice(p));
+}
+
+function renderTierFilters(){
+  const box=$("#tier-filters");
+  const show = boardMode==="proj" && filterPos!=="ALL";
+  box.style.display=show?"flex":"none";
+  if(!show){box.innerHTML="";return;}
+  const tiers=[...new Set(players.filter(p=>p.pos===filterPos).map(p=>p.tier))]; // stable, ordered
+  box.innerHTML="";
+  [["ALL","All tiers"],...tiers.map(t=>[t,t])].forEach(([v,label])=>{
+    const b=document.createElement("button");b.className="chip"+(filterTier===v?" on":"");b.textContent=label;
+    b.onclick=()=>{filterTier=v;renderBoard();};
+    box.appendChild(b);
+  });
+}
+function renderBoard(){
+  const head=$("#board-head"), tb=$("#board-body");
+  $("#board-count").textContent=avail().length+" left";
+  const overall=filterPos==="ALL";
+  renderTierFilters();
+  // base pool: hide picked or keep them (faded + struck)
+  let base = hidePicked ? avail() : players.slice();
+  if(!overall) base=base.filter(p=>p.pos===filterPos);
+  if(boardMode==="proj" && filterTier!=="ALL") base=base.filter(p=>p.tier===filterTier);
+
+  if(boardMode==="proj"){
+    // RAW projection data + tiers, live (reflects who's already gone)
+    const tierName = filterTier==="ALL"?"by tier":filterTier;
+    $("#board-title").textContent=overall?"Projections — overall by VORP":"Projections — "+filterPos+" "+tierName;
+    let list=base.slice().sort((a,b)=>b.vbd-a.vbd);
+    const span=overall?7:6;
+    head.innerHTML=`<tr>`+
+      `<th class="l">Player</th>`+
+      `${overall?'<th data-tip="Position.">Pos</th>':''}`+
+      `<th data-tip="Positional tier from the projections — e.g. RB1 = the top RB group.">Tier</th>`+
+      `<th data-tip="Projected fantasy points for the full season (half-PPR).">FPTS</th>`+
+      `<th data-tip="Value Over Replacement — projected points above a replacement-level starter at this position. Higher = more of an edge over a waiver-wire body. This is the ranking used here.">VORP</th>`+
+      `<th data-tip="Projected auction value (Elboberto/FantasyPros) — what the player is worth in dollars.">Worth</th>`+
+      `<th data-tip="If this player is taken, how far the next AVAILABLE player at this position drops in VORP. A big red number = a cliff — the last comparable body at that tier.">Scarcity</th>`+
+      `</tr>`;
+    tb.innerHTML="";
+    let curTier=null;
+    list.slice(0,180).forEach(p=>{
+      if(!overall && filterTier==="ALL" && p.tier!==curTier){
+        curTier=p.tier;
+        const left=avail().filter(x=>x.pos===p.pos&&x.tier===p.tier).length;
+        const gr=document.createElement("tr");gr.className="tgrp";
+        gr.innerHTML=`<td colspan="${span}">${p.tier} · ${left} left in tier</td>`;
+        tb.appendChild(gr);
+      }
+      const gone=p.drafted!==null;
+      const sc=gone?null:scarcity(p), hot=sc&&sc.cliff>=15;
+      const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"");
+      tr.innerHTML=`<td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+        ${overall?`<td class="num tier">${p.pos}</td>`:''}
+        <td class="num tier">${p.tier}</td>
+        <td class="num">${Math.round(p.fpts)}</td>
+        <td class="num">${Math.round(p.vbd)}</td>
+        <td class="num">${money(p.worth)}</td>
+        <td class="num scar ${hot?'hot':''}"${gone?'':` data-tip="Drop to the next available ${p.pos} in VORP if this one goes · ${sc.posLeft} left at ${p.pos}"`}>${gone?'—':(sc.next?(sc.cliff>0?'−'+sc.cliff:'0'):'LAST')}</td>`;
+      if(!gone)tr.onclick=()=>{showEval(p);window.scrollTo({top:0,behavior:'smooth'});};
+      tb.appendChild(tr);
+    });
+    return;
+  }
+
+  // VALUE mode — Harry-centric best available
+  $("#board-title").textContent="Value board — best available";
+  head.innerHTML=`<tr>`+
+    `<th class="l">Player</th>`+
+    `<th data-tip="Positional tier from the projections — e.g. RB1 = the top RB group, RB4 = the fourth tier.">Tier</th>`+
+    `<th data-tip="Projected auction value (Elboberto/FantasyPros). What the player is worth on a $200 board.">Worth</th>`+
+    `<th data-tip="Predicted sale price right now — a second-price estimate from every opponent who still has budget + a need at this position, times market inflation.">Will go ≈</th>`+
+    `<th data-tip="The most YOU should bid up to right now — your conversion-aware value adjusted for live scarcity, market inflation, your budget and roster. Moves as the draft moves.">Your max</th>`+
+    `<th data-tip="Your value minus predicted price. Positive (green/amber) = a bargain worth chasing; grey/negative = the room will overpay. Turns positive live as budgets drain.">Edge</th>`+
+    `</tr>`;
+  let list=base.map(p=>{const pred=predictPrice(p),val=harryValue(p);return {p,pred,val,edge:val-pred};})
+    .sort((a,b)=>b.p.worth-a.p.worth).slice(0,hidePicked?60:220);
+  tb.innerHTML="";
+  list.forEach(({p,pred,val,edge})=>{
+    const gone=p.drafted!==null;
+    const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"");
+    const need=slotFor(teams[ME],p.pos)!==null;
+    const pocket=!gone&&edge>=8&&need;
+    tr.innerHTML=`<td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+      <td class="num tier">${p.tier}</td>
+      <td class="num">${money(p.worth)}</td>
+      <td class="num">${gone?'—':money(pred)}</td>
+      <td class="num">${gone?'—':money(harryMaxBid(p))}</td>
+      <td class="num ${gone?'gap-neg':pocket?'pocket':edge>0?'gap-pos':'gap-neg'}">${gone?'—':(edge>0?'+':'')+Math.round(edge)}</td>`;
+    if(!gone)tr.onclick=()=>{showEval(p);window.scrollTo({top:0,behavior:'smooth'});};
+    tb.appendChild(tr);
+  });
+}
+
+function renderTeams(){
+  const box=$("#teams");box.innerHTML="";
+  const infl=inflation();
+  Object.values(teams).sort((a,b)=>b.budget-a.budget).forEach(t=>{
+    const open=openSlots(t);
+    const needArr=[];
+    Object.entries(t.need).forEach(([k,v])=>{for(let i=0;i<v;i++)needArr.push(k);});
+    for(let i=0;i<t.flex;i++)needArr.push("FLX");
+    // threat = big budget + still needs starters + strong bidder
+    const strongPos=["RB","WR","TE","QB"].reduce((a,p)=>(t.mult[p]||0)>(t.mult[a]||0)?p:a,"RB");
+    const threat=t.name!==ME && t.budget>60 && needArr.length>2;
+    const div=document.createElement("div");
+    div.className="team"+(t.name===ME?" me":threat?" threat":"");
+    const maxb=money(t.budget-(open-1));
+    div.innerHTML=`<div class="team-top"><div class="nm">${shortName(t.name)}${t.name===ME?' <span class="tag">you</span>':''}
+        <span class="maxbid">max ${maxb} · loves ${strongPos}</span></div>
+      <div class="bud">${money(t.budget)}</div></div>
+      <div class="bar"><i style="width:${Math.max(2,t.budget/DATA.budget*100)}%"></i></div>
+      <div class="needs">${["QB","RB","WR","TE"].map(pos=>{
+        const openp=t.need[pos]>0; const n=t.need[pos];
+        return n>0?`<span class="need open">${pos}×${n}</span>`:'';
+      }).join("")}${t.flex>0?`<span class="need open">FLX×${t.flex}</span>`:''}${open===0?'<span class="need">FULL</span>':''}</div>`;
+    box.appendChild(div);
+  });
+}
+
+function renderRecs(){
+  const box=$("#recs");box.innerHTML="";
+  const infl=inflation();const me=teams[ME];
+  // 1) nomination-to-drain: richest opponent w/ need, nominate their coveted pos's top player
+  let target=null,best=-1;
+  Object.values(teams).forEach(t=>{
+    if(t.name===ME)return;
+    const need=Object.entries(t.need).filter(([k,v])=>v>0).map(([k])=>k);
+    const wantFlex=t.flex>0?["RB","WR","TE"]:[];
+    const wants=[...new Set([...need,...wantFlex])];
+    wants.forEach(pos=>{
+      const score=t.budget*(t.mult[pos]||1);
+      if(score>best){best=score;target={t,pos};}
+    });
+  });
+  if(target){
+    const topAtPos=avail().filter(p=>p.pos===target.pos).sort((a,b)=>b.worth-a.worth)[0];
+    box.innerHTML+=`<div class="rec"><div class="lbl">Nominate to drain</div>
+      Put up <b>${topAtPos?topAtPos.name:("a "+target.pos)}</b> — <b>${shortName(target.t.name)}</b>
+      (${money(target.t.budget)}, wants ${target.pos}) will chase it. Bleed their budget before you shop.</div>`;
+  }
+  // 2) value alert: your top-edge available given needs
+  const cand=avail().filter(p=>slotFor(me,p.pos)!==null)
+    .map(p=>({p,edge:harryValue(p)-predictPrice(p)})).sort((a,b)=>b.edge-a.edge).slice(0,3);
+  if(cand.length){
+    box.innerHTML+=`<div class="rec"><div class="lbl">Best value on the board (for your needs)</div>`+
+      cand.map(({p,edge})=>`${p.name} <span class="mono">${p.pos} · ≈${money(predictPrice(p))} (edge ${edge>0?'+':''}${Math.round(edge)})</span>`).join("<br>")+`</div>`;
+  }
+  // 3) phase advice
+  const pct=log.length/(Object.keys(teams).length*SPEND_SLOTS);
+  let adv = pct<0.2?"Opening: secure your ONE elite RB anchor now — anchors will push it to ~$85–90, that's correct.":
+    pct<0.4?"Trap zone: the room is still paying full freight. Hold budget — the same players get cheap soon.":
+    pct<0.6?"Value window: prices are collapsing below projection. Fill starters + grab elite QB/TE bargains now.":
+    "Late: mine $1 darts; upside over need.";
+  box.innerHTML+=`<div class="rec"><div class="lbl">Phase play</div>${adv}</div>`;
+}
+
+function renderRunway(){
+  const box=$("#runway");box.innerHTML="";
+  const me=teams[ME];
+  const thresh={RB:20,WR:20,TE:8,QB:10}; // "startable" worth floor
+  ["RB","WR","TE","QB"].forEach(pos=>{
+    const left=avail().filter(p=>p.pos===pos&&p.worth>=thresh[pos]).length;
+    const needing=Object.values(teams).filter(t=>slotFor(t,pos)!==null).length;
+    const meNeed=slotFor(me,pos)!==null;
+    const tight=left<=needing;
+    box.innerHTML+=`<div class="runway"><span>${meNeed?'▸ ':''}${pos} <span style="color:var(--muted)">startable</span></span>
+      <span class="n" style="color:${tight?'var(--bad-ink)':'var(--ink)'}">${left} left · ${needing} teams want${tight?' · tight':''}</span></div>`;
+  });
+}
+
+function renderLog(){
+  const box=$("#loglist");
+  if(!log.length){box.innerHTML='<div class="empty">No picks logged yet.</div>';return;}
+  box.innerHTML="";
+  log.map((l,i)=>({l,i})).reverse().forEach(({l,i})=>{
+    const p=players[l.id];
+    const row=document.createElement("div");row.className="lrow";
+    row.innerHTML=`<div class="lmid"><span>${p.name} <span style="color:var(--faint)">${p.pos}</span></span>
+      <span class="mono">${money(l.price)} → ${shortName(l.team)}</span></div>
+      <button class="rm" title="Remove this pick">✕</button>`;
+    row.querySelector(".rm").onclick=()=>removePick(i);
+    box.appendChild(row);
+  });
+}
+function removePick(i){
+  const entry=log[i];if(!entry)return;
+  const p=players[entry.id];p.drafted=null;p.price=0;
+  const team=entry.team;
+  log.splice(i,1);
+  rebuildTeam(team);
+  if(selected&&selected.id===entry.id)selected=null;
+  renderAll();
+  autoAdvise("remove");   // keep the read current after removing a pick
+}
+
+// target roster template (from sim §17/§18): [label, pos, target$, tier]
+const TARGET=[
+  ["RB anchor","RB",90,"RB1–2"],["RB2","RB",22,"RB4–6"],["FLEX (RB)","RB",2,"dart"],
+  ["WR1","WR",42,"WR1–3"],["WR2","WR",8,"WR4–6"],["FLEX (WR)","WR",1,"dart"],
+  ["TE","TE",14,"TE2–3"],["QB","QB",8,"QB2"],
+];
+function renderBuild(){
+  const me=teams[ME];
+  const mine=me.players.map(id=>players[id]).filter(p=>p.drafted===ME||true);
+  // gather my drafted players by pos
+  const byPos={QB:[],RB:[],WR:[],TE:[]};
+  me.players.forEach(id=>{const p=players[id];if(byPos[p.pos])byPos[p.pos].push(p);});
+  Object.values(byPos).forEach(a=>a.sort((x,y)=>y.price-x.price));
+  const spent=DATA.budget-me.budget;
+  $("#build-spent").textContent="$"+spent+" spent";
+  // fill target slots greedily from my roster
+  const used=new Set();
+  const rows=TARGET.map(([label,pos,tgt,tier])=>{
+    const pick=byPos[pos].find(p=>!used.has(p.id));
+    if(pick)used.add(pick.id);
+    return {label,pos,tgt,tier,pick};
+  });
+  const box=$("#build-slots");box.innerHTML="";
+  rows.forEach(r=>{
+    const div=document.createElement("div");div.className="brow";
+    const got=r.pick;
+    const status=got?(got.price<=r.tgt+3?"ok":"over"):"open";
+    div.innerHTML=`<span class="blab"><span class="posdot p-${r.pos}">${r.pos}</span>${r.label}</span>
+      <span class="btgt mono">tgt $${r.tgt}</span>
+      <span class="bgot mono ${status}">${got?got.name.split(" ").slice(-1)[0]+" $"+got.price:"—"}</span>`;
+    box.appendChild(div);
+  });
+  // BENCH — everyone I've bought beyond the 8 startable slots
+  const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
+  const benchFilled=benchPlayers.length;
+  const div=document.createElement("div");div.className="brow";
+  const names=benchFilled?benchPlayers.map(p=>p.name.split(" ").slice(-1)[0]).join(", "):"—";
+  div.innerHTML=`<span class="blab"><span class="posdot" style="background:var(--line);color:var(--muted)">BN</span>Bench</span>
+    <span class="btgt mono">${BENCH} slots</span>
+    <span class="bgot mono ${benchFilled>BENCH?'over':'ok'}">${benchFilled}/${BENCH}${benchFilled?" · "+names:""}</span>`;
+  box.appendChild(div);
+  // positional budget vs target
+  const tgtPos={RB:114,WR:51,TE:14,QB:8};
+  const bud=$("#build-budget");
+  bud.innerHTML=["RB","WR","TE","QB"].map(pos=>{
+    const s=byPos[pos].reduce((a,p)=>a+p.price,0);
+    const t=tgtPos[pos];
+    const pct=Math.min(100,100*s/t);
+    return `<div class="bbudrow"><span>${pos}</span><span class="mono">$${s} / $${t}</span>
+      <div class="bbar"><i style="width:${pct}%;background:${s>t+8?'var(--bad)':'var(--accent)'}"></i></div></div>`;
+  }).join("");
+}
+
+function renderAll(){renderStatus();renderBoard();renderTeams();renderRecs();renderRunway();renderLog();renderBuild();
+  if(selected&&selected.drafted===null)showEval(selected);else{selected=null;$("#eval").classList.remove("on");$("#block-hint").textContent="type a player";}}
+
+/* ---------- actions ---------- */
+function logPick(id,price,team){
+  const p=players[id];if(!p||p.drafted!==null)return;
+  const t=teams[team];const slot=slotFor(t,p.pos)||"bench";
+  p.drafted=team;p.price=price;
+  if(slot==="start")t.need[p.pos]--;else if(slot==="flex")t.flex--;else t.bench--;
+  t.budget-=price;t.players.push(id);
+  log.push({id,price,team});
+  $("#block-search").value="";selected=null;
+  renderAll();
+  autoAdvise("log");   // refresh the LLM read after every pick
+}
+function undo(){
+  const last=log.pop();if(!last)return;
+  const p=players[last.id];const t=teams[last.team];
+  // restore slot: reverse of assignment (approx — give back to the pool of that slot type)
+  const slot=(()=>{ // recompute what slot it took: prefer starter
+    if(STARTERS[p.pos]!==undefined && t.need[p.pos]<STARTERS[p.pos]) return "start";
+    return null;
+  })();
+  // simplest robust restore: recompute team from scratch
+  p.drafted=null;p.price=0;
+  rebuildTeam(t.name);
+  renderAll();
+  autoAdvise("undo");   // keep the read current after an undo
+}
+function rebuildTeam(name){
+  const t=teams[name];const m=DATA.managers.find(x=>x.name===name);
+  t.budget=DATA.budget;t.need={...STARTERS};t.flex=FLEX;t.bench=BENCH;t.players=[];
+  log.filter(l=>l.team===name).forEach(l=>{
+    const p=players[l.id];const slot=slotFor(t,p.pos)||"bench";
+    if(slot==="start")t.need[p.pos]--;else if(slot==="flex")t.flex--;else t.bench--;
+    t.budget-=l.price;t.players.push(l.id);
+  });
+}
+
+/* ---------- search ---------- */
+const search=$("#block-search"),sug=$("#block-sug");let hi=-1,matches=[];
+function doSearch(){
+  const q=search.value.trim().toLowerCase();
+  if(!q){sug.style.display="none";return;}
+  matches=avail().filter(p=>p.name.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){sug.style.display="none";return;}
+  hi=0;
+  sug.innerHTML=matches.map((p,i)=>`<div class="${i===0?'hi':''}" data-i="${i}">
+    <span><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}</span>
+    <span class="pos mono">${money(p.worth)} · ${p.tier}</span></div>`).join("");
+  sug.style.display="block";
+  sug.querySelectorAll("div[data-i]").forEach(d=>d.onclick=()=>pick(+d.dataset.i));
+}
+function pick(i){const p=matches[i];if(!p)return;sug.style.display="none";search.value=p.name;showEval(p);}
+search.addEventListener("input",doSearch);
+search.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){clearBlock();return;}
+  if(sug.style.display==="none")return;
+  if(e.key==="ArrowDown"){hi=Math.min(hi+1,matches.length-1);}
+  else if(e.key==="ArrowUp"){hi=Math.max(hi-1,0);}
+  else if(e.key==="Enter"){e.preventDefault();pick(hi);return;}
+  else return;
+  e.preventDefault();
+  sug.querySelectorAll("div").forEach((d,i)=>d.classList.toggle("hi",i===hi));
+});
+document.addEventListener("click",e=>{if(!e.target.closest(".suggest"))sug.style.display="none";});
+
+/* ---------- wire up ---------- */
+function initTeamSelect(){
+  const sel=$("#log-team");
+  sel.innerHTML=Object.keys(teams).map(n=>`<option ${n===ME?'selected':''}>${n}</option>`).join("");
+}
+function initFilters(){
+  const box=$("#pos-filters");
+  ["ALL","RB","WR","TE","QB"].forEach(p=>{
+    const b=document.createElement("button");b.className="chip"+(p==="ALL"?" on":"");b.textContent=p;
+    b.onclick=()=>{filterPos=p;filterTier="ALL";box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===p));renderBoard();};
+    box.appendChild(b);
+  });
+}
+function initModes(){
+  const box=$("#board-modes");
+  [["value","Value"],["proj","Projections"]].forEach(([m,label])=>{
+    const b=document.createElement("button");b.className="chip"+(m==="value"?" on":"");b.textContent=label;
+    b.onclick=()=>{boardMode=m;filterTier="ALL";box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===b));renderBoard();};
+    box.appendChild(b);
+  });
+}
+$("#hide-picked").onchange=e=>{hidePicked=e.target.checked;renderBoard();};
+// take the current player off the block WITHOUT logging a sale
+function clearBlock(){
+  selected=null;
+  $("#eval").classList.remove("on");
+  clearLive();
+  $("#block-search").value="";
+  $("#block-sug").style.display="none";
+  $("#block-hint").textContent="type a player";
+}
+$("#log-btn").onclick=()=>{
+  if(!selected){return;}
+  const price=Math.max(1,parseInt($("#log-price").value)||1);
+  const team=$("#log-team").value;
+  logPick(selected.id,price,team);
+};
+$("#undo-btn").onclick=clearBlock;   // "Clear" — cancel the nomination on the block
+$("#undo-last").onclick=undo;        // "Undo last" — reverse the last logged pick
+$("#bid-btn").onclick=markNominated; // "Bidding now" — mark live + fetch an immediate bid read
+
+/* ---------- advisor (calls backend /api/advise) ---------- */
+function draftStateForAdvisor(){
+  const teamState={};
+  Object.values(teams).forEach(t=>{
+    const need=[];
+    Object.entries(t.need).forEach(([k,v])=>{for(let i=0;i<v;i++)need.push(k);});
+    for(let i=0;i<t.flex;i++)need.push("FLEX");
+    teamState[t.name]={budget:t.budget, needs:need,
+      roster:t.players.map(id=>({name:players[id].name,pos:players[id].pos,price:players[id].price}))};
+  });
+  const topAvail={};
+  ["RB","WR","TE","QB"].forEach(pos=>{
+    topAvail[pos]=avail().filter(p=>p.pos===pos).sort((a,b)=>b.worth-a.worth).slice(0,8)
+      .map(p=>({name:p.name,tier:p.tier,worth:p.worth,est_price:predictPrice(p)}));
+  });
+  return {me:ME, my_budget:teams[ME].budget, inflation:+inflation().toFixed(2),
+    picks_made:log.length, on_the_block:selected?{name:selected.name,pos:selected.pos,
+      worth:selected.worth,est_price:predictPrice(selected),your_max:harryMaxBid(selected)}:null,
+    teams:teamState, best_available:topAvail};
+}
+// tiny, safe markdown → HTML (escape first, then a few inline styles)
+function mdLite(s){
+  const esc=String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  return esc
+    .replace(/^\s*#{1,6}\s*(.+)$/gm,'<strong>$1</strong>')   // headers -> bold line
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')          // **bold**
+    .replace(/^\s*[-*]\s+(.+)$/gm,'&bull; $1')                // bullets
+    .replace(/^\s*-{3,}\s*$/gm,'')                            // --- rules
+    .replace(/\n/g,'<br>');
+}
+// prepend a new item to the advisor feed (older reads stay below, scrollable)
+let _advSeq=0;
+function advFeedItem(tag){
+  const feed=$("#adv-out");
+  if(feed.classList.contains("intro")){feed.classList.remove("intro");feed.innerHTML="";}
+  const model=$("#adv-model").selectedOptions[0].textContent.split(" ")[0];
+  const item=document.createElement("div");item.className="adv-item loading";
+  item.innerHTML='<span class="auto-tag">'+(tag||"Advisor")+'<span class="stamp">'+model+' · #'+(++_advSeq)+'</span></span><span class="adv-txt">…</span>';
+  feed.prepend(item);
+  while(feed.children.length>20) feed.removeChild(feed.lastChild);
+  feed.scrollTop=0;
+  return item;
+}
+async function askAdvisor(q,tag){
+  const item=advFeedItem(tag);
+  try{
+    const r=await fetch("/api/advise",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({question:q, state:draftStateForAdvisor(), model:$("#adv-model").value})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||("HTTP "+r.status));}
+    const d=await r.json();
+    item.classList.remove("loading");
+    item.querySelector(".adv-txt").innerHTML=mdLite(d.answer||"(no answer)");
+  }catch(err){
+    item.classList.remove("loading");
+    item.querySelector(".adv-txt").textContent="Advisor unavailable: "+err.message;
+  }
+}
+// auto-refresh the LLM read after each pick — debounced so a fast run of sales collapses into one call
+let _adviseTimer=null;
+function autoAdvise(evt){
+  clearTimeout(_adviseTimer);
+  if(log.length===0) return;   // board back to pre-draft — nothing new to read; keep the feed history intact
+  const last=log[log.length-1], lp=players[last.id];
+  const lead = evt==="undo" ? "A pick was just UNDONE — that player is back on the board." :
+               evt==="remove" ? "A logged pick was just REMOVED — that player is back on the board." :
+               "A pick was just logged.";
+  const ctx = `Most recent pick still on the board: ${lp.name} (${lp.pos}, ${lp.tier}) to ${shortName(last.team)} for $${last.price}. ${log.length} pick(s) logged so far.`;
+  _adviseTimer=setTimeout(()=>askAdvisor(
+    lead+" "+ctx+" Using the updated board, remaining budgets and open needs, give me the single most important "+
+    "move right now: who to target or avoid next, the likely price, and my bid ceiling. Call out anything that just "+
+    "shifted — a positional run starting, an anchor gone, or a tier emptying. Do not ask me for the pick; it is above.",
+    "↻ Auto-read after last pick"), 700);
+}
+// player is nominated and the room is bidding NOW — get an immediate live bid read
+function clearLive(){
+  $("#block-hint").classList.remove("live");
+  $("#eval").classList.remove("live");
+  $("#bid-btn").classList.remove("live");
+  $("#bid-btn").textContent="🔨 Bidding now — live read";
+}
+function markNominated(){
+  if(!selected)return;
+  const p=selected;
+  $("#block-hint").textContent="🔨 bidding";
+  $("#block-hint").classList.add("live");
+  $("#eval").classList.add("live");
+  $("#bid-btn").classList.add("live");
+  $("#bid-btn").textContent="🔨 Bidding — refresh tip";
+  askAdvisor(
+    `${p.name} (${p.pos}, ${p.tier}, worth ~$${Math.round(p.worth)}, will go ≈$${Math.round(predictPrice(p))}, `+
+    `my max ≈$${Math.round(harryMaxBid(p))}) is nominated and the room is BIDDING NOW. Give me a QUICK COACHING TIP: `+
+    `in 2 short sentences max, tell me the number to bid up to and the ONE reason that matters most right now `+
+    `(scarcity, a rival who'll chase, budget, or value). Punchy and decisive — no lists, no preamble, don't ask me anything.`,
+    "🔨 Coaching tip — "+p.name);
+}
+/* ---------- tooltips (custom, unclipped — appended to body so .tbl-scroll can't hide them) ---------- */
+const _tip=document.createElement("div");_tip.className="tip";_tip.style.display="none";document.body.appendChild(_tip);
+function showTip(el){
+  const t=el.getAttribute("data-tip");if(!t){hideTip();return;}
+  _tip.textContent=t;_tip.style.display="block";
+  const r=el.getBoundingClientRect(), tw=_tip.offsetWidth, th=_tip.offsetHeight;
+  let x=Math.max(8,Math.min(r.left+r.width/2-tw/2, window.innerWidth-tw-8));
+  let y=r.bottom+8; if(y+th>window.innerHeight-8) y=r.top-th-8;   // flip above if no room below
+  _tip.style.left=x+"px";_tip.style.top=y+"px";
+}
+function hideTip(){_tip.style.display="none";}
+document.addEventListener("mouseover",e=>{const el=e.target.closest("[data-tip]");if(el)showTip(el);});
+document.addEventListener("mouseout",e=>{const el=e.target.closest("[data-tip]");if(el&&!el.contains(e.relatedTarget))hideTip();});
+window.addEventListener("scroll",hideTip,true);
+$("#adv-ask").onclick=()=>{const q=$("#adv-q").value.trim();if(q)askAdvisor(q);};
+$("#adv-q").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim();if(q)askAdvisor(q);}});
+document.querySelectorAll(".adv-quick button").forEach(b=>b.onclick=()=>{$("#adv-q").value=b.dataset.q;askAdvisor(b.dataset.q);});
+$("#themebtn").onclick=()=>{
+  const cur=document.documentElement.getAttribute("data-theme")
+    || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");
+};
+$("#foot").innerHTML="Prices are live estimates: each remaining player is re-priced from the calibrated bids of every opponent who still has budget + a need for that position (§11/§18), scaled by live market inflation. Worth = Elboberto 2026 projection. Model, not gospel — trust your read in the room.";
+
+initTeamSelect();initFilters();initModes();renderAll();
+</script>
