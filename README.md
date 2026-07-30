@@ -55,9 +55,10 @@ data=open('draft_sheets/tool_data.json').read(); \
 open('draft_app/static/index.html','w').write(tpl.replace('/*DATA*/', data))"
 cp draft_sheets/tool_data.json draft_app/static/data.json
 
-# 3) (Optional) enable the advisor
-cp draft_app/briefing.example.md draft_app/briefing.md   # then customize it
-export ANTHROPIC_API_KEY=sk-ant-...
+# 3) (Optional) enable the advisor — see Configuration below
+cp config/briefing.example.md config/briefing.md   # then customize it for your league
+cp config/env.example config/.env                  # then paste your ANTHROPIC_API_KEY
+set -a && . config/.env && set +a
 
 # 4) Run
 cd draft_app && uvicorn server:app --host 127.0.0.1 --port 8000
@@ -67,11 +68,26 @@ cd draft_app && uvicorn server:app --host 127.0.0.1 --port 8000
 Without `ANTHROPIC_API_KEY` the whole console still works client-side; only the Advisor
 panel is disabled.
 
+## Configuration
+
+**All of your custom, league-specific setup lives in one un-pushed directory: `config/`.**
+`.gitignore` keeps everything in it local except the `*.example` templates and its README.
+
+```bash
+cp config/briefing.example.md config/briefing.md   # advisor prompt: your opponents + plan
+cp config/env.example          config/.env         # secrets: ANTHROPIC_API_KEY (+ ESPN cookies)
+set -a && . config/.env && set +a                  # load secrets into your shell
+```
+
+See [`config/README.md`](config/README.md) for the full table. Generated league data
+(`draft_sheets/tool_data.json`, `static/index.html`, `reports/`, `analysis/`, scraped
+data) is also gitignored — it's built by the pipeline, not committed.
+
 ## The advisor
 
 `POST /api/advise` sends `{question, state, model}` to Claude. The **system prompt** is
-loaded from `draft_app/briefing.md` (gitignored — put your league's opponent tendencies
-and plan there; start from `briefing.example.md`). The **live state** — every team's
+loaded from `config/briefing.md` (gitignored — put your league's opponent tendencies and
+plan there; start from `config/briefing.example.md`). The **live state** — every team's
 budget, needs and roster, best-available, inflation, and the player on the block — is
 posted on every call, so the advisor tracks the evolving draft. Model is chosen from the
 dropdown (allow-listed in `server.py`).
@@ -100,7 +116,7 @@ then re-run the inject step above. Update projection sheets via
 data (`scraping/raw/`), projection sheets (`draft_sheets/*.xlsm`, `*_projections.json`),
 generated payloads (`tool_data.json`, `static/index.html`, `static/data.json`), the
 **analysis pipeline** (`analysis/` — its scripts carry real manager names) and its
-outputs (`reports/`), private notes (`league/`), the advisor's `briefing.md`, and secrets
-(`.env`, `scraping/.espn_auth.json`). The reusable app, scrapers, template, and docs are
+outputs (`reports/`), private notes (`league/`), your whole `config/` directory (advisor
+`briefing.md` + secrets), and `scraping/.espn_auth.json`. The reusable app, scrapers, template, and docs are
 tracked. (If you'd rather publish the analysis too, sanitize the names in `analysis/lib.py`
 into a config first.)

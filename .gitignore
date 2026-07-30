@@ -3,16 +3,17 @@
 # YOUR league, your analysis, your data, and your secrets LOCAL.
 # ─────────────────────────────────────────────────────────────
 
+# ── Your local config (briefing, secrets) — keep everything except the templates/README ──
+/config/*
+!/config/*.example
+!/config/README.md
+
 # ── Secrets & credentials ──
 **/.env
 **/.env.local
 !**/.env.example
 scraping/.espn_auth.json
 *.pem
-
-# ── Advisor briefing (league-specific: opponent names, your plan) ──
-draft_app/briefing.md
-!draft_app/briefing.example.md
 
 # ── Scraped league data (re-generate from your own ESPN account) ──
 scraping/raw/

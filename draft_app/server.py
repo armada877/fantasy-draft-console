@@ -20,12 +20,14 @@ DEFAULT_MODEL = "claude-haiku-4-5"  # fast, for live-draft latency
 ALLOWED_MODELS = {"claude-haiku-4-5", "claude-sonnet-5", "claude-opus-4-8"}
 
 def _load_briefing():
-    """The advisor's system prompt. Kept in an external file so league-specific content
-    (opponent names, your plan, your league's tendencies) stays local and out of the
-    public repo. Point STRATEGY_BRIEFING_PATH at your file, or drop a `briefing.md` next
-    to this server. Falls back to a generic, still-grounded briefing if none is present.
-    See briefing.example.md for the template."""
-    path = os.environ.get("STRATEGY_BRIEFING_PATH", os.path.join(HERE, "briefing.md"))
+    """The advisor's system prompt. Kept in the local (gitignored) config/ directory so
+    league-specific content (opponent names, your plan, your league's tendencies) stays
+    out of the public repo. Override with STRATEGY_BRIEFING_PATH. Falls back to a generic,
+    still-grounded briefing if none is present. See config/briefing.example.md."""
+    path = os.environ.get(
+        "STRATEGY_BRIEFING_PATH",
+        os.path.join(HERE, os.pardir, "config", "briefing.md"),
+    )
     try:
         with open(path, encoding="utf-8") as f:
             text = f.read().strip()
@@ -38,8 +40,9 @@ def _load_briefing():
         "concrete, and decisive. Use ONLY the players, budgets, needs, and rosters in the provided "
         "live state — never invent players; TARGET must be a name in `best_available`. Size a bid "
         "off the player's `worth`/`est_price`, not the user's budget (budget is a ceiling, not a "
-        "target). Check `teams[me].needs` before recommending a position. Copy briefing.example.md "
-        "to briefing.md and customize it with your league's tendencies to make the advisor sharp."
+        "target). Check `teams[me].needs` before recommending a position. Copy "
+        "config/briefing.example.md to config/briefing.md and customize it with your league's "
+        "tendencies to make the advisor sharp."
     )
 
 

@@ -15,8 +15,9 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `draft_sheets/draft_tool_template.html` | **Frontend source** — edit this | yes |
 | `draft_app/static/index.html` | Generated: template + injected data | no (generated) |
 | `draft_app/server.py` | FastAPI: serves console + `/api/advise` | yes |
-| `draft_app/briefing.md` | Advisor system prompt (league-specific) | no (local) |
-| `draft_app/briefing.example.md` | Generic briefing template | yes |
+| `config/briefing.md` | Advisor system prompt (league-specific) | no (local) |
+| `config/briefing.example.md` | Generic briefing template | yes |
+| `config/` | All local, league-specific config + secrets | no (except `*.example`, `README.md`) |
 | `draft_app/eval_advisor.py` | Advisor eval (mock draft → probe → check) | yes |
 | `analysis/lib.py`, `a1..a20*.py` | Analysis + `tool_data.json` exporter | yes |
 | `draft_sheets/tool_data.json` | Generated console data (players + profiles) | no (generated) |
@@ -44,7 +45,7 @@ curl -s localhost:8000/healthz        # {"ok":true,"advisor":true}
 python3 draft_app/eval_advisor.py     # eval the advisor against a mock draft
 ```
 
-The server has **no --reload**; restart it after editing `server.py` or `briefing.md`.
+The server has **no --reload**; restart it after editing `server.py` or `config/briefing.md`.
 
 ## Data pipeline (regenerate console data)
 
