@@ -1,13 +1,16 @@
+<script>document.documentElement.dataset.theme='light'</script><!-- light is the default; toggle switches to dark -->
 <meta charset="utf-8">
-<title>2KDOME 2026 — Live Auction Console</title>
+<title>Live Auction Draft Console</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%8F%88%3C/text%3E%3C/svg%3E">
 <style>
 :root{
-  /* neutrals — the whole page is grayscale slate; color is reserved for meaning */
-  --ground:#0F1318; --panel:#161B21; --panel2:#1C232B; --raise:#222B34;
-  --line:#28313B; --line2:#354049;
-  --ink:#EAEEF3; --muted:#8A94A2; --faint:#59626F;
+  /* neutrals — grayscale slate with real elevation steps so panels separate cleanly:
+     ground (darkest, recedes) < panel < panel2/header < raise. Borders are visible. */
+  --ground:#080B0F; --panel:#151C25; --panel2:#202A35; --raise:#2B3742;
+  --line:#3B4753; --line2:#516071;
+  --ink:#ECF0F5; --muted:#AEB8C6; --faint:#828D9B;   /* all pass WCAG AA on the panels */
+  --bandalt:rgba(255,255,255,.06);   /* alternating tier-band tint on the board */
   /* decision colors — the ONLY loud color on the page */
   --go:#2FD39C; --go-bg:#0E2A22; --go-ink:#74E4BE; --go-line:#1F5D48;
   --stop:#F26A54; --stop-bg:#2B1712; --stop-ink:#F8A491; --stop-line:#743126;
@@ -16,43 +19,32 @@
   --rb:#E79A54; --rb-bg:rgba(231,154,84,.15);
   --wr:#5B98EA; --wr-bg:rgba(91,152,234,.16);
   --te:#B98CEC; --te-bg:rgba(185,140,236,.16);
-  --qb:#3EB8C0; --qb-bg:rgba(62,184,192,.16);
-  --shadow:0 1px 0 rgba(255,255,255,.02), 0 8px 24px rgba(0,0,0,.34);
+  --qb:#3AA6D0; --qb-bg:rgba(58,166,208,.16);
+  --shadow:0 10px 28px -10px rgba(0,0,0,.6);
   --shadow-dock:0 10px 24px -12px rgba(0,0,0,.6);
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --r:12px;
 }
 :root[data-theme="light"], .light-tokens{
-  --ground:#EFEBE2; --panel:#FBF9F4; --panel2:#F1EDE4; --raise:#E7E1D4;
-  --line:#DED7C9; --line2:#CFC6B4;
-  --ink:#1D2229; --muted:#6C7480; --faint:#9AA0AA;
-  --go:#15966B; --go-bg:#E1F1E9; --go-ink:#0E7A52; --go-line:#9CD3BC;
-  --stop:#C9492E; --stop-bg:#F7E6DF; --stop-ink:#A33A22; --stop-line:#E2AE9C;
-  --warn:#B07D1E; --warn-ink:#8A6114; --warn-bg:#F2E7CE;
-  --rb:#B4661C; --rb-bg:rgba(180,102,28,.12);
-  --wr:#2E63A8; --wr-bg:rgba(46,99,168,.12);
-  --te:#6E3D9E; --te-bg:rgba(110,61,158,.12);
-  --qb:#1B7C84; --qb-bg:rgba(27,124,132,.12);
-  --shadow:0 1px 0 rgba(0,0,0,.02), 0 6px 16px rgba(70,58,34,.10);
-  --shadow-dock:0 10px 22px -14px rgba(70,58,34,.35);
+  /* Cool "daylight terminal": crisp white cards floating on a cool grey desk — the same
+     cockpit identity as dark, inverted. Deliberately NOT warm cream. */
+  --ground:#E4E9EE; --panel:#FFFFFF; --panel2:#EDF2F6; --raise:#E1E8EE;
+  --line:#D3DBE3; --line2:#B6C2CD;
+  --ink:#141C26; --muted:#586674; --faint:#8794A1;
+  --bandalt:rgba(20,40,70,.045);
+  --go:#0E8F63; --go-bg:#DEF2E9; --go-ink:#0A7A53; --go-line:#9AD2BC;
+  --stop:#C63F27; --stop-bg:#FAE6E0; --stop-ink:#A2321C; --stop-line:#E4AE9F;
+  --warn:#A9781A; --warn-ink:#835C10; --warn-bg:#F3E8CC;
+  --rb:#B4661C; --rb-bg:rgba(180,102,28,.13);
+  --wr:#2C61A6; --wr-bg:rgba(44,97,166,.13);
+  --te:#6E3D9E; --te-bg:rgba(110,61,158,.13);
+  --qb:#176C8A; --qb-bg:rgba(23,108,138,.13);
+  --shadow:0 1px 2px rgba(20,30,45,.05), 0 10px 26px -12px rgba(20,35,60,.22);
+  --shadow-dock:0 10px 22px -14px rgba(20,35,60,.28);
 }
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){
-    --ground:#EFEBE2; --panel:#FBF9F4; --panel2:#F1EDE4; --raise:#E7E1D4;
-    --line:#DED7C9; --line2:#CFC6B4;
-    --ink:#1D2229; --muted:#6C7480; --faint:#9AA0AA;
-    --go:#15966B; --go-bg:#E1F1E9; --go-ink:#0E7A52; --go-line:#9CD3BC;
-    --stop:#C9492E; --stop-bg:#F7E6DF; --stop-ink:#A33A22; --stop-line:#E2AE9C;
-    --warn:#B07D1E; --warn-ink:#8A6114; --warn-bg:#F2E7CE;
-    --rb:#B4661C; --rb-bg:rgba(180,102,28,.12);
-    --wr:#2E63A8; --wr-bg:rgba(46,99,168,.12);
-    --te:#6E3D9E; --te-bg:rgba(110,61,158,.12);
-    --qb:#1B7C84; --qb-bg:rgba(27,124,132,.12);
-    --shadow:0 1px 0 rgba(0,0,0,.02), 0 6px 16px rgba(70,58,34,.10);
-    --shadow-dock:0 10px 22px -14px rgba(70,58,34,.35);
-  }
-}
+/* Light (cool daylight terminal) is the default; the toggle switches to the dark cockpit.
+   Both share one identity — cool slate neutrals, meaningful green/red/position color. */
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--ground);color:var(--ink);font-family:var(--sans);
@@ -62,12 +54,24 @@ body{background:var(--ground);color:var(--ink);font-family:var(--sans);
 h1,h2,h3{margin:0;text-wrap:balance}
 button{font-family:inherit;cursor:pointer;color:inherit}
 :focus-visible{outline:2px solid var(--go);outline-offset:2px;border-radius:4px}
-.wrap{max-width:1460px;margin:0 auto;padding:0 18px 44px}
+/* Cockpit shell: one viewport-tall frame, no page scroll. A main region (HUD + board +
+   side stack) on the left, and the Advisor as its own full-height rail pinned right. */
+.wrap{max-width:1880px;margin:0 auto;padding:12px 16px;height:100vh;height:100dvh;
+  display:flex;flex-direction:row;gap:14px;overflow:hidden}
+.app-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px}
+.advisor-rail{flex:none;width:366px;min-height:0;display:flex}
+.advisor-rail>.panel{flex:1;display:flex;flex-direction:column;min-height:0}
+.advisor-rail .adv-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.advisor-rail .adv-out{flex:1;min-height:0;max-height:none;margin-top:12px}
+@media(max-width:1200px){
+  .wrap{flex-direction:column;overflow:auto;height:auto;min-height:100vh}
+  .advisor-rail{width:auto}
+  .advisor-rail .adv-out{max-height:300px}
+}
 
-/* ============ TOP DOCK — vitals + the decision, always pinned ============ */
-.dock{position:sticky;top:0;z-index:30;background:var(--ground);
-  padding:12px 0 12px;margin-bottom:16px}
-.dock.stuck{box-shadow:var(--shadow-dock);border-bottom:1px solid var(--line)}
+/* ============ TOP HUD — vitals + the decision, always in view ============ */
+.dock{flex:none;background:var(--ground)}
+.dock.stuck{box-shadow:none;border-bottom:none}
 
 /* vitals strip */
 .vitals{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin-bottom:11px}
@@ -112,25 +116,36 @@ input::placeholder{color:var(--faint)}
 
 /* eval body */
 .eval{display:none}
-.eval.on{display:block;padding:15px 14px 13px}
-.eval-grid{display:grid;grid-template-columns:minmax(330px,1.05fr) 1.35fr;gap:18px;align-items:stretch}
+.eval.on{display:block;padding:10px 16px 11px}
+.eval-grid{display:grid;grid-template-columns:minmax(320px,1.05fr) 1.55fr;gap:18px;align-items:stretch}
 @media(max-width:900px){.eval-grid{grid-template-columns:1fr}}
 
+/* idle hero — the command surface is present before a player is on the block */
+.eval-idle{display:flex;align-items:center;gap:22px;padding:15px 16px;border-top:1px solid var(--line)}
+.block:has(.eval.on) .eval-idle{display:none}
+.idle-ceiling{display:flex;align-items:center;gap:15px;border:1.5px dashed var(--line2);
+  border-radius:12px;padding:11px 22px;background:var(--panel2)}
+.idle-v{font-family:var(--mono);font-size:50px;line-height:.9;font-weight:680;color:var(--faint);letter-spacing:-.03em}
+.idle-k{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:600;line-height:1.3}
+.idle-k span{color:var(--faint)}
+.idle-hint{flex:1;font-size:13px;line-height:1.55;color:var(--muted);max-width:560px}
+.idle-hint b{color:var(--ink);font-weight:650}
+
 /* decision column */
-.eval-decision{display:flex;flex-direction:column;gap:11px;min-width:0}
+.eval-decision{display:flex;flex-direction:column;gap:9px;min-width:0}
 .who{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-.who .nm{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.who .nm{font-size:20px;font-weight:700;letter-spacing:-.01em}
 .tierpill{font-family:var(--mono);letter-spacing:.04em}
 
 /* THE CEILING — the scoreboard / auction paddle. The one loud element. */
 .ceiling{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
   column-gap:16px;align-items:center;
-  border:1.5px solid var(--line2);border-radius:12px;padding:12px 18px;background:var(--panel2)}
+  border:1.5px solid var(--line2);border-radius:12px;padding:8px 16px;background:var(--panel2)}
 .ceiling .c-k{grid-column:1;grid-row:1;align-self:end;
   font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:600}
 .ceiling .c-v{grid-column:1;grid-row:2;align-self:start;
   font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:680;
-  font-size:60px;line-height:.94;letter-spacing:-.03em}
+  font-size:46px;line-height:.94;letter-spacing:-.03em}
 .ceiling .c-state{grid-column:2;grid-row:1 / span 2;justify-self:start;align-self:center;
   font-size:15px;font-weight:750;text-transform:uppercase;letter-spacing:.06em;
   padding:6px 12px;border-radius:8px;border:1px solid transparent}
@@ -140,58 +155,86 @@ input::placeholder{color:var(--faint)}
 .ceiling.s-stop{border-color:var(--stop-line);background:var(--stop-bg)}
 .ceiling.s-stop .c-v{color:var(--stop-ink)}
 .ceiling.s-stop .c-state{color:var(--stop-ink);border-color:var(--stop-line);background:rgba(242,106,84,.10)}
-.ceiling.s-hold .c-v{color:var(--ink)}
-.ceiling.s-hold .c-state{color:var(--muted);border-color:var(--line2)}
+.ceiling.s-hold{border-color:var(--warn)}
+.ceiling.s-hold .c-v{color:var(--warn-ink)}
+.ceiling.s-hold .c-state{color:var(--warn-ink);border-color:var(--warn);background:var(--warn-bg)}
 .ceiling.pop .c-v{animation:ceilingpop .34s cubic-bezier(.2,.9,.25,1.05)}
 @keyframes ceilingpop{from{transform:translateY(4px) scale(.94);opacity:.3}to{transform:none;opacity:1}}
 .eval.live .ceiling{animation:livepulse 1.7s ease-in-out infinite}
 @keyframes livepulse{0%,100%{box-shadow:0 0 0 0 rgba(47,211,156,0)}50%{box-shadow:0 0 0 4px rgba(47,211,156,.16)}}
 
-.verdict{font-size:12.5px;line-height:1.4;padding:9px 12px;border-radius:9px;font-weight:500;
-  border:1px solid var(--line)}
-.verdict.s-go{color:var(--go-ink);background:var(--go-bg);border-color:var(--go-line)}
-.verdict.s-stop{color:var(--stop-ink);background:var(--stop-bg);border-color:var(--stop-line)}
-.verdict.s-hold{color:var(--muted);background:var(--panel2)}
+/* verdict reads as a caption tied to the ceiling — a left accent bar, not a field */
+.verdict{font-size:13px;line-height:1.4;padding:1px 0 1px 12px;font-weight:500;
+  border-left:3px solid var(--line2);color:var(--muted)}
+.verdict.s-go{color:var(--go-ink);border-left-color:var(--go)}
+.verdict.s-stop{color:var(--stop-ink);border-left-color:var(--stop)}
+.verdict.s-hold{color:var(--warn-ink);border-left-color:var(--warn)}
 
 /* facts column */
-.eval-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;align-content:start}
-.fact{background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:8px 11px;min-width:0}
-.fact.wide{grid-column:span 3}
+.eval-facts{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;align-content:start}
+.fact{background:var(--ground);border:1px solid var(--line);border-radius:9px;padding:6px 10px;min-width:0;grid-column:span 2}
+.fact.half{grid-column:span 3} .fact.wide{grid-column:span 6}
 .fact .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted)}
-.fact .v{font-family:var(--mono);font-size:19px;font-weight:600;margin-top:2px;color:var(--ink)}
-.fact.wide .v{font-size:13px;font-weight:600;line-height:1.35;margin-top:3px}
+.fact .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:1px;color:var(--ink)}
+.fact.half .v,.fact.wide .v{font-size:13px;font-weight:600;line-height:1.35;margin-top:3px}
+.fact .fnote{font-size:9.5px;color:var(--faint);margin-top:2px;letter-spacing:.01em;text-transform:none}
 .fact .v.over{color:var(--stop-ink)}
 .fact .v .chase{display:inline-flex;gap:5px;align-items:baseline;margin-right:12px;font-family:var(--sans);font-weight:600}
 .fact .v .chase b{color:var(--ink)} .fact .v .chase .mono{color:var(--muted);font-size:12px}
 .fact .v .chase.quiet{color:var(--faint);font-weight:400}
 
 /* actions */
-.eval-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.eval-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
 .btn{background:var(--raise);color:var(--ink);border:1px solid var(--line2);border-radius:9px;
   padding:9px 16px;font-weight:650;font-size:13px}
 .btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--go);color:#04160f;border-color:var(--go)}
-.btn.primary:hover{filter:brightness(1.05)}
+/* primary = neutral high-contrast (ink-inverse); green is reserved for the GO decision only */
+.btn.primary{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.btn.primary:hover{opacity:.88}
 .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted);font-weight:500}
 .btn.ghost:hover{color:var(--ink);border-color:var(--line2)}
 .btn.bid{flex:1;min-width:220px;padding:12px;font-size:14px;letter-spacing:.02em;
   background:var(--panel2);border:1px dashed var(--line2);color:var(--ink)}
 .btn.bid:hover{border-color:var(--go-line);border-style:solid}
 .btn.bid.live{background:var(--go);color:#04160f;border:1px solid var(--go)}
+/* once nominated, the CTA collapses into a non-clickable status, not a button */
+.btn.bid.onblock{background:var(--go-bg);color:var(--go-ink);border:1px solid var(--go-line);
+  pointer-events:none;cursor:default;letter-spacing:.06em;font-weight:750;text-transform:uppercase}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .logrow{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .logrow label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .logrow input{width:64px}
 
-/* ============ MAIN GRID ============ */
-.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start}
-@media(max-width:1040px){.grid{grid-template-columns:1fr}}
-.col-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+/* ============ MAIN GRID — two columns fill the frame, scroll internally ============ */
+.grid{flex:1;min-height:0;display:grid;grid-template-columns:1.58fr 1fr;gap:14px;align-items:stretch}
+@media(max-width:1040px){.grid{grid-template-columns:1fr;overflow:auto}}
+.col-main{min-height:0;display:flex;flex-direction:column}
+.col-main>.panel{flex:1;display:flex;flex-direction:column;min-height:0}
+.col-side{display:flex;flex-direction:column;gap:14px;min-width:0;min-height:0;overflow:hidden}
+.col-side>.panel{flex:none}
+.col-side>.tabs-panel{flex:1;min-height:0;display:flex;flex-direction:column}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);overflow:hidden}
+/* tabbed reference views (Room / Runway / Log) — one at a time, no scrolling the column */
+.tabhead{gap:4px;padding:6px 8px}
+.tabhead h2{display:none}
+.tab{background:transparent;border:none;color:var(--muted);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.09em;font-weight:700;padding:6px 11px;border-radius:7px}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--raise);color:var(--ink)}
+.tabhead .pill{margin-left:auto}
+.tabpane{flex:1;min-height:0;overflow-y:auto}
+.tabpane[hidden]{display:none}
+.tabpane .log-list{max-height:none}
+.panehead{position:sticky;top:0;z-index:1;background:var(--panel);display:flex;align-items:center;
+  justify-content:space-between;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);font-weight:650}
+.panehead .btn{padding:3px 10px;font-size:11px}
 .phead{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);
   background:var(--panel2)}
-.phead h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:650}
+.phead h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink);font-weight:700;
+  display:flex;align-items:center;gap:8px}
+.phead h2::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--line2)}
 .phead .pill{margin-left:auto}
 .pbody{padding:12px 14px}
 
@@ -208,7 +251,7 @@ input::placeholder{color:var(--faint)}
   letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none}
 .hidepick input{width:14px;height:14px;padding:0;accent-color:var(--go)}
 .tierrow{padding-top:0}
-.tbl-scroll{max-height:calc(100vh - 140px);overflow:auto}
+.tbl-scroll{flex:1;min-height:0;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
 th{position:sticky;top:0;background:var(--panel2);text-align:right;font-size:9.5px;text-transform:uppercase;
   letter-spacing:.08em;color:var(--muted);padding:9px 11px;font-weight:650;z-index:1;border-bottom:1px solid var(--line)}
@@ -221,8 +264,57 @@ th[data-tip]{text-decoration:underline dotted;text-underline-offset:3px;text-dec
 td{padding:8px 11px;border-bottom:1px solid var(--line);font-size:13px}
 tr.prow{cursor:pointer}
 tr.prow:hover{background:var(--panel2)}
+/* alternating tier bands for visual separation between tiers on the board */
+tr.prow.bandalt td{background:var(--bandalt)}
+tr.prow.bandalt:hover td{background:var(--panel2)}
 td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
 .tier{font-family:var(--mono);font-size:11px;color:var(--muted)}
+/* VORP magnitude bar — glanceable context for an abstract number */
+.vorpcell{position:relative;overflow:hidden}
+.vbar{position:absolute;left:11px;bottom:2px;height:3px;border-radius:2px;background:var(--qb);opacity:.45}
+.vnum{position:relative}
+/* player tags (prep list): ◎ target · ☾ sleeper · ⊘ avoid — persisted per league */
+th.tagcol{text-align:center}
+td.tagcell{text-align:center;width:30px;padding-left:4px;padding-right:4px}
+.tagbtn{background:transparent;border:none;font-size:14px;line-height:1;padding:2px 5px;border-radius:6px;cursor:pointer;color:var(--line2)}
+.tagbtn:hover{background:var(--panel2);color:var(--ink)}
+.tagbtn.t-target{color:var(--go-ink)} .tagbtn.t-sleeper{color:var(--te)} .tagbtn.t-avoid{color:var(--stop-ink)}
+tr.tag-target td.tagcell{box-shadow:inset 3px 0 0 var(--go)}
+tr.tag-sleeper td.tagcell{box-shadow:inset 3px 0 0 var(--te)}
+tr.tag-avoid td.tagcell{box-shadow:inset 3px 0 0 var(--stop)}
+/* whole-row hue for flagged players (wins over the tier band; brighter on hover) */
+tr.prow.tag-target td{background:color-mix(in srgb, var(--go) 11%, transparent)}
+tr.prow.tag-sleeper td{background:color-mix(in srgb, var(--te) 13%, transparent)}
+tr.prow.tag-avoid td{background:color-mix(in srgb, var(--stop) 11%, transparent)}
+tr.prow.tag-target:hover td{background:color-mix(in srgb, var(--go) 20%, transparent)}
+tr.prow.tag-sleeper:hover td{background:color-mix(in srgb, var(--te) 22%, transparent)}
+tr.prow.tag-avoid:hover td{background:color-mix(in srgb, var(--stop) 20%, transparent)}
+tr.tag-avoid{opacity:.6} tr.tag-avoid:hover{opacity:.9}
+/* flag filter row */
+.flagrow{padding-top:0;align-items:center;gap:8px}
+.flagrow .flabel{font-size:9.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);font-weight:650}
+.flagchip .g{font-size:12px;vertical-align:-1px}
+.flagchip.t-target .g{color:var(--go-ink)} .flagchip.t-sleeper .g{color:var(--te)} .flagchip.t-avoid .g{color:var(--stop-ink)}
+.flagchip.on .g{color:inherit}
+/* flag menu (labeled popover) */
+.tagmenu{position:fixed;z-index:1001;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;
+  padding:5px;box-shadow:var(--shadow);min-width:158px;display:flex;flex-direction:column;gap:1px}
+.tagmenu[hidden]{display:none}
+.tagmenu button{display:flex;align-items:center;gap:10px;background:transparent;border:none;color:var(--ink);
+  padding:8px 10px;border-radius:7px;font-size:13px;font-weight:600;text-align:left;width:100%;cursor:pointer}
+.tagmenu button:hover{background:var(--raise)}
+.tagmenu button.on{background:var(--raise)}
+.tagmenu .g{font-size:15px;width:16px;text-align:center;font-weight:400}
+.tagmenu .g.t-target{color:var(--go-ink)} .tagmenu .g.t-sleeper{color:var(--te)} .tagmenu .g.t-avoid{color:var(--stop-ink)}
+.tagmenu .clear{color:var(--muted);font-weight:500;border-top:1px solid var(--line);margin-top:3px;padding-top:9px}
+/* flag badge in the decision hero — shows the player's flag and sets it */
+.hero-tag{background:transparent;border:1px solid var(--line2);color:var(--muted);border-radius:999px;
+  padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.hero-tag:hover{border-color:var(--muted);color:var(--ink)}
+.hero-tag.t-none{border-style:dashed}
+.hero-tag.t-target{color:var(--go-ink);border-color:var(--go-line);background:var(--go-bg)}
+.hero-tag.t-sleeper{color:var(--te);border-color:color-mix(in srgb,var(--te) 45%,transparent);background:color-mix(in srgb,var(--te) 13%,transparent)}
+.hero-tag.t-avoid{color:var(--stop-ink);border-color:var(--stop-line);background:var(--stop-bg)}
 tr.tgrp td{background:var(--panel2);color:var(--muted);font-size:9.5px;text-transform:uppercase;
   letter-spacing:.09em;font-weight:650;padding:5px 11px}
 tr.tgrp td .cliff{color:var(--stop-ink);font-weight:700}
@@ -241,19 +333,19 @@ td.edge-cell{position:relative}
 .p-TE{background:var(--te-bg);color:var(--te)} .p-QB{background:var(--qb-bg);color:var(--qb)}
 .who .posdot{height:22px;min-width:34px;font-size:12px}
 
-/* the room */
-.team{padding:9px 14px;border-bottom:1px solid var(--line)}
+/* the room — condensed (its tab pane handles scrolling) */
+.team{padding:7px 13px;border-bottom:1px solid var(--line)}
 .team:last-child{border-bottom:none}
 .team-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.team .nm{font-size:13px;font-weight:650}
+.team .nm{font-size:12.5px;font-weight:650}
 .team .nm .tag{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--go-ink);
   border:1px solid var(--go-line);border-radius:4px;padding:0 5px;margin-left:6px;font-weight:700}
 .team .bud{font-family:var(--mono);font-size:15px;font-weight:650}
-.bar{height:4px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
+.bar{height:4px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--muted);border-radius:3px}
 .team.me .bar i{background:var(--go)}
-.needs{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
-.need{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.needs{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.need{font-family:var(--mono);font-size:9.5px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
 .need.open{color:var(--ink);border-color:var(--line2)}
 .team.threat{background:linear-gradient(90deg,rgba(242,106,84,.09),transparent 62%);
   box-shadow:inset 2px 0 0 var(--stop)}
@@ -272,15 +364,38 @@ td.edge-cell{position:relative}
 .runway .n{font-family:var(--mono);font-weight:600}
 
 /* build vs target */
-.brow{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--line);font-size:12.5px}
-.brow .blab{flex:1;display:flex;align-items:center}
-.brow .btgt{color:var(--muted);font-size:11px}
-.brow .bgot{width:128px;text-align:right;font-variant-numeric:tabular-nums}
-.brow .bgot.ok{color:var(--go-ink)} .brow .bgot.over{color:var(--stop-ink)} .brow .bgot.open{color:var(--faint)}
-.bbudrow{display:grid;grid-template-columns:34px 92px 1fr;align-items:center;gap:9px;padding:4px 0;font-size:12px}
+.brow{display:grid;grid-template-columns:1fr 70px 150px;align-items:center;gap:8px;padding:4px 14px;border-bottom:1px solid var(--line);font-size:12px}
+.brow .blab{display:flex;align-items:center;min-width:0}
+.brow .btgt{color:var(--muted);font-size:11px;text-align:right;white-space:nowrap}
+.brow .bgot{text-align:right;font-variant-numeric:tabular-nums}
+.brow .bgot.ok{color:var(--ink)} .brow .bgot.over{color:var(--stop-ink)} .brow .bgot.open{color:var(--faint)}
+.brow.bhead{padding:7px 14px}
+.bhead span{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
+.bsub{color:var(--faint);font-size:10.5px;margin-left:6px}
+#build-budget{padding:8px 14px}
+.bbudrow{display:grid;grid-template-columns:34px 92px 1fr;align-items:center;gap:9px;padding:2px 0;font-size:12px}
 .bbudrow .mono{color:var(--muted)}
 .bbar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
 .bbar i{display:block;height:100%;border-radius:3px}
+/* budget pace + allocation + editable targets */
+.budpace{display:flex;flex-direction:column;gap:5px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.budpace .bp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.budpace .bp-main{font-size:15px;font-weight:750}
+.budpace.good .bp-main{color:var(--go-ink)} .budpace.bad .bp-main{color:var(--stop-ink)}
+.budpace .bp-sub{font-size:11px;color:var(--muted)} .budpace .bp-sub b{color:var(--ink)}
+.bp-alloc{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bp-alloc.warn{color:var(--warn-ink)} .bp-alloc.ok{color:var(--go-ink)}
+.bp-alloc b{color:inherit}
+.linkbtn{margin-left:auto;background:none;border:none;color:var(--muted);text-decoration:underline;
+  text-underline-offset:2px;cursor:pointer;font-size:11px;padding:0}
+.linkbtn:hover{color:var(--ink)}
+.tgtedit{width:42px;background:transparent;border:none;border-bottom:1px dashed var(--line2);border-radius:0;color:var(--ink);
+  font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;text-align:right;padding:0 2px 1px}
+.tgtedit:hover{border-bottom-color:var(--muted)}
+.tgtedit:focus{outline:none;border-bottom:1px solid var(--go)}
+.tgtedit::-webkit-inner-spin-button,.tgtedit::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.bdelta{font-size:11px;font-weight:700;margin-left:5px;white-space:nowrap}
+.bdelta.over{color:var(--stop-ink)} .bdelta.under{color:var(--go-ink)} .bdelta.ok{color:var(--muted)}
 
 /* advisor */
 .adv-body{padding:12px 14px}
@@ -293,7 +408,13 @@ td.edge-cell{position:relative}
 .modelsel{margin-left:auto;font-size:11px;padding:5px 8px;border-radius:8px;max-width:150px}
 .adv-out{margin-top:12px;background:var(--ground);border:1px solid var(--line);border-radius:10px;
   font-size:13px;line-height:1.5;max-height:340px;overflow:auto}
-.adv-out.intro{padding:12px;color:var(--muted)}
+.adv-out.intro{padding:12px 2px;color:var(--muted);border:none;background:none}
+/* Read & recommend, folded into the advisor rail */
+.adv-recs{margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
+.adv-subhead{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-weight:700;padding:8px 2px 4px}
+.adv-recs .rec{padding-left:2px;padding-right:2px}
+.adv-recs .rec:last-child{border-bottom:none}
 .adv-item{padding:11px 13px;border-bottom:1px solid var(--line);white-space:pre-wrap}
 .adv-item:last-child{border-bottom:none}
 .adv-item:first-child{box-shadow:inset 3px 0 0 var(--go)}
@@ -316,7 +437,8 @@ td.edge-cell{position:relative}
 .log-list .rm:hover{border-color:var(--stop);color:var(--stop-ink)}
 
 .empty{color:var(--faint);font-size:13px;padding:16px;text-align:center}
-.foot{color:var(--faint);font-size:11px;text-align:center;margin-top:22px;line-height:1.6;max-width:900px;margin-inline:auto}
+.foot{flex:none;color:var(--faint);font-size:10.5px;text-align:center;line-height:1.4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.8}
 
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:0s !important;animation-iteration-count:1 !important;transition:none !important}
@@ -324,10 +446,11 @@ td.edge-cell{position:relative}
 </style>
 
 <div class="wrap">
+ <div class="app-main">
   <div class="dock" id="dock">
     <div class="vitals">
-      <div class="brand"><div class="t">2KDOME · 2026</div><div class="s">Live Auction Console</div></div>
-      <div class="vital"><div class="k">Budget</div><div class="v mono" id="s-budget">$200</div></div>
+      <div class="brand"><div class="t" id="brand-t">Auction Draft</div><div class="s">Live Auction Console</div></div>
+      <div class="vital"><div class="k">Remaining budget</div><div class="v mono" id="s-budget">$200</div></div>
       <div class="vital"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="note">reserves $1 / open slot</div></div>
       <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
       <div class="vital"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="note" id="s-phase">pre-draft</div></div>
@@ -343,7 +466,7 @@ td.edge-cell{position:relative}
       <div class="eval" id="eval">
         <div class="eval-grid">
           <div class="eval-decision">
-            <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span></div>
+            <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span><button class="hero-tag" id="ev-tag"></button></div>
             <div class="ceiling" id="ceiling">
               <div class="c-k">Bid up to</div>
               <div class="c-v mono" id="ev-max"></div>
@@ -354,14 +477,14 @@ td.edge-cell{position:relative}
           <div class="eval-facts">
             <div class="fact"><div class="k">Worth</div><div class="v mono" id="ev-worth"></div></div>
             <div class="fact"><div class="k">Will go ≈</div><div class="v mono" id="ev-pred"></div></div>
-            <div class="fact"><div class="k">VORP</div><div class="v mono" id="ev-vorp"></div></div>
-            <div class="fact wide"><div class="k">Scarcity if taken</div><div class="v mono" id="ev-scar"></div></div>
-            <div class="fact wide"><div class="k">Pool left</div><div class="v mono" id="ev-left"></div></div>
+            <div class="fact"><div class="k">VORP</div><div class="v mono" id="ev-vorp"></div><div class="fnote" id="ev-vorp-note"></div></div>
+            <div class="fact half"><div class="k">Scarcity if taken</div><div class="v mono" id="ev-scar"></div></div>
+            <div class="fact half"><div class="k">Pool left</div><div class="v mono" id="ev-left"></div></div>
             <div class="fact wide"><div class="k">Who's chasing this</div><div class="v" id="ev-chase"></div></div>
           </div>
         </div>
         <div class="eval-actions">
-          <button class="btn bid" id="bid-btn">🔨 Bidding now — live read</button>
+          <button class="btn bid" id="bid-btn">Nominate</button>
           <div class="logrow">
             <label>Sold $</label><input class="mono" id="log-price" inputmode="numeric">
             <label>to</label>
@@ -370,6 +493,14 @@ td.edge-cell{position:relative}
             <button class="btn ghost" id="undo-btn">Clear</button>
           </div>
         </div>
+      </div>
+      <!-- idle hero: shown until a player is on the block (swapped out by .eval.on) -->
+      <div class="eval-idle">
+        <div class="idle-ceiling"><span class="idle-v mono">$—</span>
+          <span class="idle-k">your max bid<br><span>appears here</span></span></div>
+        <div class="idle-hint">Type a nominated player above, or click any row on the board →
+          you'll get <b>worth</b>, the <b>likely sale price</b>, your <b>max</b>, and a
+          <b>go / hold / stop</b> call.</div>
       </div>
     </div>
   </div>
@@ -386,6 +517,7 @@ td.edge-cell{position:relative}
             <span id="board-modes"></span>
           </span>
         </div>
+        <div class="filters flagrow"><span class="flabel">Flags</span><span id="flag-filters"></span></div>
         <div class="filters tierrow" id="tier-filters" style="display:none"></div>
         <div class="tbl-scroll">
           <table>
@@ -397,67 +529,75 @@ td.edge-cell{position:relative}
     </div>
 
     <div class="col-side">
-      <!-- THE ROOM -->
-      <div class="panel">
-        <div class="phead"><h2>The room — budgets &amp; needs</h2><span class="pill" id="teams-hint">threats highlighted</span></div>
-        <div id="teams"></div>
-      </div>
-
-      <!-- MY BUILD vs TARGET -->
-      <div class="panel">
-        <div class="phead"><h2>Your build vs target</h2><span class="pill" id="build-spent"></span></div>
-        <div id="build-slots"></div>
-        <div class="pbody" id="build-budget"></div>
-      </div>
-
-      <!-- ADVISOR (LLM) -->
-      <div class="panel">
-        <div class="phead"><h2>Advisor</h2>
-          <span class="pill">reads live state</span>
-          <select id="adv-model" class="modelsel" title="Which Claude model powers the advisor">
-            <option value="claude-haiku-4-5">Haiku 4.5 · fast</option>
-            <option value="claude-sonnet-5">Sonnet 5 · balanced</option>
-            <option value="claude-opus-4-8">Opus 4.8 · deepest</option>
-          </select>
+      <!-- One tabbed panel: Build is the default view; reference views one click away.
+           Only the active pane renders, so it always fills the column at any height. -->
+      <div class="panel tabs-panel">
+        <div class="phead tabhead" role="tablist">
+          <button class="tab on" data-tab="build" role="tab">Budget</button>
+          <button class="tab" data-tab="room" role="tab">League</button>
+          <button class="tab" data-tab="runway" role="tab">Runway</button>
+          <button class="tab" data-tab="log" role="tab">Picks</button>
         </div>
-        <div class="adv-body">
-          <div class="adv-in">
-            <input id="adv-q" placeholder="Ask: who'll chase the next elite RB? should I bid?" autocomplete="off">
-            <button class="btn primary" id="adv-ask">Ask</button>
-          </div>
-          <div class="adv-quick">
-            <button data-q="Given the draft so far and each manager's tendencies, predict what the top 3 threats will do next and where value will fall to me.">Predict the room</button>
-            <button data-q="Who still has budget and a need that will drive up prices, and which position should I target now?">Where's the value?</button>
-            <button data-q="Should I bid on the player currently on the block, and up to what price? Factor who else is likely bidding.">Bid check</button>
-          </div>
-          <div class="adv-out intro" id="adv-out">Ask about the draft — the advisor reads the live board, budgets, and each manager's calibrated tendencies. Each answer stays in the feed below.</div>
+        <div class="tabpane" data-pane="build">
+          <div class="panehead"><span>Your build vs target</span></div>
+          <div id="build-slots"></div>
+          <div class="pbody" id="build-budget"></div>
         </div>
-      </div>
-
-      <!-- RECOMMENDATIONS -->
-      <div class="panel">
-        <div class="phead"><h2>Read &amp; recommend</h2></div>
-        <div id="recs"></div>
-        <div class="phead" style="border-top:1px solid var(--line)"><h2>Runway — startable left ÷ teams needing</h2></div>
-        <div class="pbody" id="runway"></div>
-      </div>
-
-      <!-- LOG -->
-      <div class="panel">
-        <div class="phead"><h2>Draft log</h2>
-          <button class="btn ghost" id="undo-last" style="margin-left:auto;padding:5px 11px;font-size:11px">↶ Undo last</button></div>
-        <div class="log-list" id="loglist"><div class="empty">No picks logged yet.</div></div>
+        <div class="tabpane" data-pane="room" hidden>
+          <div class="panehead"><span>Budgets &amp; needs</span><span class="pill" id="teams-hint">threats highlighted</span></div>
+          <div id="teams"></div>
+        </div>
+        <div class="tabpane" data-pane="runway" hidden>
+          <div class="panehead"><span>Startable left ÷ teams needing</span></div>
+          <div class="pbody" id="runway"></div>
+        </div>
+        <div class="tabpane" data-pane="log" hidden>
+          <div class="panehead"><span>Picks</span><button class="btn ghost" id="undo-last">↶ Undo last</button></div>
+          <div class="log-list" id="loglist"><div class="empty">No picks logged yet.</div></div>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="foot" id="foot"></div>
+ </div><!-- /app-main -->
+
+ <!-- ADVISOR (LLM) — its own full-height rail, pinned to the right all draft -->
+ <aside class="advisor-rail">
+  <div class="panel">
+    <div class="phead"><h2>Advisor</h2>
+      <select id="adv-model" class="modelsel" title="Which Claude model powers the advisor — it always reads the live draft state">
+        <option value="claude-haiku-4-5">Haiku 4.5 · fast</option>
+        <option value="claude-sonnet-5">Sonnet 5 · balanced</option>
+        <option value="claude-opus-4-8">Opus 4.8 · deepest</option>
+      </select>
+    </div>
+    <div class="adv-body">
+      <div class="adv-in">
+        <input id="adv-q" placeholder="Ask: who'll chase the next elite RB? should I bid?" autocomplete="off">
+        <button class="btn primary" id="adv-ask">Ask</button>
+      </div>
+      <div class="adv-quick">
+        <button data-q="Given the draft so far and each manager's tendencies, predict what the top 3 threats will do next and where value will fall to me.">Predict the room</button>
+        <button data-q="Who still has budget and a need that will drive up prices, and which position should I target now?">Where's the value?</button>
+        <button data-q="Should I bid on the player currently on the block, and up to what price? Factor who else is likely bidding.">Bid check</button>
+      </div>
+      <!-- always-on formulaic guidance (no model call) -->
+      <div class="adv-recs">
+        <div class="adv-subhead">Read &amp; recommend</div>
+        <div id="recs"></div>
+      </div>
+      <!-- LLM answers accumulate here -->
+      <div class="adv-out intro" id="adv-out"></div>
+    </div>
+  </div>
+ </aside>
 </div>
 
 <script>
 const DATA = /*DATA*/;
 /* ---------- state ---------- */
-const ME = "Harry Davis";
+const ME = DATA.me;   // which team is you — set in config/league.json, injected via tool_data.json
 const STARTERS = DATA.starters, FLEX = DATA.flex, BENCH = DATA.bench;
 const SPEND_SLOTS = Object.values(STARTERS).reduce((a,b)=>a+b,0)+FLEX; // 8 startable
 const ROSTER_SLOTS = SPEND_SLOTS + BENCH;
@@ -467,8 +607,74 @@ DATA.managers.forEach(m=>{
   teams[m.name]={...m, budget:DATA.budget, players:[],
     need:{...STARTERS}, flex:FLEX, bench:BENCH};
 });
-const harryMult={QB:0.9,RB:1.4,WR:1.15,TE:1.05}; // validated strategy tilt
+const harryMult=DATA.my_mult||{QB:1,RB:1,WR:1,TE:1}; // your positional value tilt (config.my_mult; 1 = neutral)
 let log=[];
+
+/* ---------- persistence (per league + season) ---------- */
+const LKEY="dc:"+String(DATA.league_name||"lg").replace(/\s+/g,"_")+":"+(DATA.season||"");
+function lsGet(k,def){try{return JSON.parse(localStorage.getItem(LKEY+":"+k))??def;}catch(e){return def;}}
+function lsSet(k,v){try{localStorage.setItem(LKEY+":"+k,JSON.stringify(v));}catch(e){}}
+// player flags (prep list): {playerName: "target"|"sleeper"|"avoid"}
+let TAGS=lsGet("tags",{})||{};
+const TAG_GLYPH={none:"○",target:"◎",sleeper:"☾",avoid:"⊘"};
+const TAG_LABEL={target:"Target",sleeper:"Sleeper",avoid:"Avoid"};
+function saveTags(){lsSet("tags",TAGS);}
+function refreshHeroTag(name){
+  const btn=$("#ev-tag"); if(!btn)return;
+  const tg=TAGS[name]||"none";
+  btn.className="hero-tag t-"+tg;
+  btn.innerHTML = tg==="none" ? `⚑ Flag` : `${TAG_GLYPH[tg]} ${TAG_LABEL[tg]}`;
+}
+function setTag(name,t){
+  if(!t||t==="none")delete TAGS[name]; else TAGS[name]=t;
+  saveTags(); renderBoard();
+  if(selected && selected.name===name) refreshHeroTag(name);  // keep the hero badge in sync
+}
+// labeled flag menu (one shared popover, positioned on demand)
+const _tagmenu=document.createElement("div");_tagmenu.className="tagmenu";_tagmenu.hidden=true;
+_tagmenu.innerHTML=
+  `<button data-t="target"><span class="g t-target">◎</span> Target</button>`+
+  `<button data-t="sleeper"><span class="g t-sleeper">☾</span> Sleeper</button>`+
+  `<button data-t="avoid"><span class="g t-avoid">⊘</span> Avoid</button>`+
+  `<button data-t="none" class="clear">Clear flag</button>`;
+document.body.appendChild(_tagmenu);
+let _tagmenuName=null;
+_tagmenu.querySelectorAll("button").forEach(b=>b.addEventListener("click",e=>{
+  e.stopPropagation(); if(_tagmenuName)setTag(_tagmenuName,b.dataset.t); hideTagMenu();
+}));
+function openTagMenu(btn,name){
+  _tagmenuName=name;
+  const cur=TAGS[name]||"none";
+  _tagmenu.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.t===cur));
+  _tagmenu.hidden=false;
+  const r=btn.getBoundingClientRect(),mw=_tagmenu.offsetWidth,mh=_tagmenu.offsetHeight;
+  _tagmenu.style.left=Math.max(8,Math.min(r.left,window.innerWidth-mw-8))+"px";
+  _tagmenu.style.top=(r.bottom+4+mh>window.innerHeight-8?r.top-mh-4:r.bottom+4)+"px";
+}
+function hideTagMenu(){_tagmenu.hidden=true;_tagmenuName=null;}
+document.addEventListener("click",e=>{if(!e.target.closest(".tagmenu")&&!e.target.closest(".tagbtn"))hideTagMenu();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")hideTagMenu();});
+window.addEventListener("scroll",hideTagMenu,true);
+// draft history: persist the pick log (by player NAME so it survives id reordering) and replay it
+function saveDraft(){lsSet("log",log.map(l=>({name:players[l.id].name,price:l.price,team:l.team})));}
+function restoreDraft(){
+  const saved=lsGet("log",[])||[];
+  const byName={};players.forEach(p=>{byName[p.name]=p.id;});
+  log=[];
+  saved.forEach(s=>{
+    const id=byName[s.name];
+    if(id===undefined||!teams[s.team])return;
+    players[id].drafted=s.team;players[id].price=s.price;
+    log.push({id,price:s.price,team:s.team});
+  });
+  Object.keys(teams).forEach(rebuildTeam);
+}
+// brand the console from the injected league (name + season); harmless if absent
+(function(){
+  const t=(DATA.league_name||"Auction Draft")+(DATA.season?" · "+DATA.season:"");
+  const el=document.getElementById("brand-t"); if(el)el.textContent=t;
+  document.title=(DATA.league_name?DATA.league_name+" — ":"")+"Live Auction Draft Console";
+})();
 
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -568,7 +774,7 @@ function harryValue(p){ // worth to Harry (conversion-aware, §10)
 }
 
 /* ---------- rendering ---------- */
-let filterPos="ALL", selected=null, boardMode="value", filterTier="ALL", hidePicked=true;
+let filterPos="ALL", selected=null, boardMode="value", filterTier="ALL", hidePicked=true, filterTag="ALL";
 function avail(){return players.filter(p=>p.drafted===null);}
 // live scarcity: what the position looks like once this player is gone
 function posAvailByVbd(pos){return avail().filter(p=>p.pos===pos).sort((a,b)=>b.vbd-a.vbd);}
@@ -619,10 +825,15 @@ function showEval(p){
   $("#ev-tier").textContent=p.tier;
   $("#ev-pos").textContent=p.pos;
   $("#ev-pos").className="posdot p-"+p.pos;
+  refreshHeroTag(p.name);
+  $("#ev-tag").onclick=(e)=>{e.stopPropagation();openTagMenu(e.currentTarget,p.name);};
   // supporting facts
   $("#ev-worth").textContent=money(p.worth);
   $("#ev-pred").textContent=money(pred);
   $("#ev-vorp").textContent=Math.round(p.vbd);
+  // contextualize VORP as points/week over a replacement-level starter (season ≈ 17 wks)
+  const perWk=Math.round(p.vbd/17);
+  $("#ev-vorp-note").textContent = perWk>=1 ? "≈ +"+perWk+"/wk over replacement" : "≈ replacement level";
   const sc=scarcity(p);
   $("#ev-scar").textContent=sc.next?((sc.cliff>0?"−"+sc.cliff:"0")+" to next "+p.pos):"last "+p.pos+" of value";
   $("#ev-scar").classList.toggle("over",sc.cliff>=15);
@@ -647,7 +858,9 @@ function showEval(p){
   const cc=$("#ceiling");
   cc.className="ceiling s-"+state;
   cc.classList.remove("pop"); void cc.offsetWidth; cc.classList.add("pop");   // replay the count-in
-  $("#ev-state").textContent=word;
+  // non-hue cue so the call reads without relying on red/green (colorblind-safe)
+  const glyph={go:"▲",hold:"◆",stop:"✕"}[state]||"";
+  $("#ev-state").textContent=(glyph?glyph+"  ":"")+word;
   const v=$("#ev-verdict");
   v.className="verdict s-"+state;
   v.textContent=maxRationale(p);
@@ -676,42 +889,48 @@ function renderBoard(){
   let base = hidePicked ? avail() : players.slice();
   if(!overall) base=base.filter(p=>p.pos===filterPos);
   if(boardMode==="proj" && filterTier!=="ALL") base=base.filter(p=>p.tier===filterTier);
+  if(filterTag!=="ALL") base=base.filter(p=>(TAGS[p.name]||"none")===filterTag);  // flag filter (both views)
 
   if(boardMode==="proj"){
     // RAW projection data + tiers, live (reflects who's already gone)
     const tierName = filterTier==="ALL"?"by tier":filterTier;
     $("#board-title").textContent=overall?"Projections — overall by VORP":"Projections — "+filterPos+" "+tierName;
     let list=base.slice().sort((a,b)=>b.vbd-a.vbd);
-    const span=overall?7:6;
+    const maxVbd=Math.max(1,list.length?list[0].vbd:1);   // scale for the VORP magnitude bar
+    const span=overall?8:7;
     head.innerHTML=`<tr>`+
+      `<th class="tagcol" data-tip="Your prep flags. Click a row's marker to set ◎ target · ☾ sleeper · ⊘ avoid. Filter by flag above. Saved per league.">◎</th>`+
       `<th class="l">Player</th>`+
       `${overall?'<th data-tip="Position.">Pos</th>':''}`+
       `<th data-tip="Positional tier from the projections — e.g. RB1 = the top RB group.">Tier</th>`+
       `<th data-tip="Projected fantasy points for the full season (half-PPR).">FPTS</th>`+
-      `<th data-tip="Value Over Replacement — projected points above a replacement-level starter at this position. Higher = more of an edge over a waiver-wire body. This is the ranking used here.">VORP</th>`+
+      `<th data-tip="Value Over Replacement — projected SEASON points above a replacement-level starter at this position. Rule of thumb: ÷17 ≈ extra points per week vs. a waiver-wire body. Bar length shows magnitude vs. the top player. This is the ranking used here.">VORP</th>`+
       `<th data-tip="Projected auction value (Elboberto/FantasyPros) — what the player is worth in dollars.">Worth</th>`+
       `<th data-tip="If this player is taken, how far the next AVAILABLE player at this position drops in VORP. A big red number = a cliff — the last comparable body at that tier.">Scarcity</th>`+
       `</tr>`;
     tb.innerHTML="";
-    let curTier=null;
+    let curTier=null, band=0;
     list.slice(0,180).forEach(p=>{
       if(!overall && filterTier==="ALL" && p.tier!==curTier){
-        curTier=p.tier;
+        curTier=p.tier; band++;
         const left=avail().filter(x=>x.pos===p.pos&&x.tier===p.tier).length;
         const gr=document.createElement("tr");gr.className="tgrp";
         gr.innerHTML=`<td colspan="${span}">${p.tier} · ${left} left in tier</td>`;
         tb.appendChild(gr);
       }
       const gone=p.drafted!==null;
+      const tag=TAGS[p.name]||"none";
       const sc=gone?null:scarcity(p), hot=sc&&sc.cliff>=15;
-      const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"");
-      tr.innerHTML=`<td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+      const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"")+((band%2)?" bandalt":"")+(tag!=="none"?" tag-"+tag:"");
+      tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
+        <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
         ${overall?`<td class="num tier">${p.pos}</td>`:''}
         <td class="num tier">${p.tier}</td>
         <td class="num">${Math.round(p.fpts)}</td>
-        <td class="num">${Math.round(p.vbd)}</td>
+        <td class="num vorpcell">${gone?'':`<span class="vbar" style="width:${Math.max(2,Math.min(100,Math.round(p.vbd/maxVbd*100)))}%"></span>`}<span class="vnum">${Math.round(p.vbd)}</span></td>
         <td class="num">${money(p.worth)}</td>
         <td class="num scar ${hot?'hot':''}"${gone?'':` data-tip="Drop to the next available ${p.pos} in VORP if this one goes · ${sc.posLeft} left at ${p.pos}"`}>${gone?'—':(sc.next?(sc.cliff>0?'−'+sc.cliff:'0'):'LAST')}</td>`;
+      tr.querySelector(".tagbtn").onclick=(e)=>{e.stopPropagation();openTagMenu(e.currentTarget,p.name);};
       if(!gone)tr.onclick=()=>{showEval(p);window.scrollTo({top:0,behavior:'smooth'});};
       tb.appendChild(tr);
     });
@@ -721,6 +940,7 @@ function renderBoard(){
   // VALUE mode — Harry-centric best available
   $("#board-title").textContent="Value board — best available";
   head.innerHTML=`<tr>`+
+    `<th class="tagcol" data-tip="Your prep flags. Click a row's marker to set ◎ target · ☾ sleeper · ⊘ avoid. Filter by flag above. Saved per league.">◎</th>`+
     `<th class="l">Player</th>`+
     `<th data-tip="Positional tier from the projections — e.g. RB1 = the top RB group, RB4 = the fourth tier.">Tier</th>`+
     `<th data-tip="Projected auction value (Elboberto/FantasyPros). What the player is worth on a $200 board.">Worth</th>`+
@@ -732,17 +952,29 @@ function renderBoard(){
   let list=base.map(p=>{const pred=predictPrice(p),mb=harryMaxBid(p);return {p,pred,mb,edge:mb-pred};})
     .sort((a,b)=>b.p.worth-a.p.worth).slice(0,hidePicked?60:220);
   tb.innerHTML="";
+  let curTier=null, band=0;
   list.forEach(({p,pred,mb,edge})=>{
+    // split into tier bands when a single position is selected (like the projections board)
+    if(!overall && p.tier!==curTier){
+      curTier=p.tier; band++;
+      const left=avail().filter(x=>x.pos===p.pos&&x.tier===p.tier).length;
+      const gr=document.createElement("tr");gr.className="tgrp";
+      gr.innerHTML=`<td colspan="7">${p.tier} · ${left} left in tier</td>`;
+      tb.appendChild(gr);
+    }
     const gone=p.drafted!==null;
-    const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"");
+    const tag=TAGS[p.name]||"none";
+    const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"")+((band%2)?" bandalt":"")+(tag!=="none"?" tag-"+tag:"");
     const need=slotFor(teams[ME],p.pos)!==null;
     const pocket=!gone&&edge>=5&&need;
-    tr.innerHTML=`<td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+    tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
+      <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
       <td class="num tier">${p.tier}</td>
       <td class="num">${money(p.worth)}</td>
       <td class="num">${gone?'—':money(pred)}</td>
       <td class="num">${gone?'—':money(harryMaxBid(p))}</td>
       <td class="num ${gone?'gap-neg':pocket?'pocket':edge>0?'gap-pos':'gap-neg'}">${gone?'—':(edge>0?'+':'')+Math.round(edge)}</td>`;
+    tr.querySelector(".tagbtn").onclick=(e)=>{e.stopPropagation();openTagMenu(e.currentTarget,p.name);};
     if(!gone)tr.onclick=()=>{showEval(p);window.scrollTo({top:0,behavior:'smooth'});};
     tb.appendChild(tr);
   });
@@ -845,61 +1077,122 @@ function removePick(i){
   const team=entry.team;
   log.splice(i,1);
   rebuildTeam(team);
+  saveDraft();
   if(selected&&selected.id===entry.id)selected=null;
   renderAll();
   autoAdvise("remove");   // keep the read current after removing a pick
 }
 
-// target roster template (from sim §17/§18): [label, pos, target$, tier]
-const TARGET=[
-  ["RB anchor","RB",90,"RB1–2"],["RB2","RB",22,"RB4–6"],["FLEX (RB)","RB",2,"dart"],
-  ["WR1","WR",42,"WR1–3"],["WR2","WR",8,"WR4–6"],["FLEX (WR)","WR",1,"dart"],
-  ["TE","TE",14,"TE2–3"],["QB","QB",8,"QB2"],
-];
+// Target roster derived from YOUR league (STARTERS + FLEX) and the valuation board — no
+// hardcoded strategy. Dedicated starter slots per position, then FLEX slots that are
+// RB/WR/TE (either-or). Each slot's $ target = the going rate (worth) of the player that
+// would realistically fill it, scaled to the spendable budget.
+let _BUILD=null;
+// per-slot budget target overrides (key -> dollars), persisted per league
+let BUDGET_OVR=lsGet("budget",{})||{};
+function saveBudgetOvr(){lsSet("budget",BUDGET_OVR);}
+function targetOf(s){return (s.key in BUDGET_OVR)?BUDGET_OVR[s.key]:s.tgt;}
+function setSlotTarget(key,v){BUDGET_OVR[key]=Math.max(0,Math.round(+v||0));saveBudgetOvr();renderBuild();}
+function resetBudget(){BUDGET_OVR={};saveBudgetOvr();renderBuild();}
+function buildTarget(){
+  if(_BUILD)return _BUILD;
+  const slots=[];
+  Object.entries(STARTERS).forEach(([pos,n])=>{for(let i=0;i<n;i++)slots.push({pos,flex:false});});
+  for(let i=0;i<FLEX;i++)slots.push({pos:null,flex:true});
+  const pool={};["QB","RB","WR","TE"].forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
+  const idx={QB:0,RB:0,WR:0,TE:0};
+  // reference player per slot: dedicated slots take the next-best of their pos…
+  slots.filter(s=>!s.flex).forEach(s=>{s.ref=pool[s.pos][idx[s.pos]++]||null;});
+  // …FLEX takes the best remaining RB/WR/TE (whichever is worth most)
+  slots.filter(s=>s.flex).forEach(s=>{
+    let best=null,bp=null;
+    ["RB","WR","TE"].forEach(p=>{const c=pool[p][idx[p]];if(c&&(!best||c.worth>best.worth)){best=c;bp=p;}});
+    if(best){idx[bp]++;s.ref=best;s.refpos=bp;}
+  });
+  const cnt={};
+  slots.forEach(s=>{
+    if(s.flex){cnt.FLX=(cnt.FLX||0)+1;s.label="FLEX";s.key="FLX"+cnt.FLX;}
+    else{cnt[s.pos]=(cnt[s.pos]||0)+1;s.label=(STARTERS[s.pos]>1)?s.pos+cnt[s.pos]:s.pos;s.key=s.label;}
+  });
+  const spendable=Math.max(1,DATA.budget-BENCH);            // reserve ~$1 per bench slot
+  const sumRef=slots.reduce((a,s)=>a+Math.max(1,s.ref?s.ref.worth:1),0)||1;
+  slots.forEach(s=>{s.tgt=Math.max(1,Math.round((s.ref?s.ref.worth:1)/sumRef*spendable));});
+  _BUILD=slots;return slots;
+}
 function renderBuild(){
   const me=teams[ME];
-  const mine=me.players.map(id=>players[id]).filter(p=>p.drafted===ME||true);
-  // gather my drafted players by pos
   const byPos={QB:[],RB:[],WR:[],TE:[]};
   me.players.forEach(id=>{const p=players[id];if(byPos[p.pos])byPos[p.pos].push(p);});
   Object.values(byPos).forEach(a=>a.sort((x,y)=>y.price-x.price));
-  const spent=DATA.budget-me.budget;
-  $("#build-spent").textContent="$"+spent+" spent";
-  // fill target slots greedily from my roster
-  const used=new Set();
-  const rows=TARGET.map(([label,pos,tgt,tier])=>{
-    const pick=byPos[pos].find(p=>!used.has(p.id));
-    if(pick)used.add(pick.id);
-    return {label,pos,tgt,tier,pick};
+  const left=me.budget;
+  const slots=buildTarget();
+  // assign my players to slots — dedicated first, FLEX from any leftover RB/WR/TE, rest → bench
+  const used=new Set(), fill=new Map();
+  [...slots.filter(s=>!s.flex),...slots.filter(s=>s.flex)].forEach(s=>{
+    let pick;
+    if(!s.flex)pick=byPos[s.pos].find(p=>!used.has(p.id));
+    else pick=["RB","WR","TE"].flatMap(p=>byPos[p]).filter(p=>!used.has(p.id)).sort((a,b)=>b.price-a.price)[0];
+    if(pick)used.add(pick.id); fill.set(s,pick||null);
   });
+  const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
+  const benchFilled=benchPlayers.length, benchSpent=benchPlayers.reduce((a,p)=>a+p.price,0);
+  const benchTarget=("BN" in BUDGET_OVR)?BUDGET_OVR.BN:BENCH;   // default ~$1 per bench slot
+  // PACE: remaining budget vs what the still-open slots + remaining bench should cost
+  const openStart=slots.filter(s=>!fill.get(s));
+  const remainingPlan=openStart.reduce((a,s)=>a+targetOf(s),0)+Math.max(0,benchTarget-benchSpent);
+  const diff=left-remainingPlan;   // ≥0 = cushion; <0 = value you must still find
+  // ALLOCATION: the whole plan (all slot targets + bench) should sum to the league budget
+  const allocated=slots.reduce((a,s)=>a+targetOf(s),0)+benchTarget;
+  const allocDiff=allocated-DATA.budget;
+  // delta chip — signed $, colored (over = red, under = green). No "saved" wording.
+  const del=v=>`<span class="bdelta ${v>2?'over':v<-2?'under':'ok'}">${v>=0?'+$':'−$'}${Math.abs(v)}</span>`;
   const box=$("#build-slots");box.innerHTML="";
-  rows.forEach(r=>{
+  // ── pacing headline (the actionable verdict) ──
+  const pace=document.createElement("div");pace.className="budpace "+(diff>=0?"good":"bad");
+  const paceMain=diff>0?`$${diff} cushion`:diff<0?`Make up $${-diff}`:"On budget";
+  const allocCls=allocDiff===0?"ok":"warn";
+  const allocMsg=allocDiff===0?`Plan adds up to $${DATA.budget} ✓`
+    :allocDiff>0?`Plan is $${allocDiff} over your $${DATA.budget} — trim targets`
+    :`$${-allocDiff} of $${DATA.budget} still unallocated`;
+  pace.innerHTML=`<div class="bp-top"><div class="bp-main">${paceMain}</div>`+
+    `<div class="bp-sub">$${left} left · plan needs ≈<b>$${remainingPlan}</b> more</div></div>`+
+    `<div class="bp-alloc ${allocCls}"><span>${allocMsg}</span><button class="linkbtn" id="bud-reset" title="Reset targets to the suggested plan">reset plan</button></div>`;
+  box.appendChild(pace);
+  // ── column header ──
+  const hd=document.createElement("div");hd.className="brow bhead";
+  hd.innerHTML=`<span class="blab">Slot</span><span class="btgt">Target</span><span class="bgot">Result</span>`;
+  box.appendChild(hd);
+  // ── startable slots (editable targets) ──
+  const NDOT=`background:var(--raise);color:var(--muted)`;
+  slots.forEach(s=>{
+    const tgt=targetOf(s), got=fill.get(s);
+    const status=got?(got.price<=tgt+2?"ok":"over"):"open";
+    const dot=s.flex?`<span class="posdot" style="${NDOT}">FLX</span>`:`<span class="posdot p-${s.pos}">${s.pos}</span>`;
     const div=document.createElement("div");div.className="brow";
-    const got=r.pick;
-    const status=got?(got.price<=r.tgt+3?"ok":"over"):"open";
-    div.innerHTML=`<span class="blab"><span class="posdot p-${r.pos}">${r.pos}</span>${r.label}</span>
-      <span class="btgt mono">tgt $${r.tgt}</span>
-      <span class="bgot mono ${status}">${got?got.name.split(" ").slice(-1)[0]+" $"+got.price:"—"}</span>`;
+    div.innerHTML=`<span class="blab">${dot}${s.flex?"Flex":s.label}</span>`+
+      `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"></span>`+
+      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-tgt)}`:"—"}</span>`;
     box.appendChild(div);
   });
-  // BENCH — everyone I've bought beyond the 8 startable slots
-  const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
-  const benchFilled=benchPlayers.length;
-  const div=document.createElement("div");div.className="brow";
-  const names=benchFilled?benchPlayers.map(p=>p.name.split(" ").slice(-1)[0]).join(", "):"—";
-  div.innerHTML=`<span class="blab"><span class="posdot" style="background:var(--line);color:var(--muted)">BN</span>Bench</span>
-    <span class="btgt mono">${BENCH} slots</span>
-    <span class="bgot mono ${benchFilled>BENCH?'over':'ok'}">${benchFilled}/${BENCH}${benchFilled?" · "+names:""}</span>`;
-  box.appendChild(div);
-  // positional budget vs target
-  const tgtPos={RB:114,WR:51,TE:14,QB:8};
-  const bud=$("#build-budget");
-  bud.innerHTML=["RB","WR","TE","QB"].map(pos=>{
-    const s=byPos[pos].reduce((a,p)=>a+p.price,0);
-    const t=tgtPos[pos];
-    const pct=Math.min(100,100*s/t);
-    return `<div class="bbudrow"><span>${pos}</span><span class="mono">$${s} / $${t}</span>
-      <div class="bbar"><i style="width:${pct}%;background:${s>t+8?'var(--bad)':'var(--accent)'}"></i></div></div>`;
+  // ── bench (editable bench budget) ──
+  const bdiv=document.createElement("div");bdiv.className="brow";
+  const bstat=benchSpent>benchTarget?"over":"ok";
+  bdiv.innerHTML=`<span class="blab"><span class="posdot" style="${NDOT}">BN</span>Bench <span class="bsub">${benchFilled}/${BENCH}</span></span>`+
+    `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="BN" value="${benchTarget}"></span>`+
+    `<span class="bgot mono ${bstat}">${benchFilled?`$${benchSpent} ${del(benchSpent-benchTarget)}`:"—"}</span>`;
+  box.appendChild(bdiv);
+  box.querySelectorAll(".tgtedit").forEach(inp=>{inp.onchange=()=>setSlotTarget(inp.dataset.key,inp.value);});
+  const _rb=$("#bud-reset"); if(_rb) _rb.onclick=resetBudget;
+  // ── per-group budget bars: QB/RB/WR/TE + FLEX + Bench, spent vs target ──
+  const groups={RB:{t:0,s:0},WR:{t:0,s:0},TE:{t:0,s:0},QB:{t:0,s:0},FLX:{t:0,s:0}};
+  slots.forEach(s=>{const g=s.flex?"FLX":s.pos;groups[g].t+=targetOf(s);const got=fill.get(s);if(got)groups[g].s+=got.price;});
+  groups.BN={t:benchTarget,s:benchSpent};
+  const LBL={RB:"RB",WR:"WR",TE:"TE",QB:"QB",FLX:"FLEX",BN:"Bench"};
+  $("#build-budget").innerHTML=["RB","WR","TE","QB","FLX","BN"].map(g=>{
+    const t=groups[g].t, s=groups[g].s, tt=Math.max(1,t), pct=Math.min(100,100*s/tt);
+    const note = s>t ? `<span class="bdelta over">$${s-t} over</span>` : (s>0?`<span class="bdelta ok">$${t-s} left</span>`:"");
+    return `<div class="bbudrow"><span>${LBL[g]}</span><span class="mono">$${s} / $${t} ${note}</span>`+
+      `<div class="bbar"><i style="width:${pct}%;background:${s>t?'var(--stop)':'var(--go)'}"></i></div></div>`;
   }).join("");
 }
 
@@ -914,6 +1207,7 @@ function logPick(id,price,team){
   if(slot==="start")t.need[p.pos]--;else if(slot==="flex")t.flex--;else t.bench--;
   t.budget-=price;t.players.push(id);
   log.push({id,price,team});
+  saveDraft();
   $("#block-search").value="";selected=null;
   renderAll();
   autoAdvise("log");   // refresh the LLM read after every pick
@@ -929,6 +1223,7 @@ function undo(){
   // simplest robust restore: recompute team from scratch
   p.drafted=null;p.price=0;
   rebuildTeam(t.name);
+  saveDraft();
   renderAll();
   autoAdvise("undo");   // keep the read current after an undo
 }
@@ -980,6 +1275,17 @@ function initFilters(){
   ["ALL","RB","WR","TE","QB"].forEach(p=>{
     const b=document.createElement("button");b.className="chip"+(p==="ALL"?" on":"");b.textContent=p;
     b.onclick=()=>{filterPos=p;filterTier="ALL";box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===p));renderBoard();};
+    box.appendChild(b);
+  });
+}
+function initFlagFilters(){
+  const box=$("#flag-filters");box.innerHTML="";
+  const opts=[["ALL","All",""],["target","Target","target"],["sleeper","Sleeper","sleeper"],["avoid","Avoid","avoid"]];
+  opts.forEach(([v,label,cls])=>{
+    const b=document.createElement("button");
+    b.className="chip flagchip"+(cls?" t-"+cls:"")+(filterTag===v?" on":"");
+    b.innerHTML=(TAG_GLYPH[v]?`<span class="g">${TAG_GLYPH[v]}</span> `:"")+label;
+    b.onclick=()=>{filterTag=v;box.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));b.classList.add("on");renderBoard();};
     box.appendChild(b);
   });
 }
@@ -1086,19 +1392,23 @@ function autoAdvise(evt){
 }
 // player is nominated and the room is bidding NOW — get an immediate live bid read
 function clearLive(){
+  // back to "evaluating" — the CTA is an action again
   $("#block-hint").classList.remove("live");
   $("#eval").classList.remove("live");
-  $("#bid-btn").classList.remove("live");
-  $("#bid-btn").textContent="🔨 Bidding now — live read";
+  const b=$("#bid-btn");
+  b.classList.remove("live","onblock");
+  b.textContent="Nominate";
 }
 function markNominated(){
   if(!selected)return;
   const p=selected;
-  $("#block-hint").textContent="🔨 bidding";
+  // bidding has officially begun — the CTA becomes a non-clickable "on the block" status
+  $("#block-hint").textContent="bidding open";
   $("#block-hint").classList.add("live");
   $("#eval").classList.add("live");
-  $("#bid-btn").classList.add("live");
-  $("#bid-btn").textContent="🔨 Bidding — refresh tip";
+  const b=$("#bid-btn");
+  b.classList.add("live","onblock");
+  b.textContent="● On the block";
   askAdvisor(
     `${p.name} (${p.pos}, ${p.tier}, worth ~$${Math.round(p.worth)}, will go ≈$${Math.round(predictPrice(p))}, `+
     `my max ≈$${Math.round(harryMaxBid(p))}) is nominated and the room is BIDDING NOW. Give me a QUICK COACHING TIP: `+
@@ -1124,16 +1434,23 @@ $("#adv-ask").onclick=()=>{const q=$("#adv-q").value.trim();if(q)askAdvisor(q);}
 $("#adv-q").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim();if(q)askAdvisor(q);}});
 document.querySelectorAll(".adv-quick button").forEach(b=>b.onclick=()=>{$("#adv-q").value=b.dataset.q;askAdvisor(b.dataset.q);});
 $("#themebtn").onclick=()=>{
-  const cur=document.documentElement.getAttribute("data-theme")
-    || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const cur=document.documentElement.getAttribute("data-theme")||"light";  // light is the default
   document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");
 };
-$("#foot").innerHTML="Prices are live estimates: each remaining player is re-priced from the calibrated bids of every opponent who still has budget + a need for that position (§11/§18), scaled by live market inflation. Worth = Elboberto 2026 projection. Model, not gospel — trust your read in the room.";
+// reference tabs (Room / Runway / Log) — show one pane at a time
+document.querySelectorAll(".tabhead .tab").forEach(b=>b.onclick=()=>{
+  const t=b.dataset.tab;
+  document.querySelectorAll(".tabhead .tab").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".tabpane").forEach(p=>{p.hidden=(p.dataset.pane!==t);});
+  $("#teams-hint").style.display=(t==="room")?"":"none";   // hint applies to the room only
+});
+$("#foot").innerHTML="Prices re-price live from every opponent's calibrated bids × market inflation. Worth = Elboberto projection. A model — trust your read in the room.";
 
 // lift the dock with a shadow once the board scrolls beneath it
 const _dock=$("#dock");
 const _onScroll=()=>_dock.classList.toggle("stuck",window.scrollY>4);
 window.addEventListener("scroll",_onScroll,{passive:true});_onScroll();
 
-initTeamSelect();initFilters();initModes();renderAll();
+restoreDraft();   // replay any saved picks for this league so history survives reloads
+initTeamSelect();initFilters();initFlagFilters();initModes();renderAll();
 </script>
