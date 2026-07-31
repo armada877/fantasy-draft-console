@@ -1,81 +1,80 @@
-# 2KDOME — ESPN Fantasy Football League Data
+# ESPN Fantasy Football scraping
 
-League: **2KDOME**, ESPN league id **44252**, 12 teams, active since **2013**.
-Manager (you): **Harry Davis** — member `{953F79FB-8F07-4722-BF79-FB8F07472225}`,
-team 11 "David Jango Unchained" (team id / name varies by season).
+Pulls your league's data off ESPN's fantasy API so the console can wire in your real
+roster settings, auction budget, and manager list.
 
-## League history at a glance
+## Which script do I run?
 
-| Season | Draft   | Keepers | Notes |
-|--------|---------|---------|-------|
-| 2013–2016 | SNAKE  | no  | |
-| 2017    | AUCTION | no  | switched to auction |
-| 2018–2019 | AUCTION | no | |
-| 2020    | AUCTION | yes | keepers introduced (1/team) |
-| 2021–2024 | AUCTION | yes | |
-| 2025    | AUCTION | (see note) | keeper flag/inflation not present in draft record — investigate |
-| 2026    | upcoming | | not yet drafted |
+| Script | Use it for | Scope |
+|--------|-----------|-------|
+| `scrape_league.py` | **Fresh setup (start here).** Current-season settings + teams/owners, so `build_tool_data.py` can configure the console for your league. | 1 season, 2 views |
+| `scrape.py` | Deep history for calibrating opponent tendencies (many seasons of drafts, transactions, matchups). Only needed for the optional `analysis/` pipeline. | all seasons, all views |
+| `scrape_playercards.py` | Executed-trade detail (playercards), for the deep analysis only. | all seasons |
+| `extract_har.py` | Recover API JSON bodies from a browser HAR capture (fallback when the API is unreachable). | — |
 
-### The $100 keeper hack
-Keepers are encoded on the draft board by **inflating the auction `bidAmount` by
-$100**. A pick with `bidAmount >= 100` is a keeper; real keeper cost =
-`bidAmount - 100`. The `keeper: true` boolean is also set 2020–2024. This was a
-workaround for the league's custom keeper budgeting rules. Any budget/spend
-analysis MUST subtract 100 from keeper bids to get true dollars spent.
+For a normal bring-your-own-league setup you only need `scrape_league.py`.
+
+## Configure your league
+
+Set your league in `config/league.json` (copy `config/league.example.json`):
+
+```json
+{ "league_id": 123456, "season": 2026, "me": "Your Name" }
+```
+
+`league_id` is the number in your league's `fantasy.espn.com/.../leagues/<ID>` URL.
+`me` must match the owner display name ESPN returns for your team.
+
+## Authenticate
+
+The API needs two cookies from a logged-in `fantasy.espn.com` session. Get them from
+DevTools → Application → Cookies:
+
+- `SWID` — looks like `{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}`
+- `espn_s2` — a long URL-encoded string
+
+Provide them either way:
+
+- **env vars:** `export ESPN_SWID=...` and `export ESPN_S2=...` (e.g. via `config/.env`), or
+- **file:** `scraping/.espn_auth.json` → `{"SWID": "{...}", "espn_s2": "..."}` (gitignored).
+
+These cookies expire every so often; re-grab them if you start getting `401`s.
+
+## Run
+
+```bash
+set -a && . config/.env && set +a        # if you put cookies in config/.env
+python3 scraping/scrape_league.py         # → scraping/raw/{season}/league_full.json
+python3 draft_sheets/build_tool_data.py   # → draft_sheets/tool_data.json
+```
+
+`build_tool_data.py` reads `league_full.json` if present; otherwise it falls back to the
+projection workbook's default roster/budget and generic opponents, so the console still
+runs before you've scraped.
+
+## ESPN API reference
+
+- Modern read base (season ≥ 2018):
+  `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{year}/segments/0/leagues/{league_id}`
+- Historical (≤ 2017):
+  `.../apis/v3/games/ffl/leagueHistory/{league_id}?seasonId={year}` (returns a single-element list)
+- Useful `view=` params: `mSettings mTeam mRoster mDraftDetail mMatchup mStandings mStatus mTransactions2`
+- `scrape_league.py` only needs `mSettings` (roster/scoring/budget) + `mTeam` (teams + owners).
+- Transactions are returned **per `scoringPeriodId`** — iterate weeks 1–18 and dedupe by
+  transaction `id`. Executed trades are not fully detailed in `mTransactions2`; the complete
+  source is each player's `kona_playercard` `transactions` array (see `scrape_playercards.py`).
 
 ## Directory layout
 
 ```
 scraping/
-  fantasy.espn.com.har        # original browser capture (in repo root)
-  extract_har.py              # pulls JSON bodies out of the HAR
-  scrape.py                   # authenticated scraper for all seasons
-  .espn_auth.json             # SWID + espn_s2 cookies (GITIGNORED, do not commit)
-  har_extracted/              # JSON bodies recovered from the HAR (2022 + 2026 bits)
+  scrape_league.py      # fresh-setup scraper (settings + teams, one season)
+  scrape.py             # full historical scraper (all seasons, all views)
+  scrape_playercards.py # executed-trade detail for the deep analysis
+  extract_har.py        # recover JSON bodies from a browser HAR
+  .espn_auth.json       # SWID + espn_s2 cookies (GITIGNORED — never commit)
   raw/{season}/
-    league_full.json          # draftDetail, settings, teams, members, schedule,
-                              #   status, standings, rosters (mTeam/mRoster/mMatchup...)
-    players.json              # kona_player_info: player universe + stats/values
-                              #   (2018+ only; pre-2018 uses a different endpoint)
-    transactions.json         # all adds/drops/waivers/trade OFFERS, deduped by id
-                              #   (2018+). NOTE: TRADE_ACCEPT rows here have empty
-                              #   items — use playercards.json for trade detail.
-    playercards.json          # kona_playercard for every league-involved player
-                              #   (2018-2025). The ONLY complete source of executed
-                              #   TRADE detail: each card's `transactions` array has
-                              #   full trade items (both sides). 2018 items not recorded.
+    league_full.json    # settings, teams, members (+ draft/rosters/etc. from scrape.py)
+    players.json         # kona_player_info player universe (scrape.py, 2018+)
+    transactions.json    # adds/drops/waivers/trade offers (scrape.py, 2018+)
 ```
-
-### Executed trades
-`mTransactions2` does NOT expose executed-trade detail: `TRADE_PROPOSAL` = offers only,
-`TRADE_ACCEPT` rows have empty `items`. Real trades (who moved which players) come from
-each player's `kona_playercard` `transactions` array. `scrape_playercards.py` bulk-pulls
-these (batched ~120 ids/request via x-fantasy-filter). Dedupe trades across the redundant
-per-player copies. 172 executed trades recovered 2019–2025 (2018 items unavailable).
-`analysis/lib.py: executed_trades(season)` parses them.
-
-## Data coverage notes
-- **2018–2025**: full league + players + transactions (~1000–1300 txns/season,
-  including `TRADE_PROPOSAL` = offers).
-- **2013–2017**: league data only, fetched from the historical endpoint
-  (`/apis/v3/games/ffl/leagueHistory/44252?seasonId=YYYY`). `players.json` and
-  `transactions.json` are **not** available for these years via the API
-  (kona_player_info 404s; transactions not served). Draft, matchups, standings
-  and teams ARE present.
-- `league_full.json` for 2013–2017 is a **single-element list** (historical
-  endpoint wraps the object in a list); 2018+ is a bare object.
-
-## Re-running the scrape
-The ESPN session cookies expire. To refresh:
-1. Update `scraping/.espn_auth.json` with fresh `SWID` and `espn_s2` cookies
-   (fantasy.espn.com → DevTools → Application → Cookies).
-2. `python3 scraping/scrape.py`            # all seasons
-   `python3 scraping/scrape.py 2025 2026`  # specific seasons
-
-## Key ESPN API reference (league 44252)
-- Modern read base: `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{year}/segments/0/leagues/44252`
-- Historical (≤2017): `.../apis/v3/games/ffl/leagueHistory/44252?seasonId={year}`
-- Useful `view=` params: `mDraftDetail mSettings mTeam mRoster mMatchup mMatchupScore mStandings mStatus mSchedule mBoxscore mTransactions2`
-- Transactions require header `x-fantasy-filter` and are returned **per
-  scoringPeriodId** — iterate weeks 1–18 and dedupe by transaction `id`.
-  Valid `filterType` values: `WAIVER WAIVER_ERROR FREEAGENT TRADE_PROPOSAL ROSTER DRAFT FUTURE_ROSTER`.

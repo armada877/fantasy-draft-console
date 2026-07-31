@@ -7,10 +7,8 @@ value/scarcity as the board moves, and (optionally) calls Claude for a live read
 room after every pick.
 
 Built for a specific keeper league, but the framework is **bring-your-own-league**: the
-code is tracked here; your data, projections, and league-specific advisor briefing stay
-local (see [What's ignored](#whats-ignored)).
-
-![console](docs/console.png)
+code and the universal projection baseline are tracked here; your league config, secrets,
+and league-specific advisor briefing stay local (see [What's ignored](#whats-ignored)).
 
 ## What it does
 
@@ -27,19 +25,35 @@ local (see [What's ignored](#whats-ignored)).
 ## Architecture
 
 ```
-ESPN league data ─┐
-                  ├─► analysis/ (lib.py + a1..a20) ─► draft_sheets/tool_data.json ─┐
-projection sheets ┘                                                                 │
+projections .xlsm  ─┐  (checked-in universal baseline)
+                    ├─►  build_tool_data.py  ─►  draft_sheets/tool_data.json ─┐
+ESPN league (scrape)┘   (settings + managers)                                 │
                                                                 inject into template ▼
 draft_sheets/draft_tool_template.html  ──────────────────►  draft_app/static/index.html
                                                                                     │
                               draft_app/server.py  (FastAPI: serves console + /api/advise)
 ```
 
-- **Pipeline** (`scraping/`, `analysis/`, `draft_sheets/`): scrape league history →
-  analyze tendencies → export `tool_data.json` (players + per-manager bidding profiles).
+- **Pipeline** (`draft_sheets/build_tool_data.py` + `scraping/scrape_league.py`): combine
+  the checked-in projection baseline with your league's scraped settings + managers to
+  export `tool_data.json`.
+- **League-accurate valuation:** `build_tool_data.py` doesn't just read the workbook's
+  pre-computed numbers — it **recomputes** each player's FPTS from your league's ESPN
+  scoring, then VBD and auction-$ from your exact roster (starters, FLEX, teams, budget).
+  Change any of those and the values move, so the board reflects *your* league, not the
+  workbook author's defaults. (Falls back to the sheet's own values if the workbook has no
+  raw stat sheets.)
 - **App** (`draft_app/`): FastAPI serves the console and a `/api/advise` endpoint that
   calls Claude with a strategy briefing + the live draft state.
+
+### Opponent tendencies — a known gap
+The per-manager bid model (`mult`/`conc`/`maxbuy`) starts **neutral** for every team. The
+modeling/simulation pipeline that calibrates these from years of ESPN auction history
+(`analysis/`, fed by the full `scraping/scrape.py`) is **not yet in this repo** — it carries
+real manager names and lives locally. Until it lands, opponents bid at projected value with
+no personality. **Seam:** if `config/tendencies.json` exists (`{"Manager Name": {"mult":
+{...}, "conc": N, "maxbuy": N}}`), `build_tool_data.py` uses it per manager — that's where
+calibrated output plugs in.
 
 ## Quickstart
 
@@ -47,20 +61,31 @@ draft_sheets/draft_tool_template.html  ─────────────�
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r draft_app/requirements.txt
 
-# 1) Provide data: generate tool_data.json from your own pipeline (see below),
-#    or drop your own draft_sheets/tool_data.json (see the shape in the template's /*DATA*/).
-# 2) Inject the data into the console template:
+# 1) Configure your league
+cp config/league.example.json config/league.json    # edit: league_id, season, your team name ("me")
+
+# 2) Build the data payload (tool_data.json).
+#    a) Recommended — scrape your ESPN league's real settings + managers first:
+cp config/env.example config/.env                    # add ESPN_SWID + ESPN_S2 cookies
+set -a && . config/.env && set +a
+python3 scraping/scrape_league.py
+#    b) Combine the checked-in projections with your league into tool_data.json:
+python3 draft_sheets/build_tool_data.py
+#    (No ESPN cookies yet? Skip 2a — build_tool_data.py falls back to the projection
+#     workbook's own roster/budget defaults + generic opponents, so you still get a
+#     running console. Re-run 2a + 2b once you have cookies.)
+
+# 3) Inject the data into the console template:
 python3 -c "tpl=open('draft_sheets/draft_tool_template.html').read(); \
 data=open('draft_sheets/tool_data.json').read(); \
 open('draft_app/static/index.html','w').write(tpl.replace('/*DATA*/', data))"
 cp draft_sheets/tool_data.json draft_app/static/data.json
 
-# 3) (Optional) enable the advisor — see Configuration below
-cp config/briefing.example.md config/briefing.md   # then customize it for your league
-cp config/env.example config/.env                  # then paste your ANTHROPIC_API_KEY
-set -a && . config/.env && set +a
+# 4) (Optional) enable the advisor — see Configuration below
+cp config/briefing.example.md config/briefing.md     # then customize it for your league
+# ANTHROPIC_API_KEY goes in config/.env too (already loaded in step 2a)
 
-# 4) Run
+# 5) Run
 cd draft_app && uvicorn server:app --host 127.0.0.1 --port 8000
 # open http://127.0.0.1:8000
 ```
@@ -74,9 +99,10 @@ panel is disabled.
 `.gitignore` keeps everything in it local except the `*.example` templates and its README.
 
 ```bash
-cp config/briefing.example.md config/briefing.md   # advisor prompt: your opponents + plan
-cp config/env.example          config/.env         # secrets: ANTHROPIC_API_KEY (+ ESPN cookies)
-set -a && . config/.env && set +a                  # load secrets into your shell
+cp config/league.example.json  config/league.json  # your league: id, season, your team ("me")
+cp config/briefing.example.md   config/briefing.md  # advisor prompt: your opponents + plan
+cp config/env.example           config/.env         # secrets: ANTHROPIC_API_KEY (+ ESPN cookies)
+set -a && . config/.env && set +a                   # load secrets into your shell
 ```
 
 See [`config/README.md`](config/README.md) for the full table. Generated league data
@@ -106,17 +132,19 @@ a private repo only** or set `STRATEGY_BRIEFING_PATH`). See `draft_app/README.md
 
 ## Refresh data for a new season
 
-Re-run `analysis/a20_export_tool_data.py` to regenerate `draft_sheets/tool_data.json`,
-then re-run the inject step above. Update projection sheets via
-`draft_sheets/extract_elboberto_master.py`.
+Drop the new season's Elboberto projection `.xlsm` into `draft_sheets/` (it's tracked as
+the universal baseline), point `config/league.json`'s `projections_xlsm` + `season` at it,
+re-run `scraping/scrape_league.py` (rosters/managers can change year to year), then
+`python3 draft_sheets/build_tool_data.py` and the inject step above.
 
 ## What's ignored
 
 `.gitignore` keeps league-specific and private files **local** (never pushed): scraped
-data (`scraping/raw/`), projection sheets (`draft_sheets/*.xlsm`, `*_projections.json`),
-generated payloads (`tool_data.json`, `static/index.html`, `static/data.json`), the
-**analysis pipeline** (`analysis/` — its scripts carry real manager names) and its
-outputs (`reports/`), private notes (`league/`), your whole `config/` directory (advisor
-`briefing.md` + secrets), and `scraping/.espn_auth.json`. The reusable app, scrapers, template, and docs are
-tracked. (If you'd rather publish the analysis too, sanitize the names in `analysis/lib.py`
-into a config first.)
+data (`scraping/raw/`), your live-edited projection copies (`draft_sheets/*.xlsx/*.csv`;
+the `*_elboberto.xlsm` baseline **is** tracked), generated payloads (`tool_data.json`,
+`static/index.html`, `static/data.json`), the **deep analysis pipeline** (`analysis/` —
+its scripts carry real manager names) and its outputs (`reports/`), private notes
+(`league/`), your whole `config/` directory (`league.json`, advisor `briefing.md` +
+secrets), and `scraping/.espn_auth.json`. The reusable app, scrapers, template, the
+bring-your-own pipeline (`build_tool_data.py`, `scrape_league.py`), and the projection
+baseline are tracked.

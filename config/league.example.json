@@ -1,0 +1,18 @@
+{
+  "_comment": "Copy this to config/league.json and fill it in for YOUR league. It is gitignored (league-specific). Used by scraping/scrape_league.py and draft_sheets/build_tool_data.py.",
+
+  "league_id": 0,
+  "_league_id": "Your ESPN league id (the number in the fantasy.espn.com/…/leagues/<THIS> URL). Leave 0 to AUTO-DISCOVER from your cookies (scrape_league.py picks it, or lists them if you're in more than one).",
+
+  "season": 2026,
+  "_season": "Draft season / year.",
+
+  "me": "",
+  "_me": "The team you are drafting. Leave blank to AUTO-DETECT (scrape_league.py matches your SWID to the league members). If set, must match a manager name from the scrape (ESPN owner display name). The console tracks THIS team's budget, roster and needs.",
+
+  "projections_xlsm": "draft_sheets/2026_FantasyFootball_0.3_elboberto.xlsm",
+  "_projections_xlsm": "Path to the checked-in Elboberto projections workbook (the universal baseline). build_tool_data.py reads its CheatSheet + LeagueInfo sheets.",
+
+  "my_mult": {"QB": 1.0, "RB": 1.0, "WR": 1.0, "TE": 1.0},
+  "_my_mult": "Optional positional tilt for YOUR max-bid model (how much you value each position vs. baseline). 1.0 = neutral. Raise a position to pay up for it. Leave neutral until you have a strategy."
+}

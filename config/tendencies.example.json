@@ -1,0 +1,12 @@
+{
+  "_comment": "OPTIONAL. Copy to config/tendencies.json to override the neutral opponent bid model per manager. build_tool_data.py uses it if present. This is the seam where the (local, not-yet-in-repo) calibration/simulation pipeline drops its output. Keys must match the manager names build_tool_data produces (ESPN owner display names). Omit a manager to leave them neutral.",
+
+  "Some Manager": {
+    "mult":   {"QB": 0.9, "RB": 1.3, "WR": 1.1, "TE": 1.0},
+    "_mult":  "Per-position aggressiveness vs. projected value. 1.0 = pays exactly worth; >1 = overpays.",
+    "conc":   80,
+    "_conc":  "Stars-and-scrubs tendency. >72 = boosts bids on elite players, fades mid-tier.",
+    "maxbuy": 120,
+    "_maxbuy": "Hard cap on any single bid (dollars)."
+  }
+}

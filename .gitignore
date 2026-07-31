@@ -6,6 +6,7 @@
 # ── Your local config (briefing, secrets) — keep everything except the templates/README ──
 /config/*
 !/config/*.example
+!/config/*.example.*
 !/config/README.md
 
 # ── Secrets & credentials ──
@@ -24,6 +25,8 @@ scraping/har_extracted/
 draft_sheets/*.xlsm
 draft_sheets/*.xlsx
 draft_sheets/*.csv
+# …but DO track the universal Elboberto baseline projections workbook (checked in):
+!draft_sheets/*_elboberto.xlsm
 draft_sheets/elboberto_projections.json
 draft_sheets/tool_data.json
 

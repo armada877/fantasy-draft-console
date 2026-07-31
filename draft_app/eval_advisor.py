@@ -22,7 +22,6 @@ DATA_PATH = os.path.join(HERE, "static", "data.json")
 API = "http://127.0.0.1:8000/api/advise"
 MODEL = "claude-haiku-4-5"
 CHECKPOINTS = [0, 12, 30, 60, 90]
-ME = "Harry Davis"
 SEED = 42
 
 QUESTION = (
@@ -39,6 +38,7 @@ STARTERS = DATA["starters"]
 FLEX = DATA["flex"]
 BENCH = DATA["bench"]
 BUDGET = DATA["budget"]
+ME = DATA.get("me") or DATA["managers"][0]["name"]  # the team we probe the advisor for
 
 
 def new_players():

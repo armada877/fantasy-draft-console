@@ -1,22 +1,21 @@
-# 2KDOME 2026 — Live Auction Draft Console (Railway webapp)
+# Live Auction Draft Console (Railway webapp)
 
-A live auction command console for the 2KDOME draft, deployable on Railway. It
-re-prices every remaining player in real time from the calibrated bidding
-tendencies of each opponent (who still has budget + a need), tracks your build
-against the target roster, and includes a **thin LLM advisor** (Claude Haiku 4.5)
-that predicts what the room will do — grounded in a strategy briefing distilled
-from the league analysis.
+A live auction command console for your draft, deployable on Railway. It
+re-prices every remaining player in real time from the bidding tendencies of each
+opponent (who still has budget + a need), tracks your build against your roster, and
+includes a **thin LLM advisor** (Claude Haiku 4.5) that predicts what the room will
+do — grounded in a strategy briefing you write for your league.
 
 ## What's here
 ```
 draft_app/
   server.py            FastAPI: serves the console + POST /api/advise (Anthropic Haiku)
-  static/index.html    the console (self-contained; 2026 player data embedded)
-  static/data.json     2026 projections + calibrated opponent tendencies
-  requirements.txt     fastapi, uvicorn, anthropic
+  static/index.html    the console (generated: template + injected data)
+  static/data.json     your projections + opponent tendencies (copy of tool_data.json)
+  requirements.txt     fastapi, uvicorn, anthropic (+ openpyxl for the pipeline)
   Procfile             web: uvicorn server:app --host 0.0.0.0 --port $PORT
   railway.json         Railway build/deploy config
-  .env.example         ANTHROPIC_API_KEY=...
+  .env.example         ANTHROPIC_API_KEY=... (local runs use config/.env instead)
 ```
 
 ## Run locally
@@ -54,8 +53,8 @@ railway up
   shows the live "Will go ≈" price and your Max; the Edge column (worth − predicted
   price) is muted until a genuine bargain opens, then it glows. Prices re-compute as
   opponents spend.
-- **Your build vs target:** tracks your roster against the anchor-RB target and the
-  ~$112 RB / $58 WR / $14 TE / $8 QB budget split.
+- **Your build vs target:** tracks your roster against your target split (positional
+  tilt comes from `my_mult` in `config/league.json`).
 - **Advisor (LLM):** ask "predict the room", "where's the value?", or a bid check — it
   reads the live board + budgets + each manager's tendencies. It also **auto-refreshes
   after every logged pick** (debounced), posting a "↻ Auto-read after last pick" with the
@@ -64,10 +63,10 @@ railway up
 - **Undo:** per-pick ✕ in the draft log, or "Undo last".
 
 ## Refreshing the data for a future year
-Re-run the analysis exporter (`analysis/a20_export_tool_data.py`) to regenerate
+Re-run `python3 draft_sheets/build_tool_data.py` to regenerate
 `draft_sheets/tool_data.json`, then re-inject into `static/index.html` and copy to
-`static/data.json`. Update the opponent briefing in `server.py:STRATEGY_BRIEFING`
-if tendencies change.
+`static/data.json` (see the root README Quickstart). Update the advisor briefing in
+`config/briefing.md` if your opponents/tendencies change.
 
 ## Model
 The advisor uses `claude-haiku-4-5` for low latency during a live draft (you asked

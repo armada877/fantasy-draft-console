@@ -6,14 +6,17 @@ each example to its real name and fill it in.
 
 | You create | From | What it is |
 |---|---|---|
+| `config/league.json` | `league.example.json` | Your league: `league_id`, `season`, your team name (`me`), the projections `.xlsm` path, and your positional tilt (`my_mult`). Read by `scraping/scrape_league.py` and `draft_sheets/build_tool_data.py`. |
 | `config/briefing.md` | `briefing.example.md` | The advisor's system prompt — your league's opponent tendencies, roster rules, and draft plan. The richer this is, the sharper the advisor. Loaded by `draft_app/server.py` at startup. |
 | `config/.env` | `env.example` | Secrets: `ANTHROPIC_API_KEY` (advisor) and, if you scrape, `ESPN_SWID` / `ESPN_S2`. |
+| `config/tendencies.json` *(optional)* | `tendencies.example.json` | Calibrated per-manager bid tendencies (`mult`/`conc`/`maxbuy`). Overrides the neutral default. This is the seam for the (local) analysis pipeline's output. Omit to keep all opponents neutral. |
 
 ## Setup
 
 ```bash
-cp config/briefing.example.md config/briefing.md   # then edit for your league
-cp config/env.example          config/.env         # then paste your key(s)
+cp config/league.example.json  config/league.json  # then edit for your league
+cp config/briefing.example.md   config/briefing.md  # then edit for your league
+cp config/env.example           config/.env         # then paste your key(s)
 ```
 
 Load the secrets into your shell before running the server or scrapers:

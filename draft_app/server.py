@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""2KDOME 2026 draft console — FastAPI backend.
+"""Live auction draft console — FastAPI backend.
 
 Serves the static console and a thin LLM advisor (/api/advise) powered by
 Claude Haiku 4.5 (fast, for live-draft latency). The advisor's system prompt is
@@ -49,7 +49,7 @@ def _load_briefing():
 STRATEGY_BRIEFING = _load_briefing()
 
 
-app = FastAPI(title="2KDOME Draft Console")
+app = FastAPI(title="Live Auction Draft Console")
 
 
 @app.post("/api/advise")

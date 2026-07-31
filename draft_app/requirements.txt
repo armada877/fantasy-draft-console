@@ -1,3 +1,5 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 anthropic>=0.40
+# used only by the data pipeline (draft_sheets/build_tool_data.py) to read the .xlsm projections
+openpyxl>=3.1
