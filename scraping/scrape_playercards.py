@@ -19,9 +19,22 @@ import urllib.request
 import urllib.error
 
 HERE = os.path.dirname(__file__)
+ROOT = os.path.dirname(os.path.abspath(HERE))
 RAW = os.path.join(HERE, "raw")
-LEAGUE_ID = 44252
-SEASONS = list(range(2018, 2026))   # transaction era
+
+
+def _league_config():
+    p = os.path.join(ROOT, "config", "league.json")
+    if os.path.exists(p):
+        with open(p) as f:
+            return json.load(f)
+    return {}
+
+
+_CFG = _league_config()
+LEAGUE_ID = _CFG.get("league_id") or 0          # your ESPN league id (config/league.json)
+# transaction era: playercards/trades exist from ~2018 on
+SEASONS = list(range(max(2018, int(_CFG.get("first_season", 2013))), int(_CFG.get("season", 2026))))
 BATCH = 120
 
 BASE_HEADERS = {
@@ -91,6 +104,8 @@ def playercard_url(season):
 
 
 def main():
+    if not LEAGUE_ID:
+        sys.exit("Set your ESPN league_id in config/league.json (copy config/league.example.json).")
     cookie = load_auth()
     only = set(int(x) for x in sys.argv[1:]) if len(sys.argv) > 1 else None
     for season in SEASONS:

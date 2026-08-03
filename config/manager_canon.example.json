@@ -1,0 +1,7 @@
+{
+  "_comment": "OPTIONAL, LOCAL. Copy to config/manager_canon.json (gitignored — it holds your leaguemates' real names). Maps an ESPN primary-owner GUID to the canonical manager name the analysis pipeline should use. You only need it to (a) collapse a manager who used more than one ESPN account across seasons into one identity, or (b) fix inconsistent scraped display names. Absent → analysis falls back to each team's scraped owner name (still works, just no cross-account merging). Find the GUIDs in scraping/raw/<season>/league_full.json under members[].id / teams[].owners[].",
+
+  "{11111111-1111-1111-1111-111111111111}": "Manager One",
+  "{22222222-2222-2222-2222-222222222222}": "Manager Two",
+  "{33333333-3333-3333-3333-333333333333}": "Manager Two"
+}

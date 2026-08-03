@@ -7,6 +7,9 @@
   "season": 2026,
   "_season": "Draft season / year.",
 
+  "first_season": 2013,
+  "_first_season": "Optional. Earliest season your league existed — only used by scraping/scrape.py (deep history) to know how far back to pull. Defaults to 2013.",
+
   "me": "",
   "_me": "The team you are drafting. Leave blank to AUTO-DETECT (scrape_league.py matches your SWID to the league members). If set, must match a manager name from the scrape (ESPN owner display name). The console tracks THIS team's budget, roster and needs.",
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EVAL harness for the 2KDOME draft advisor (/api/advise).
+"""EVAL harness for the draft advisor (/api/advise).
 
 Runs a deterministic, seeded mock auction driven by the managers' calibrated
 tendencies, then probes the live LLM advisor at fixed checkpoints with a

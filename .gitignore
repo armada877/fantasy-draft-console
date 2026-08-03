@@ -34,8 +34,9 @@ draft_sheets/tool_data.json
 draft_app/static/index.html
 draft_app/static/data.json
 
-# ── Analysis (scripts contain real manager names) & outputs & private notes ──
-analysis/
+# ── Analysis: the pipeline CODE is tracked; league-specific identity lives in
+#    config/ (manager_canon.json / league.json). Only the ANALYSIS OUTPUTS and
+#    private notes stay local. ──
 reports/
 league/
 draft_app/eval_report.md

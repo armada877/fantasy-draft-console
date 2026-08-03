@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Scrape all seasons of ESPN fantasy league 2KDOME (id 44252).
+"""Scrape all completed seasons of your ESPN fantasy league (deep history for the
+optional analysis pipeline). League id + current season come from config/league.json.
 
 Auth: needs the two ESPN session cookies, SWID and espn_s2. Provide them via
 either:
@@ -21,12 +22,24 @@ import time
 import urllib.request
 import urllib.error
 
-LEAGUE_ID = 44252
 HERE = os.path.dirname(__file__)
+ROOT = os.path.dirname(os.path.abspath(HERE))
 RAW = os.path.join(HERE, "raw")
 
-# League has run since 2013; current upcoming season is 2026.
-SEASONS = list(range(2013, 2026))  # 2013..2025 completed
+
+def _league_config():
+    p = os.path.join(ROOT, "config", "league.json")
+    if os.path.exists(p):
+        with open(p) as f:
+            return json.load(f)
+    return {}
+
+
+_CFG = _league_config()
+LEAGUE_ID = _CFG.get("league_id") or 0          # your ESPN league id (config/league.json)
+FIRST_SEASON = int(_CFG.get("first_season", 2013))   # earliest season your league existed
+# completed seasons: FIRST_SEASON .. season-1 (the current/upcoming season isn't drafted yet)
+SEASONS = list(range(FIRST_SEASON, int(_CFG.get("season", 2026))))
 
 # Views we want per league request. ESPN accepts repeated view params.
 LEAGUE_VIEWS = [
@@ -171,6 +184,9 @@ def save(season, name, data):
 
 
 def main():
+    if not LEAGUE_ID:
+        sys.exit("Set your ESPN league_id in config/league.json "
+                 "(copy config/league.example.json). scrape_league.py can auto-discover it.")
     swid, s2 = load_auth()
     cookie = f"SWID={swid}; espn_s2={s2}"
     only = None

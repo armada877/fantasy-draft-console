@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
-"""Extract all ESPN fantasy league (44252) JSON responses captured in the HAR.
+"""Extract all ESPN fantasy league JSON responses captured in a HAR file.
 
-The HAR was exported without cookies, but it still contains the full response
-bodies for the requests the browser made while logged in. This pulls every
-usable JSON body for our league / players out of the HAR and saves them,
-deduplicated, into scraping/har_extracted/ so nothing is lost.
+Fallback for when the API is unreachable: a HAR exported from the browser (even
+without cookies) still contains the full response bodies for the requests the
+browser made while logged in. This pulls every usable JSON body for your league /
+players out of the HAR and saves them, deduplicated, into scraping/har_extracted/.
+League id comes from config/league.json.
 """
 import json
 import os
 from urllib.parse import urlparse, parse_qs
 
-HAR = os.path.join(os.path.dirname(__file__), os.pardir, "fantasy.espn.com.har")
-OUT = os.path.join(os.path.dirname(__file__), "har_extracted")
-LEAGUE_ID = "44252"
+HERE = os.path.dirname(__file__)
+ROOT = os.path.dirname(os.path.abspath(HERE))
+HAR = os.path.join(HERE, os.pardir, "fantasy.espn.com.har")
+OUT = os.path.join(HERE, "har_extracted")
+
+
+def _league_id():
+    p = os.path.join(ROOT, "config", "league.json")
+    if os.path.exists(p):
+        with open(p) as f:
+            return str(json.load(f).get("league_id") or "")
+    return ""
+
+
+LEAGUE_ID = _league_id()
 
 
 def slug(url):
