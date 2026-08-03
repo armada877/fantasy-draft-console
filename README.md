@@ -27,12 +27,16 @@ and league-specific advisor briefing stay local (see [What's ignored](#whats-ign
 ```
 projections .xlsm  ─┐  (checked-in universal baseline)
                     ├─►  build_tool_data.py  ─►  draft_sheets/tool_data.json ─┐
-ESPN league (scrape)┘   (settings + managers)                                 │
-                                                                inject into template ▼
+ESPN league (scrape)┘   (settings + managers)         ▲                       │
+config/tendencies.json ───────────────────────────────┘        inject into template ▼
+  (optional calibrated opponents)                                                   │
 draft_sheets/draft_tool_template.html  ──────────────────►  draft_app/static/index.html
                                                                                     │
                               draft_app/server.py  (FastAPI: serves console + /api/advise)
 ```
+
+`pipeline.py` drives the whole thing — `python3 pipeline.py all` (or individual stages
+`scrape` / `calibrate` / `simulate` / `build` / `inject`).
 
 - **Pipeline** (`draft_sheets/build_tool_data.py` + `scraping/scrape_league.py`): combine
   the checked-in projection baseline with your league's scraped settings + managers to
@@ -46,14 +50,16 @@ draft_sheets/draft_tool_template.html  ─────────────�
 - **App** (`draft_app/`): FastAPI serves the console and a `/api/advise` endpoint that
   calls Claude with a strategy briefing + the live draft state.
 
-### Opponent tendencies — a known gap
-The per-manager bid model (`mult`/`conc`/`maxbuy`) starts **neutral** for every team. The
-modeling/simulation pipeline that calibrates these from years of ESPN auction history
-(`analysis/`, fed by the full `scraping/scrape.py`) is **not yet in this repo** — it carries
-real manager names and lives locally. Until it lands, opponents bid at projected value with
-no personality. **Seam:** if `config/tendencies.json` exists (`{"Manager Name": {"mult":
-{...}, "conc": N, "maxbuy": N}}`), `build_tool_data.py` uses it per manager — that's where
-calibrated output plugs in.
+### Opponent tendencies
+The per-manager bid model (`mult`/`conc`/`maxbuy`) is calibrated from auction history. **Seam:**
+`config/tendencies.json` (`{"Manager Name": {"mult": {...}, "conc": N, "maxbuy": N}}`) —
+`build_tool_data.py` merges it per manager; anyone unmatched stays neutral. Fill it either way:
+- **Have years of ESPN auction history + the local `analysis/` pipeline?** `python3 pipeline.py
+  calibrate` derives each manager's positional aggression, stars-and-scrubs tilt and max-buy
+  from `scraping/scrape.py`'s history and writes `tendencies.json` (keyed to your scraped
+  manager names). `pipeline.py all` runs it automatically when that history is present.
+- **Fresh league / no history?** Leave it out and every opponent bids at projected value, or
+  hand-write `config/tendencies.json` from what you know about your leaguemates.
 
 ## Quickstart
 
@@ -64,31 +70,30 @@ pip install -r draft_app/requirements.txt
 # 1) Configure your league
 cp config/league.example.json config/league.json    # edit: league_id, season, your team name ("me")
 
-# 2) Build the data payload (tool_data.json).
-#    a) Recommended — scrape your ESPN league's real settings + managers first:
+# 2) Scrape your ESPN league's real settings + managers (recommended)
 cp config/env.example config/.env                    # add ESPN_SWID + ESPN_S2 cookies
 set -a && . config/.env && set +a
-python3 scraping/scrape_league.py
-#    b) Combine the checked-in projections with your league into tool_data.json:
-python3 draft_sheets/build_tool_data.py
-#    (No ESPN cookies yet? Skip 2a — build_tool_data.py falls back to the projection
-#     workbook's own roster/budget defaults + generic opponents, so you still get a
-#     running console. Re-run 2a + 2b once you have cookies.)
+python3 pipeline.py scrape
 
-# 3) Inject the data into the console template:
-python3 -c "tpl=open('draft_sheets/draft_tool_template.html').read(); \
-data=open('draft_sheets/tool_data.json').read(); \
-open('draft_app/static/index.html','w').write(tpl.replace('/*DATA*/', data))"
-cp draft_sheets/tool_data.json draft_app/static/data.json
+# 3) Build the console data and inject it into the template — one command:
+python3 pipeline.py build inject
+#    No ESPN cookies yet? Skip step 2 — build falls back to the projection workbook's own
+#    roster/budget defaults + generic opponents, so you still get a running console.
+#    Have auction history + the local analysis pipeline? Use `all` to also calibrate opponents:
+#        python3 pipeline.py all
 
 # 4) (Optional) enable the advisor — see Configuration below
 cp config/briefing.example.md config/briefing.md     # then customize it for your league
-# ANTHROPIC_API_KEY goes in config/.env too (already loaded in step 2a)
+# ANTHROPIC_API_KEY goes in config/.env too (already loaded in step 2)
 
 # 5) Run
 cd draft_app && uvicorn server:app --host 127.0.0.1 --port 8000
 # open http://127.0.0.1:8000
 ```
+
+`pipeline.py` stages compose in any order you list them (`scrape calibrate simulate build
+inject`, or `all` for the local-refresh chain). It needs `openpyxl` from the requirements
+above — run it with the venv active (or `.venv/bin/python pipeline.py …`).
 
 Without `ANTHROPIC_API_KEY` the whole console still works client-side; only the Advisor
 panel is disabled.
@@ -134,8 +139,9 @@ a private repo only** or set `STRATEGY_BRIEFING_PATH`). See `draft_app/README.md
 
 Drop the new season's Elboberto projection `.xlsm` into `draft_sheets/` (it's tracked as
 the universal baseline), point `config/league.json`'s `projections_xlsm` + `season` at it,
-re-run `scraping/scrape_league.py` (rosters/managers can change year to year), then
-`python3 draft_sheets/build_tool_data.py` and the inject step above.
+then `python3 pipeline.py scrape build inject` (rosters/managers can change year to year, so
+re-scrape). If you keep calibrated opponents, use `python3 pipeline.py all` to refresh
+`tendencies.json` from the updated history too.
 
 ## What's ignored
 
@@ -146,5 +152,5 @@ the `*_elboberto.xlsm` baseline **is** tracked), generated payloads (`tool_data.
 its scripts carry real manager names) and its outputs (`reports/`), private notes
 (`league/`), your whole `config/` directory (`league.json`, advisor `briefing.md` +
 secrets), and `scraping/.espn_auth.json`. The reusable app, scrapers, template, the
-bring-your-own pipeline (`build_tool_data.py`, `scrape_league.py`), and the projection
+pipeline (`pipeline.py`, `build_tool_data.py`, `scrape_league.py`), and the projection
 baseline are tracked.

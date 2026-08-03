@@ -8,7 +8,12 @@ realized value work. These are the workbook's OWN computed values (not adjusted 
 particular league) — fine as a historical baseline.
 
 Output: draft_sheets/elboberto_projections.json
-  { "2026": [{name, pos, tier, worth, vbd, fpts}], "2025": [...], ... }
+  { "2026": [{name, pos, tier, proj_value, start_vbd, fpts}], "2025": [...], ... }
+
+Field names match what the analysis pipeline reads (a18_agent_auction / calibrate /
+research a7-a16 key on `proj_value` and `start_vbd`): read_cheatsheet's `worth`/`vbd`
+are the workbook's projected auction-$ and value-over-replacement, so they are emitted
+here as `proj_value`/`start_vbd` respectively.
 
 For a single current-year, league-adjusted console build you don't need this — run
 build_tool_data.py (which recomputes valuation from your scraped league).
@@ -34,7 +39,11 @@ def main():
         raise SystemExit("No *_elboberto.xlsm workbooks found in draft_sheets/.")
     out = {}
     for path in files:
-        players = read_cheatsheet(_wb(path))
+        # read_cheatsheet yields worth/vbd/fpts; rename to the keys the analysis
+        # pipeline consumes (proj_value/start_vbd) so this is its single source of truth.
+        players = [{"name": p["name"], "pos": p["pos"], "tier": p["tier"],
+                    "proj_value": p["worth"], "start_vbd": p["vbd"], "fpts": p["fpts"]}
+                   for p in read_cheatsheet(_wb(path))]
         y = year_of(path)
         out[y] = players
         counts = {}
