@@ -381,6 +381,7 @@ td.edge-cell{position:relative}
 .brow.bhead{padding:7px 14px}
 .bhead span{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
 .bsub{color:var(--faint);font-size:10.5px;margin-left:6px}
+.brow .bgot.open .btier{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.02em;color:var(--muted);background:var(--raise);border-radius:4px;padding:1px 4px;margin-right:4px;vertical-align:middle}
 #build-budget{padding:8px 14px}
 .bbudrow{display:grid;grid-template-columns:34px 92px 1fr;align-items:center;gap:9px;padding:2px 0;font-size:12px}
 .bbudrow .mono{color:var(--muted)}
@@ -1103,30 +1104,47 @@ function saveBudgetOvr(){lsSet("budget",BUDGET_OVR);}
 function targetOf(s){return (s.key in BUDGET_OVR)?BUDGET_OVR[s.key]:s.tgt;}
 function setSlotTarget(key,v){BUDGET_OVR[key]=Math.max(0,Math.round(+v||0));saveBudgetOvr();renderBuild();}
 function resetBudget(){BUDGET_OVR={};saveBudgetOvr();renderBuild();}
+// Budget targets = the BACKTEST-SUPPORTED plan (DATA.plan, from config/plan.json): "two
+// reliable studs + discipline" — one bellcow RB + one alpha WR you pay up for (the low-bust
+// tiers), value/darts elsewhere, walk from the busty mid-tier. This is a disciplined default
+// to enter with, NOT a validated-optimal allocation (no fixed budget validated out-of-sample —
+// see analysis/research/strategy_search.py). The row hints price it by will-go so you see what
+// each ceiling actually wins. No plan configured => a neutral worth-proportional frame.
 function buildTarget(){
   if(_BUILD)return _BUILD;
   const slots=[];
   Object.entries(STARTERS).forEach(([pos,n])=>{for(let i=0;i<n;i++)slots.push({pos,flex:false});});
   for(let i=0;i<FLEX;i++)slots.push({pos:null,flex:true});
-  const pool={};["QB","RB","WR","TE"].forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
-  const idx={QB:0,RB:0,WR:0,TE:0};
-  // reference player per slot: dedicated slots take the next-best of their pos…
-  slots.filter(s=>!s.flex).forEach(s=>{s.ref=pool[s.pos][idx[s.pos]++]||null;});
-  // …FLEX takes the best remaining RB/WR/TE (whichever is worth most)
-  slots.filter(s=>s.flex).forEach(s=>{
-    let best=null,bp=null;
-    ["RB","WR","TE"].forEach(p=>{const c=pool[p][idx[p]];if(c&&(!best||c.worth>best.worth)){best=c;bp=p;}});
-    if(best){idx[bp]++;s.ref=best;s.refpos=bp;}
-  });
   const cnt={};
   slots.forEach(s=>{
     if(s.flex){cnt.FLX=(cnt.FLX||0)+1;s.label="FLEX";s.key="FLX"+cnt.FLX;}
     else{cnt[s.pos]=(cnt[s.pos]||0)+1;s.label=(STARTERS[s.pos]>1)?s.pos+cnt[s.pos]:s.pos;s.key=s.label;}
   });
-  const spendable=Math.max(1,DATA.budget-BENCH);            // reserve ~$1 per bench slot
+  const plan=DATA.plan||null;
+  // neutral fallback reference (only used when no backtest plan is configured)
+  const pool={};["QB","RB","WR","TE"].forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
+  const idx={QB:0,RB:0,WR:0,TE:0};
+  slots.filter(s=>!s.flex).forEach(s=>{s.ref=pool[s.pos][idx[s.pos]++]||null;});
+  slots.filter(s=>s.flex).forEach(s=>{let b=null,bp=null;["RB","WR","TE"].forEach(p=>{const c=pool[p][idx[p]];if(c&&(!b||c.worth>b.worth)){b=c;bp=p;}});if(b){idx[bp]++;s.ref=b;}});
   const sumRef=slots.reduce((a,s)=>a+Math.max(1,s.ref?s.ref.worth:1),0)||1;
-  slots.forEach(s=>{s.tgt=Math.max(1,Math.round((s.ref?s.ref.worth:1)/sumRef*spendable));});
+  const spendable=Math.max(1,DATA.budget-BENCH);
+  slots.forEach(s=>{
+    s.tgt=(plan&&plan[s.key]!=null)?Math.max(0,Math.round(plan[s.key]))
+                                   :Math.max(1,Math.round((s.ref?s.ref.worth:1)/sumRef*spendable));
+  });
   _BUILD=slots;return slots;
+}
+// For an OPEN slot, the realistic tier/player to target for that budget — priced by what
+// the player will actually AUCTION FOR (predictPrice / "will go"), NOT worth. Picks the best
+// available player of the slot's position(s) whose will-go price fits the target, else the
+// cheapest available. Moves as the board clears.
+function slotHint(s,t){
+  const poss=s.flex?["RB","WR","TE"]:[s.pos];
+  const cands=avail().filter(p=>poss.includes(p.pos))
+                     .map(p=>({p,go:predictPrice(p)})).sort((a,b)=>b.go-a.go);
+  if(!cands.length)return null;
+  const pick=cands.find(x=>x.go<=t+1)||cands[cands.length-1];
+  return {tier:pick.p.tier,name:pick.p.name.split(" ").slice(-1)[0],go:Math.round(pick.go)};
 }
 function renderBuild(){
   const me=teams[ME];
@@ -1145,7 +1163,9 @@ function renderBuild(){
   });
   const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
   const benchFilled=benchPlayers.length, benchSpent=benchPlayers.reduce((a,p)=>a+p.price,0);
-  const benchTarget=("BN" in BUDGET_OVR)?BUDGET_OVR.BN:BENCH;   // default ~$1 per bench slot
+  const _slotSum=slots.reduce((a,s)=>a+targetOf(s),0);
+  const benchTarget=("BN" in BUDGET_OVR)?BUDGET_OVR.BN
+    :Math.max(0,DATA.budget-_slotSum);   // bench absorbs the remainder so the plan sums to budget
   // PACE: remaining budget vs what the still-open slots + remaining bench should cost
   const openStart=slots.filter(s=>!fill.get(s));
   const remainingPlan=openStart.reduce((a,s)=>a+targetOf(s),0)+Math.max(0,benchTarget-benchSpent);
@@ -1177,10 +1197,13 @@ function renderBuild(){
     const tgt=targetOf(s), got=fill.get(s);
     const status=got?(got.price<=tgt+2?"ok":"over"):"open";
     const dot=s.flex?`<span class="posdot" style="${NDOT}">FLX</span>`:`<span class="posdot p-${s.pos}">${s.pos}</span>`;
+    // for an open slot, the realistic tier/player you can WIN at this budget (priced by will-go)
+    const h=got?null:slotHint(s,tgt);
+    const openHint=h?`<span class="btier">${h.tier}</span> ${h.name} <span class="bsub">goes ~$${h.go}</span>`:"—";
     const div=document.createElement("div");div.className="brow";
     div.innerHTML=`<span class="blab">${dot}${s.flex?"Flex":s.label}</span>`+
       `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"></span>`+
-      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-tgt)}`:"—"}</span>`;
+      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-tgt)}`:openHint}</span>`;
     box.appendChild(div);
   });
   // ── bench (editable bench budget) ──

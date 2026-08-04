@@ -107,6 +107,17 @@ def load_tendencies():
     return {}
 
 
+def load_plan():
+    """Optional backtest-supported budget plan ({slotKey: $ ceiling}); None if absent.
+    The console seeds its per-slot bid ceilings from it. Not a validated-optimal allocation —
+    a disciplined default (see analysis/research/strategy_search.py). Absent => neutral frame."""
+    path = os.path.join(ROOT, "config", "plan.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+    return None
+
+
 # ───────────────────── projections: raw stats → FPTS → VBD → $ ─────────────────────
 def _wb(xlsm_path):
     if not os.path.exists(xlsm_path):
@@ -371,6 +382,11 @@ def main():
             "maxbuy": t.get("maxbuy", budget),
         })
 
+    plan = load_plan()
+    if plan:
+        print(f"  Budget plan from config/plan.json (bid ceilings): "
+              f"RB1 ${plan.get('RB1','?')} / WR1 ${plan.get('WR1','?')} / … (backtest-supported).")
+
     out = {
         "me": me,
         "league_name": league.get("league_name") or cfg.get("league_name"),
@@ -380,6 +396,7 @@ def main():
         "flex": league["flex"],
         "bench": league["bench"],
         "my_mult": {p: float(my_mult.get(p, 1.0)) for p in POSITIONS},
+        "plan": plan,          # per-slot bid ceilings (backtest-supported plan); None => neutral frame
         "players": players,
         "managers": managers,
     }

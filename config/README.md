@@ -11,6 +11,7 @@ each example to its real name and fill it in.
 | `config/.env` | `env.example` | Secrets: `ANTHROPIC_API_KEY` (advisor) and, if you scrape, `ESPN_SWID` / `ESPN_S2`. |
 | `config/tendencies.json` *(optional)* | `tendencies.example.json` | Calibrated per-manager bid tendencies (`mult`/`conc`/`maxbuy`). Overrides the neutral default. Produced by `analysis/calibrate.py` (`pipeline.py calibrate`). Omit to keep all opponents neutral. |
 | `config/manager_canon.json` *(optional)* | `manager_canon.example.json` | Maps ESPN owner GUID → canonical manager name for the local `analysis/` pipeline — real leaguemate names, so it stays local. Only needed to merge a manager's multiple ESPN accounts or fix inconsistent scraped names; absent → analysis uses scraped owner names. |
+| `config/plan.json` *(optional)* | `plan.example.json` | Per-slot budget (bid ceilings) the console seeds from — a disciplined default to enter with, not a validated-optimal allocation. Absent → neutral frame. Vet any plan with `analysis/research/strategy_search.py` before trusting it. |
 
 ## Setup
 

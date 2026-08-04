@@ -1,0 +1,13 @@
+{
+  "_comment": "OPTIONAL. Copy to config/plan.json to seed the console's per-slot budget (bid ceilings). It's a DISCIPLINED DEFAULT to enter the draft with, not a validated-optimal allocation — no fixed budget validated out-of-sample (see analysis/research/strategy_search.py). Keys are the console's roster slots; values are $ you'd pay UP TO for that slot. The console prices each ceiling by 'will-go' so you see the tier it actually wins, and every slot stays editable live. Omit this file to fall back to a neutral worth-proportional frame. Slots must sum to your budget (bench absorbs the remainder). This example encodes 'two reliable studs + discipline': pay up for one bellcow RB + one alpha WR (the low-bust tiers), value/darts elsewhere, walk from the busty mid-tier.",
+
+  "RB1": 80,
+  "WR1": 58,
+  "RB2": 15,
+  "WR2": 12,
+  "TE": 12,
+  "QB": 8,
+  "FLX1": 6,
+  "FLX2": 4,
+  "BN": 5
+}
