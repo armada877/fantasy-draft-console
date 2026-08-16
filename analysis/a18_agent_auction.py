@@ -44,7 +44,10 @@ def build_agents():
     for yr in [2022, 2023, 2024, 2025]:
         pl = proj_lookup(yr)
         for p in lib.draft_picks(yr):
-            if p["is_keeper"] or p["cost"] < 1:
+            # Keeper prices come from a house rule, and an RFA price is set by a retention
+            # right rather than a free bid — the incumbent matches a number the field set.
+            # Neither reveals willingness to pay, so neither belongs in the multipliers.
+            if p["is_keeper"] or p.get("phase") == "rfa" or p["cost"] < 1:
                 continue
             e = pl.get(norm(p["name"]))
             if e and (e["proj_value"] or 0) >= 3:
@@ -52,10 +55,27 @@ def build_agents():
                 proj_sum[p["manager"]][p["pos"]] += e["proj_value"]
                 ncount[p["manager"]][p["pos"]] += 1
     top3 = defaultdict(list); maxbuy = defaultdict(list)
+    # RFA behaviour, tracked separately: how much of a manager's draft budget goes in the
+    # restricted round, and how often they actually retain the player they nominated.
+    rfa_spend = defaultdict(float); all_spend = defaultdict(float)
+    rfa_nom = defaultdict(int); rfa_kept = defaultdict(int)
     for yr in range(2017, 2026):
         byteam = defaultdict(list)
         for p in lib.draft_picks(yr):
             byteam[p["teamId"]].append(p)
+            all_spend[p["manager"]] += p["cost"]
+            if p.get("phase") != "rfa":
+                continue
+            # spend is credited to the WINNER; the nomination to the incumbent, so a
+            # poached RFA counts against the incumbent's retention rate
+            rfa_spend[p["manager"]] += p["cost"]
+            nt = p.get("nominatingTeamId")
+            if nt is None:
+                continue
+            nom = lib.manager(yr, nt)
+            rfa_nom[nom] += 1
+            if nom == p["manager"]:
+                rfa_kept[nom] += 1
         for tid, ps in byteam.items():
             m = lib.manager(yr, tid)
             costs = sorted((x["cost"] for x in ps), reverse=True)
@@ -73,7 +93,12 @@ def build_agents():
                 mult[pos] = LEAGUE_MULT[pos]
         agents[m] = {"mult": mult,
                      "conc": statistics.mean(top3[m]),
-                     "maxbuy": max(maxbuy[m]) * 1.15 if maxbuy[m] else 100}
+                     "maxbuy": max(maxbuy[m]) * 1.15 if maxbuy[m] else 100,
+                     # 0.0 for every manager when the league has no RFA round
+                     "rfa_share": (100.0 * rfa_spend[m] / all_spend[m]
+                                   if all_spend.get(m) else 0.0),
+                     "rfa_retain": (100.0 * rfa_kept[m] / rfa_nom[m]
+                                    if rfa_nom.get(m) else 0.0)}
     return agents
 
 

@@ -38,6 +38,14 @@ ALL_SEASONS = list(range(2013, 2026))
 KEEPER_INFLATION = int(_load_config("league.json").get("keeper_inflation", 0) or 0)
 _KEEPER_WARNED = set()
 
+# Some leagues run a restricted-free-agent round before the open auction: each manager's
+# FIRST nomination must come from their prior roster, and the incumbent may retain at
+# whatever price the bidding sets. Those dollars aren't a free-market choice the way an
+# open bid is — a retention is matching a price others set — so calibration has to tell
+# the two apart. League-specific, so it is opt-in; leagues without the rule must not have
+# their first nominations relabelled.
+RFA_ROUND = bool(_load_config("league.json").get("rfa_round", False))
+
 POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST",
        7: "OP", 9: "DL", 10: "LB", 11: "DB", 12: "DP", 13: "DT", 14: "DE"}
 
@@ -279,7 +287,31 @@ def draft_picks(season):
             "overall": p.get("overallPickNumber"),
             "nominatingTeamId": p.get("nominatingTeamId"),
         })
+    _tag_phases(out)
     return out
+
+
+def _tag_phases(picks):
+    """Tag every pick 'keeper' | 'rfa' | 'open' (in place).
+
+    ESPN emits keepers as ordinary pick rows with nominatingTeamId 0 — they are pre-draft
+    roster assignments, not auction events, so they lead the board without anyone having
+    nominated them. When RFA_ROUND is on, each team's FIRST nomination of the live auction
+    is its restricted free agent. Note the tag follows the NOMINATING team (the incumbent),
+    while `manager` is whoever actually won the player — the two differ exactly when an
+    RFA is poached rather than retained.
+    """
+    nominated = set()
+    for p in sorted(picks, key=lambda x: (x.get("overall") is None, x.get("overall") or 0)):
+        if p["is_keeper"]:
+            p["phase"] = "keeper"
+            continue
+        nt = p.get("nominatingTeamId")
+        if RFA_ROUND and nt is not None and nt not in nominated:
+            nominated.add(nt)
+            p["phase"] = "rfa"
+        else:
+            p["phase"] = "open"
 
 
 def draft_type(season):

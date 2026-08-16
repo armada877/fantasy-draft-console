@@ -87,6 +87,12 @@ def main():
         }
         for name, a in agents.items()
     }
+    # RFA fields only exist for leagues that run the round, so tendencies.json stays
+    # byte-identical for everyone else.
+    if a18.lib.RFA_ROUND:
+        for name, a in agents.items():
+            tendencies[name]["rfa_share"] = round(a.get("rfa_share", 0.0))
+            tendencies[name]["rfa_retain"] = round(a.get("rfa_retain", 0.0))
 
     # Emit under the current league's console names too, so returning managers whose
     # scraped display name differs from their calibration identity still match.
@@ -117,12 +123,20 @@ def main():
     if len(seasons) < 3:
         print("   THIN HISTORY: with fewer than 3 seasons these tendencies are noisy — "
               "treat conc/maxbuy as indicative and expect most mults to be league-mean.")
-    print(f"   {'manager':20}{'QB':>6}{'RB':>6}{'WR':>6}{'TE':>6}{'conc%':>7}{'maxbuy':>8}")
+    rfa = a18.lib.RFA_ROUND
+    hdr = f"   {'manager':20}{'QB':>6}{'RB':>6}{'WR':>6}{'TE':>6}{'conc%':>7}{'maxbuy':>8}"
+    print(hdr + (f"{'rfa$%':>7}{'keep%':>7}" if rfa else ""))
     for name in sorted(tendencies, key=lambda m: -tendencies[m]["mult"]["RB"]):
         t = tendencies[name]
         m = t["mult"]
-        print(f"   {name:20}{m['QB']:>6.2f}{m['RB']:>6.2f}{m['WR']:>6.2f}{m['TE']:>6.2f}"
-              f"{t['conc']:>7}{t['maxbuy']:>8}")
+        row = (f"   {name:20}{m['QB']:>6.2f}{m['RB']:>6.2f}{m['WR']:>6.2f}{m['TE']:>6.2f}"
+               f"{t['conc']:>7}{t['maxbuy']:>8}")
+        print(row + (f"{t['rfa_share']:>7}{t['rfa_retain']:>7}" if rfa else ""))
+    if rfa:
+        print("   rfa$% = share of draft budget spent in the restricted round; "
+              "keep% = how often they retained the player they nominated.")
+        print("   Multipliers EXCLUDE rfa picks (a retention matches a price the field "
+              "set, so it is not a willingness-to-pay signal).")
     if aliases:
         print("\n   aliased to current-league scrape names: "
               + ", ".join(f"{c} = {k}" for k, c in aliases.items()))
