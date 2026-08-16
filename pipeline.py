@@ -27,6 +27,7 @@ runs `all` fine — you just get neutral opponents until you have auction histor
 """
 import argparse
 import glob
+import json
 import os
 import subprocess
 import sys
@@ -58,10 +59,28 @@ def run(*cmd):
 
 
 def have_calibration():
-    """True when the (local) calibration pipeline can run: its script + scraped history."""
+    """True when the (local) calibration pipeline can run: its script + scraped auction
+    history — meaning at least one scraped season that actually contains draft picks.
+
+    The mere existence of a league_full.json is NOT enough: every fresh-setup scraper
+    (scrape_league.py, scrape_sleeper.py) writes settings + managers for the CURRENT
+    season with no draftDetail, while build_agents() reads PRIOR seasons' picks. Checking
+    only for the file made `all` and `calibrate` die with FileNotFoundError on a
+    brand-new league, instead of skipping calibration the way the README promises.
+    """
     if not os.path.exists(os.path.join(ROOT, "analysis", "calibrate.py")):
         return False
-    return bool(glob.glob(os.path.join(ROOT, "scraping", "raw", "*", "league_full.json")))
+    for path in glob.glob(os.path.join(ROOT, "scraping", "raw", "*", "league_full.json")):
+        try:
+            with open(path, encoding="utf-8") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, list):
+            d = d[0] if d else {}
+        if (d.get("draftDetail") or {}).get("picks"):
+            return True
+    return False
 
 
 # ───────────────────────────────── stages ─────────────────────────────────
@@ -73,8 +92,9 @@ def scrape(args):
 
 def calibrate(args):
     if not have_calibration():
-        print("• calibrate: skipped — no local analysis/ pipeline or no scraped history "
-              "(scraping/raw/*/league_full.json). Opponents stay neutral.")
+        print("• calibrate: skipped — no local analysis/ pipeline, or no scraped season "
+              "with draft picks (scraping/raw/*/league_full.json → draftDetail.picks). "
+              "Opponents stay neutral.")
         return
     # projections cache the calibration reads (regenerated from the tracked workbooks)
     run(PY, os.path.join(ROOT, "draft_sheets", "extract_elboberto_master.py"))
