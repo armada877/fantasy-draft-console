@@ -38,14 +38,32 @@ _LOAD_CACHE = {}
 
 
 def load(season):
-    """Return the league_full object (unwrapping the historical list form)."""
+    """Return the league_full object (unwrapping the historical list form).
+
+    A season with no scrape yields {} rather than raising: history is routinely partial
+    — a league that changed platforms mid-life, or a fresh setup holding only the current
+    season. Every caller reads the result with .get(), so the seasons you DO have still
+    contribute and build_agents() no longer dies on the first gap in its hardcoded range.
+    Use available_seasons() to report what actually got used.
+    """
     if season in _LOAD_CACHE:
         return _LOAD_CACHE[season]
-    d = json.load(open(os.path.join(RAW, str(season), "league_full.json")))
+    path = os.path.join(RAW, str(season), "league_full.json")
+    if not os.path.exists(path):
+        _LOAD_CACHE[season] = {}
+        return _LOAD_CACHE[season]
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
     if isinstance(d, list):
         d = d[0] if d else {}
     _LOAD_CACHE[season] = d
     return d
+
+
+def available_seasons(seasons=None):
+    """Which of `seasons` (default ALL_SEASONS) actually have scraped draft picks."""
+    return [yr for yr in (seasons or ALL_SEASONS)
+            if (load(yr).get("draftDetail") or {}).get("picks")]
 
 
 def load_players_raw(season):

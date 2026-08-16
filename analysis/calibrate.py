@@ -70,6 +70,7 @@ def current_league_aliases(season):
 
 
 def main():
+    seasons = a18.lib.available_seasons()
     agents = a18.build_agents()
     if not agents:
         raise SystemExit(
@@ -102,6 +103,20 @@ def main():
     # audit table — same view a18 prints, so a calibrate run is self-documenting
     print(f"Calibrated {len(tendencies)} managers from auction history "
           f"(league fallback mult {a18.LEAGUE_MULT}).")
+    # Say which seasons actually contributed. build_agents() reads fixed season ranges and
+    # load() now tolerates gaps, so a partial scrape calibrates quietly off less than you
+    # might assume — and a per-position multiplier needs >=3 priced picks or it falls back
+    # to the league mean. Without this line a one-season model looks like a nine-season one.
+    print(f"   seasons used: {', '.join(map(str, seasons)) or 'NONE'}")
+    fallbacks = sum(1 for t in tendencies.values() for p in POS
+                    if abs(t["mult"][p] - round(a18.LEAGUE_MULT[p], 2)) < 0.005)
+    total = len(tendencies) * len(POS)
+    if fallbacks:
+        print(f"   {fallbacks}/{total} positional multipliers fell back to the league mean "
+              "(too few priced picks for that manager+position).")
+    if len(seasons) < 3:
+        print("   THIN HISTORY: with fewer than 3 seasons these tendencies are noisy — "
+              "treat conc/maxbuy as indicative and expect most mults to be league-mean.")
     print(f"   {'manager':20}{'QB':>6}{'RB':>6}{'WR':>6}{'TE':>6}{'conc%':>7}{'maxbuy':>8}")
     for name in sorted(tendencies, key=lambda m: -tendencies[m]["mult"]["RB"]):
         t = tendencies[name]
