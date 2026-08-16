@@ -40,7 +40,10 @@ draft_sheets/draft_tool_template.html  ─────────────�
 
 - **Pipeline** (`draft_sheets/build_tool_data.py` + `scraping/scrape_league.py`): combine
   the checked-in projection baseline with your league's scraped settings + managers to
-  export `tool_data.json`.
+  export `tool_data.json`. **Sleeper leagues** use `scraping/scrape_sleeper.py` instead
+  (no auth) — it adapts Sleeper's API into the same ESPN-shaped `league_full.json`, so
+  everything downstream is platform-agnostic. Opponent calibration is ESPN-only for now;
+  see [`scraping/README.md`](scraping/README.md).
 - **League-accurate valuation:** `build_tool_data.py` doesn't just read the workbook's
   pre-computed numbers — it **recomputes** each player's FPTS from your league's ESPN
   scoring, then VBD and auction-$ from your exact roster (starters, FLEX, teams, budget).
@@ -70,10 +73,13 @@ pip install -r draft_app/requirements.txt
 # 1) Configure your league
 cp config/league.example.json config/league.json    # edit: league_id, season, your team name ("me")
 
-# 2) Scrape your ESPN league's real settings + managers (recommended)
+# 2) Scrape your league's real settings + managers (recommended)
+#    ESPN:
 cp config/env.example config/.env                    # add ESPN_SWID + ESPN_S2 cookies
 set -a && . config/.env && set +a
 python3 pipeline.py scrape
+#    Sleeper: no cookies needed — set "sleeper_league_id" in config/league.json, then:
+python3 scraping/scrape_sleeper.py
 
 # 3) Build the console data and inject it into the template — one command:
 python3 pipeline.py build inject

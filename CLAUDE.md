@@ -18,6 +18,7 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `pipeline.py` | **Single entry point** — `scrape/calibrate/simulate/build/inject/all` | yes |
 | `draft_sheets/build_tool_data.py` | Console builder — projections + scrape → `tool_data.json` | yes |
 | `scraping/scrape_league.py` | Fresh-setup ESPN scraper (settings + managers, config-driven) | yes |
+| `scraping/scrape_sleeper.py` | Fresh-setup **Sleeper** scraper — adapts to ESPN-shaped `league_full.json`, no auth | yes |
 | `draft_sheets/*_elboberto.xlsm` | Universal projection baseline (checked in) | yes |
 | `config/league.json` | Your league: id, season, `me`, projections path, `my_mult` | no (local) |
 | `config/league.example.json` | League config template | yes |
