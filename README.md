@@ -90,7 +90,8 @@ python3 pipeline.py build inject
 
 # 4) (Optional) enable the advisor — see Configuration below
 cp config/briefing.example.md config/briefing.md     # then customize it for your league
-# ANTHROPIC_API_KEY goes in config/.env too (already loaded in step 2)
+# Put ANTHROPIC_API_KEY in config/.env — the server loads that file itself at startup,
+# so no shell sourcing is needed (and it works the same on Windows). Restart to pick up edits.
 
 # 5) Run
 cd draft_app && uvicorn server:app --host 127.0.0.1 --port 8000
@@ -113,7 +114,7 @@ panel is disabled.
 cp config/league.example.json  config/league.json  # your league: id, season, your team ("me")
 cp config/briefing.example.md   config/briefing.md  # advisor prompt: your opponents + plan
 cp config/env.example           config/.env         # secrets: ANTHROPIC_API_KEY (+ ESPN cookies)
-set -a && . config/.env && set +a                   # load secrets into your shell
+set -a && . config/.env && set +a                   # only needed for the SCRAPERS' env vars
 ```
 
 See [`config/README.md`](config/README.md) for the full table. Generated league data
