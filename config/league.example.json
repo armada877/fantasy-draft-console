@@ -16,6 +16,9 @@
   "first_season": 2013,
   "_first_season": "Optional. Earliest season your league existed — only used by scraping/scrape.py (deep history) to know how far back to pull. Defaults to 2013.",
 
+  "keeper_inflation": 0,
+  "_keeper_inflation": "Optional, ANALYSIS ONLY. ESPN has no native keeper-cost field, so some leagues record a keeper at (true cost + N) as a house convention. Set N here and calibration subtracts it back off. Leave 0 — the default — if your league prices keepers directly (e.g. 'last year's cost + $5'), because then the recorded bid IS the true cost and subtracting anything drives keepers to $0 and skews concentration/max-buy. Sanity check: if per-team raw draft spend already reconciles to the auction budget, you want 0.",
+
   "me": "",
   "_me": "The team you are drafting. Leave blank to AUTO-DETECT (scrape_league.py matches your SWID to the league members). If set, must match a manager name from the scrape (ESPN owner display name). The console tracks THIS team's budget, roster and needs.",
 

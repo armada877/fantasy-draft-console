@@ -28,7 +28,15 @@ def _load_config(name):
 
 AUCTION_SEASONS = list(range(2017, 2026))   # 2017..2025
 ALL_SEASONS = list(range(2013, 2026))
-KEEPER_INFLATION = 100
+
+# Some leagues record a keeper's price INFLATED by a flat amount (ESPN has no native
+# keeper-cost field, so it's a house convention: bid = true cost + N). Where that is the
+# rule, N must come back off or keeper spend is overstated. Where it is NOT the rule —
+# ESPN records true cost, and raw bids already reconcile to the budget — subtracting
+# anything drives keepers to $0 and quietly skews concentration and max-buy.
+# League-specific, so it lives in config. Default 0 = trust the recorded bid.
+KEEPER_INFLATION = int(_load_config("league.json").get("keeper_inflation", 0) or 0)
+_KEEPER_WARNED = set()
 
 POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST",
        7: "OP", 9: "DL", 10: "LB", 11: "DB", 12: "DP", 13: "DT", 14: "DE"}
@@ -235,14 +243,24 @@ def draft_picks(season):
     out = []
     for p in picks:
         raw = p.get("bidAmount", 0) or 0
-        # Keeper is the ESPN `keeper` flag ONLY (exactly 1/team in 2020-24).
-        # In a $300 budget, non-keeper studs legitimately exceed $100, so a
-        # bid>=100 heuristic would corrupt real spend. Real keeper cost is the
-        # displayed bid minus the flat $100 inflation.
+        # Keeper is the ESPN `keeper` flag ONLY. A bid>=100 heuristic would corrupt real
+        # spend, since in a large budget non-keeper studs legitimately clear $100.
+        # Whether the recorded bid needs deflating is a house rule -> KEEPER_INFLATION
+        # (config). Leagues that price keepers directly (e.g. "last year's cost + $5")
+        # record TRUE cost and must leave it at 0.
         is_keeper = bool(p.get("keeper"))
         cost = raw - KEEPER_INFLATION if is_keeper else raw
         if cost < 0:
             cost = 0
+        # A keeper whose whole price vanishes means the configured inflation does not
+        # match this league's convention. Silent otherwise: costs just collapse to $0 and
+        # skew concentration / max-buy with nothing to show for it.
+        if is_keeper and KEEPER_INFLATION and cost == 0 and season not in _KEEPER_WARNED:
+            _KEEPER_WARNED.add(season)
+            print(f"  ! {season}: keeper bid ${raw} <= keeper_inflation "
+                  f"${KEEPER_INFLATION}, so its cost floors at $0. If your league prices "
+                  "keepers directly rather than inflating the recorded bid, set "
+                  '"keeper_inflation": 0 in config/league.json.')
         pid = p.get("playerId")
         tid = p.get("teamId")
         prim = to.get(tid, {}).get("owner")
