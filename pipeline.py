@@ -31,6 +31,14 @@ import os
 import subprocess
 import sys
 
+# Windows consoles default to a legacy codepage (cp1252) that cannot encode the status
+# glyphs this pipeline and its stage scripts print (✓ ✗ • × →). Force UTF-8 on our own
+# streams, and via the environment on every child stage, so output is not locale-dependent.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
 STAGES = ("scrape", "calibrate", "simulate", "build", "inject", "all")
@@ -89,14 +97,16 @@ def inject(args):
     """Golden rule: the served console is generated — template + injected data, never hand-edited."""
     if not os.path.exists(TOOL_DATA):
         sys.exit(f"inject: {os.path.relpath(TOOL_DATA, ROOT)} missing — run `build` first.")
-    tpl = open(TEMPLATE).read()
-    data = open(TOOL_DATA).read()
+    # encoding is explicit: the template carries non-ASCII glyphs (◎ ☾ ⊘, ·) and Python
+    # defaults to the locale codec on Windows (cp1252), which cannot read or write them.
+    tpl = open(TEMPLATE, encoding="utf-8").read()
+    data = open(TOOL_DATA, encoding="utf-8").read()
     if "/*DATA*/" not in tpl:
         sys.exit("inject: template is missing the /*DATA*/ marker.")
     os.makedirs(STATIC, exist_ok=True)
-    with open(os.path.join(STATIC, "index.html"), "w") as f:
+    with open(os.path.join(STATIC, "index.html"), "w", encoding="utf-8") as f:
         f.write(tpl.replace("/*DATA*/", data))
-    with open(os.path.join(STATIC, "data.json"), "w") as f:
+    with open(os.path.join(STATIC, "data.json"), "w", encoding="utf-8") as f:
         f.write(data)
     print(f"• inject: wrote {os.path.relpath(os.path.join(STATIC, 'index.html'), ROOT)} "
           f"and static/data.json ({len(data):,} bytes of data)")
