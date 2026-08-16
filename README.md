@@ -89,7 +89,7 @@ python3 pipeline.py scrape build inject             # or `all` when you have auc
 python3 -m fftiers.espn_cli sync-league <league_id> # writes leagues/<key>.yaml from ESPN
 python3 pipeline.py week                            # pull + boards + render
 
-# 4) Run
+# 4) Run (the server loads config/.env at startup; restart to pick up edits)
 cd draft_app && uvicorn server:app --host 127.0.0.1 --port 8000
 # open http://127.0.0.1:8000  (/ → manage; /draft for the auction console)
 ```
