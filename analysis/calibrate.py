@@ -113,7 +113,20 @@ def main():
     # load() now tolerates gaps, so a partial scrape calibrates quietly off less than you
     # might assume — and a per-position multiplier needs >=3 priced picks or it falls back
     # to the league mean. Without this line a one-season model looks like a nine-season one.
-    print(f"   seasons used: {', '.join(map(str, seasons)) or 'NONE'}")
+    ms = getattr(a18.build_agents, "mult_seasons", seasons)
+    cs = getattr(a18.build_agents, "conc_seasons", seasons)
+    print(f"   seasons — multipliers: {', '.join(map(str, ms)) or 'NONE'}")
+    print(f"             conc/maxbuy: {', '.join(map(str, cs)) or 'NONE'}")
+    unpriced = [y for y in a18.lib.ALL_SEASONS
+                if (a18.lib.load(y).get('draftDetail') or {}).get('picks')
+                and not a18.lib.has_auction_prices(y)]
+    if unpriced:
+        print(f"   skipped (drafted offline, no bid amounts): "
+              f"{', '.join(map(str, unpriced))}")
+    gap = [y for y in cs if y not in ms]
+    if gap:
+        print(f"   note: {', '.join(map(str, gap))} inform concentration/max-buy only — "
+              "multipliers need a projection workbook for the season.")
     fallbacks = sum(1 for t in tendencies.values() for p in POS
                     if abs(t["mult"][p] - round(a18.LEAGUE_MULT[p], 2)) < 0.005)
     total = len(tendencies) * len(POS)

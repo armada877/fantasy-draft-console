@@ -77,9 +77,25 @@ def load(season):
 
 
 def available_seasons(seasons=None):
-    """Which of `seasons` (default ALL_SEASONS) actually have scraped draft picks."""
-    return [yr for yr in (seasons or ALL_SEASONS)
-            if (load(yr).get("draftDetail") or {}).get("picks")]
+    """Which of `seasons` (default ALL_SEASONS) contribute usable auction history."""
+    return [yr for yr in (seasons or ALL_SEASONS) if has_auction_prices(yr)]
+
+
+_PRICED_CACHE = {}
+
+
+def has_auction_prices(season):
+    """True when the season's draft actually carries bid amounts.
+
+    A draft run OFFLINE — conducted outside ESPN, or on another platform with only the
+    resulting rosters typed back in — still emits a full set of pick rows, every one with
+    bidAmount 0. Such a season must never reach calibration: concentration divides by
+    total spend, so an all-zero season yields a 0% top-3 share for every team and drags
+    each manager's mean concentration down toward zero. It looks like data and is not.
+    """
+    if season not in _PRICED_CACHE:
+        _PRICED_CACHE[season] = any(p["cost"] > 0 for p in draft_picks(season))
+    return _PRICED_CACHE[season]
 
 
 def load_players_raw(season):

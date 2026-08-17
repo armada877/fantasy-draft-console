@@ -41,7 +41,12 @@ def build_agents():
     paid_sum = defaultdict(lambda: defaultdict(float))
     proj_sum = defaultdict(lambda: defaultdict(float))
     ncount = defaultdict(lambda: defaultdict(int))
-    for yr in [2022, 2023, 2024, 2025]:
+    # Multipliers compare paid vs PROJECTED value, so a season needs both real bids and a
+    # projection workbook. Only the tracked *_elboberto.xlsm years qualify — older priced
+    # seasons cannot contribute here however much history exists.
+    mult_seasons = [yr for yr in sorted(int(y) for y in PROJ)
+                    if lib.has_auction_prices(yr)]
+    for yr in mult_seasons:
         pl = proj_lookup(yr)
         for p in lib.draft_picks(yr):
             # Keeper prices come from a house rule, and an RFA price is set by a retention
@@ -59,7 +64,10 @@ def build_agents():
     # restricted round, and how often they actually retain the player they nominated.
     rfa_spend = defaultdict(float); all_spend = defaultdict(float)
     rfa_nom = defaultdict(int); rfa_kept = defaultdict(int)
-    for yr in range(2017, 2026):
+    # Concentration and max-buy are derived from costs alone — no projections needed — so
+    # they can use EVERY priced season on disk rather than a fixed recent window.
+    conc_seasons = lib.available_seasons()
+    for yr in conc_seasons:
         byteam = defaultdict(list)
         for p in lib.draft_picks(yr):
             byteam[p["teamId"]].append(p)
@@ -99,6 +107,10 @@ def build_agents():
                                    if all_spend.get(m) else 0.0),
                      "rfa_retain": (100.0 * rfa_kept[m] / rfa_nom[m]
                                     if rfa_nom.get(m) else 0.0)}
+    # the two windows differ (multipliers are gated on projection availability), so report
+    # both rather than a single "seasons used" that overstates one of them
+    build_agents.mult_seasons = mult_seasons
+    build_agents.conc_seasons = conc_seasons
     return agents
 
 
