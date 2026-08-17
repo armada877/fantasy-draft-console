@@ -121,6 +121,16 @@ See [`config/README.md`](config/README.md) for the full table. Generated league 
 (`draft_sheets/tool_data.json`, `static/index.html`, `reports/`, `analysis/`, scraped
 data) is also gitignored — it's built by the pipeline, not committed.
 
+**Second machine?** Because all of that is gitignored, a fresh clone has no league in it.
+`sync_league_data.py` gathers those paths into one folder you can put in iCloud/Dropbox:
+
+```bash
+python3 sync_league_data.py export ~/Dropbox/my-league   # repo   -> folder
+python3 sync_league_data.py import ~/Dropbox/my-league   # folder -> repo
+```
+Secrets (`config/.env`, `scraping/.espn_auth.json`) are skipped unless you pass
+`--with-secrets`; only do that if the destination is private to you.
+
 ## The advisor
 
 `POST /api/advise` sends `{question, state, model}` to Claude. The **system prompt** is
