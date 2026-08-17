@@ -16,6 +16,9 @@
   "first_season": 2013,
   "_first_season": "Optional. Earliest season your league existed — only used by scraping/scrape.py (deep history) to know how far back to pull. Defaults to 2013.",
 
+  "recency_half_life": 0,
+  "_recency_half_life": "Optional, ANALYSIS ONLY. Seasons. Weights recent drafts more heavily when calibrating opponents — a season N years old counts 0.5**(N/half_life). Managers drift, so a draft from a decade ago predicts today's bidding poorly, and an unweighted average treats it as equally informative. Setting this ALSO changes max-buy from a true all-time maximum (where one ancient splurge pins the ceiling forever) to a recency-weighted typical peak. 0 = disabled, every season equal. Try 4 if you have many seasons of history.",
+
   "rfa_round": false,
   "_rfa_round": "Optional, ANALYSIS ONLY. Set true if your league runs a restricted-free-agent round before the open auction — each manager's FIRST nomination must come from their prior roster and the incumbent may retain at market price. Calibration then tags those picks separately, excludes them from the positional multipliers (a retention matches a price the field set, so it says nothing about willingness to pay) and reports rfa_share / rfa_retain per manager. Leave false otherwise, or ordinary first nominations get mislabelled.",
 

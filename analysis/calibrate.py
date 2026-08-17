@@ -113,6 +113,16 @@ def main():
     # load() now tolerates gaps, so a partial scrape calibrates quietly off less than you
     # might assume — and a per-position multiplier needs >=3 priced picks or it falls back
     # to the league mean. Without this line a one-season model looks like a nine-season one.
+    hl = a18.lib.RECENCY_HALF_LIFE
+    if hl > 0:
+        latest = max(seasons) if seasons else 0
+        wts = ", ".join(f"{y}×{a18.season_weight(y, latest):.2f}" for y in seasons)
+        print(f"   recency half-life {hl:g} seasons — {wts}")
+        print("   (max-buy is a weighted typical peak, not an all-time maximum)")
+    else:
+        print("   recency weighting OFF — every season counts equally, max-buy is the "
+              "all-time maximum. Set \"recency_half_life\" in config/league.json to weight "
+              "recent drafts more heavily.")
     ms = getattr(a18.build_agents, "mult_seasons", seasons)
     cs = getattr(a18.build_agents, "conc_seasons", seasons)
     print(f"   seasons — multipliers: {', '.join(map(str, ms)) or 'NONE'}")

@@ -46,6 +46,13 @@ _KEEPER_WARNED = set()
 # their first nominations relabelled.
 RFA_ROUND = bool(_load_config("league.json").get("rfa_round", False))
 
+# Managers drift. A draft from a decade ago says far less about how someone bids today
+# than last season does, yet an unweighted mean treats them identically — and a plain
+# max() over all history is worse still, letting one ancient splurge set a ceiling
+# forever. Half-life in seasons: a season N years old counts 0.5**(N/HALF_LIFE).
+# 0 disables weighting entirely (every season equal, max-buy stays a true maximum).
+RECENCY_HALF_LIFE = float(_load_config("league.json").get("recency_half_life", 0) or 0)
+
 POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST",
        7: "OP", 9: "DL", 10: "LB", 11: "DB", 12: "DP", 13: "DT", 14: "DE"}
 

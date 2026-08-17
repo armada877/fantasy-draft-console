@@ -34,6 +34,37 @@ def proj_lookup(year):
     return {norm(p["name"]): p for p in PROJ[str(year)] if p.get("proj_value") is not None}
 
 
+def season_weight(yr, latest):
+    """Exponential recency weight: 1.0 for `latest`, halving every RECENCY_HALF_LIFE
+    seasons. Returns 1.0 for every season when the half-life is 0 (weighting disabled)."""
+    hl = lib.RECENCY_HALF_LIFE
+    return 1.0 if hl <= 0 else 0.5 ** ((latest - yr) / hl)
+
+
+def _recency_stat(pairs, latest, peak):
+    """Collapse [(season, value)] to one number.
+
+    peak=True is the max-buy case. With weighting OFF this stays a true max over all
+    history (unchanged behaviour). With weighting ON it becomes a recency-weighted mean
+    of each season's peak — "what they typically top out at lately" rather than "the
+    single biggest bid they ever made", so one ancient splurge no longer pins the ceiling
+    for a decade. peak=False is the plain concentration mean.
+    """
+    if not pairs:
+        return 0.0
+    if lib.RECENCY_HALF_LIFE <= 0:
+        return max(v for _, v in pairs) if peak else statistics.mean(v for _, v in pairs)
+    if peak:
+        # Stay a MAXIMUM — a ceiling is not an average — but bound it to seasons within
+        # one half-life. A weighted mean of peaks would be dominated by the single latest
+        # season, so a manager who simply did not chase a stud last year would get an
+        # artificially low ceiling and the model would under-predict what they will pay.
+        recent = [v for y, v in pairs if season_weight(y, latest) >= 0.5]
+        return max(recent) if recent else max(v for _, v in pairs)
+    wsum = sum(season_weight(y, latest) for y, _ in pairs)
+    return sum(season_weight(y, latest) * v for y, v in pairs) / (wsum or 1.0)
+
+
 def build_agents():
     """Per-manager: pos_mult (DOLLAR-WEIGHTED paid/proj by pos — stud-weighted, so
     cheap darts don't drag it down and keeper-suppressed years don't distort it),
@@ -46,8 +77,10 @@ def build_agents():
     # seasons cannot contribute here however much history exists.
     mult_seasons = [yr for yr in sorted(int(y) for y in PROJ)
                     if lib.has_auction_prices(yr)]
+    latest = max(mult_seasons + lib.available_seasons() or [0])
     for yr in mult_seasons:
         pl = proj_lookup(yr)
+        w = season_weight(yr, latest)
         for p in lib.draft_picks(yr):
             # Keeper prices come from a house rule, and an RFA price is set by a retention
             # right rather than a free bid — the incumbent matches a number the field set.
@@ -56,9 +89,10 @@ def build_agents():
                 continue
             e = pl.get(norm(p["name"]))
             if e and (e["proj_value"] or 0) >= 3:
-                paid_sum[p["manager"]][p["pos"]] += p["cost"]
-                proj_sum[p["manager"]][p["pos"]] += e["proj_value"]
-                ncount[p["manager"]][p["pos"]] += 1
+                # weight both sides so the RATIO is unchanged in scale, only in emphasis
+                paid_sum[p["manager"]][p["pos"]] += p["cost"] * w
+                proj_sum[p["manager"]][p["pos"]] += e["proj_value"] * w
+                ncount[p["manager"]][p["pos"]] += 1   # raw count: the >=3 sample gate
     top3 = defaultdict(list); maxbuy = defaultdict(list)
     # RFA behaviour, tracked separately: how much of a manager's draft budget goes in the
     # restricted round, and how often they actually retain the player they nominated.
@@ -88,7 +122,9 @@ def build_agents():
             m = lib.manager(yr, tid)
             costs = sorted((x["cost"] for x in ps), reverse=True)
             sp = sum(costs) or 1
-            top3[m].append(100*sum(costs[:3])/sp); maxbuy[m].append(costs[0] if costs else 0)
+            # keep the season alongside the value so it can be recency-weighted below
+            top3[m].append((yr, 100.0 * sum(costs[:3]) / sp))
+            maxbuy[m].append((yr, costs[0] if costs else 0))
     agents = {}
     for m in top3:
         mult = {}
@@ -100,8 +136,9 @@ def build_agents():
             else:
                 mult[pos] = LEAGUE_MULT[pos]
         agents[m] = {"mult": mult,
-                     "conc": statistics.mean(top3[m]),
-                     "maxbuy": max(maxbuy[m]) * 1.15 if maxbuy[m] else 100,
+                     "conc": _recency_stat(top3[m], latest, peak=False),
+                     "maxbuy": (_recency_stat(maxbuy[m], latest, peak=True) * 1.15
+                                if maxbuy[m] else 100),
                      # 0.0 for every manager when the league has no RFA round
                      "rfa_share": (100.0 * rfa_spend[m] / all_spend[m]
                                    if all_spend.get(m) else 0.0),
