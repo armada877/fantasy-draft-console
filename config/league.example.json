@@ -36,5 +36,5 @@
   "_projections_xlsm": "Path to the checked-in Elboberto projections workbook (the universal baseline). build_tool_data.py reads its CheatSheet + LeagueInfo sheets.",
 
   "my_mult": {"QB": 1.0, "RB": 1.0, "WR": 1.0, "TE": 1.0},
-  "_my_mult": "Optional positional tilt for YOUR max-bid model (how much you value each position vs. baseline). 1.0 = neutral. Raise a position to pay up for it. Leave neutral until you have a strategy."
+  "_my_mult": "Positional tilt for YOUR max-bid model: how far above (or below) computed worth you will bid, by position. 1.0 = neutral, >1 pays up, <1 holds back. NOT cosmetic — 'your max' is worth x this tilt x scarcity x market trend, and the trend term is exactly 1.0 until prices are logged, so leaving every position at 1.0 makes 'your max' equal 'worth' on nearly every row. That reads as a broken column, and worse, in a room that clears above worth at a position it advises walking away from every player there. Set it from what your league actually pays: raise the positions you must pay market to win, lower the ones the room overbids."
 }
