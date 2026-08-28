@@ -263,8 +263,12 @@ input::placeholder{color:var(--faint)}
 #rfa-only-who{color:var(--ink)}
 .sync-on{background:var(--go);color:#04160f;border-color:var(--go)}
 #sync-state.bad{color:var(--stop-ink);border-color:var(--stop)}
-.saidchip{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
-  color:var(--go-ink);border:1px solid var(--go-line);border-radius:4px;padding:0 4px}
+.ksrc{min-width:0}
+.srcchip{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+  border-radius:4px;padding:1px 5px;white-space:nowrap;display:inline-block}
+.srcchip.from-real{color:var(--go-ink);border:1px solid var(--go-line);background:var(--go-bg)}
+.srcchip.from-model{color:var(--faint);border:1px dashed var(--line2)}
+.krow.declared{box-shadow:inset 2px 0 0 var(--go-line)}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -494,7 +498,7 @@ body.phase-rfa .rfa-only{display:inline-block}
 .modal-foot{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line)}
 .modal-note{font-size:12px;color:var(--faint);flex:1;min-width:0}
 .modal-note.bad{color:var(--stop-ink)}
-.krow{display:grid;grid-template-columns:minmax(96px,1.1fr) 2fr 74px minmax(104px,1fr);
+.krow{display:grid;grid-template-columns:minmax(88px,1fr) 74px 2fr 70px minmax(96px,1fr);
   gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .krow:last-child{border-bottom:0}
 .kteam{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -644,6 +648,7 @@ body.phase-rfa .rfa-only{display:inline-block}
       <div class="modal-head">
         <h2>Keepers</h2>
         <span class="pill" id="keeper-sub">one per team &middot; leave blank for none</span>
+        <span class="modal-note" id="keeper-legend"></span>
         <button class="btn ghost" id="keeper-close" aria-label="Close">&#10005;</button>
       </div>
       <div class="modal-body" id="keeper-rows"></div>
@@ -1789,6 +1794,10 @@ function keeperEntry(team,name){
    every time, so these override the model rather than competing with it — the model only
    fills the managers who have not said anything yet. */
 const ANNOUNCED=DATA.announced_keepers||{};
+// Where the declared list came from. Sleeper exposes each roster's chosen keepers, so a row
+// sourced there is the manager's actual decision; anything else is this console guessing.
+const ANNOUNCED_SRC=DATA.announced_source||null, ANNOUNCED_AT=DATA.announced_pulled||null;
+const SRC_LABEL=ANNOUNCED_SRC==="sleeper"?"Sleeper":"declared";
 // most likely keep: biggest surplus, and where two are level the CHEAPER one - identical
 // surplus for less money is strictly better, since the difference stays in the budget
 /* Most likely keep = the biggest saving against the MARKET, not against worth.
@@ -1855,7 +1864,8 @@ function renderKeeperRows(){
   const cur={};keeperPicks().forEach(l=>{cur[l.team]={name:players[l.id].name,price:l.price};});
   Object.values(teams).forEach(t=>{
     const c=cur[t.name]||{name:"",price:""};
-    const row=document.createElement("div");row.className="krow";row.dataset.team=t.name;
+    const row=document.createElement("div");
+    row.className="krow"+(ANNOUNCED[t.name]?" declared":"");row.dataset.team=t.name;
     // Only THIS manager's prior roster is keepable, so each row gets its own list rather than
     // the whole league — offering 216 names when 15 are legal invites an impossible keeper.
     // No pool (never scraped, or a manager who wasn't in the league) falls back to everyone.
@@ -1870,7 +1880,10 @@ function renderKeeperRows(){
     const namefield=pool.length
       ? `<select class="kname"><option value="">— no keeper —</option>${opts}</select>`
       : `<input class="kname" list="player-names" autocomplete="off" placeholder="player — blank for none" value="${escAttr(chosen)}">`;
-    row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}${ANNOUNCED[t.name]?' <span class="saidchip" data-tip="This manager has announced their keeper — not a projection.">said</span>':''}</div>
+    row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}</div>
+      <div class="ksrc">${ANNOUNCED[t.name]
+        ?`<span class="srcchip from-real" data-tip="Pulled from ${escAttr(SRC_LABEL)} — this manager actually set this keeper${ANNOUNCED_AT?", as of "+escAttr(ANNOUNCED_AT):""}.">${escAttr(SRC_LABEL)}</span>`
+        :`<span class="srcchip from-model" data-tip="Nobody has declared a keeper for this team. This is the console's own pick: the biggest saving against what the player would cost at auction.">projected</span>`}</div>
       ${namefield}
       <input class="kprice mono" inputmode="numeric" placeholder="$" value="${c.price===""?"":c.price}">
       <div class="ksurplus"></div>`;
@@ -1950,6 +1963,12 @@ function applyKeepers(){
     :"Keepers cleared.";
 }
 function openKeepers(){
+  const nDeclared=Object.keys(ANNOUNCED).filter(t=>t in teams).length;
+  $("#keeper-legend").innerHTML=nDeclared
+    ? `<span class="srcchip from-real">${escAttr(SRC_LABEL)}</span> ${nDeclared} set by the manager`
+      + (ANNOUNCED_AT?` (as of ${escAttr(ANNOUNCED_AT)})`:"")
+      + ` &middot; <span class="srcchip from-model">projected</span> ${Object.keys(teams).length-nDeclared} still the console's guess`
+    : `<span class="srcchip from-model">projected</span> nobody has declared a keeper yet — every row is the console's guess`;
   renderKeeperRows();
   const n=$("#keeper-note");n.className="modal-note";n.textContent="";
   $("#keeper-modal").hidden=false;

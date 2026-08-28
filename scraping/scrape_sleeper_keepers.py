@@ -87,6 +87,10 @@ def main():
 
     prev = cfg.get("announced_keepers") or {}
     cfg["announced_keepers"] = announced
+    # provenance: the console cannot otherwise tell a Sleeper pull from a hand-typed entry,
+    # and "the manager declared this" is a much stronger claim than "someone wrote it down"
+    cfg["announced_keepers_source"] = "sleeper"
+    cfg["announced_keepers_pulled"] = __import__("time").strftime("%Y-%m-%d %H:%M")
     json.dump(cfg, open(CFG, "w", encoding="utf-8"), indent=2)
 
     print("Declared keepers on Sleeper (%d of %d rosters):" % (len(announced), len(rosters)))

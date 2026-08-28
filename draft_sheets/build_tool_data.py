@@ -630,6 +630,8 @@ def main():
         "keeper_pool": keeper_pool,
         "draft_order": draft_order,
         "announced_keepers": announced,
+        "announced_source": cfg.get("announced_keepers_source") or None,
+        "announced_pulled": cfg.get("announced_keepers_pulled") or None,
         # lets the console follow the live Sleeper draft; None simply disables that panel
         "sleeper_league_id": str(cfg.get("sleeper_league_id") or "") or None,
     }
