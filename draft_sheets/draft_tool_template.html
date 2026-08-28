@@ -268,7 +268,9 @@ input::placeholder{color:var(--faint)}
   border-radius:4px;padding:1px 5px;white-space:nowrap;display:inline-block}
 .srcchip.from-real{color:var(--go-ink);border:1px solid var(--go-line);background:var(--go-bg)}
 .srcchip.from-model{color:var(--faint);border:1px dashed var(--line2)}
+.srcchip.from-drift{color:var(--warn-ink);border:1px solid var(--warn);background:var(--warn-bg)}
 .krow.declared{box-shadow:inset 2px 0 0 var(--go-line)}
+.krow.drifted{box-shadow:inset 2px 0 0 var(--warn)}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -649,6 +651,7 @@ body.phase-rfa .rfa-only{display:inline-block}
         <h2>Keepers</h2>
         <span class="pill" id="keeper-sub">one per team &middot; leave blank for none</span>
         <span class="modal-note" id="keeper-legend"></span>
+        <span class="modal-note" id="keeper-drift"></span>
         <button class="btn ghost" id="keeper-close" aria-label="Close">&#10005;</button>
       </div>
       <div class="modal-body" id="keeper-rows"></div>
@@ -1858,14 +1861,14 @@ function setPhase(ph){
   document.body.classList.toggle("phase-rfa",PHASE==="rfa");   // reveals the "nominated by" field
   renderAll();
 }
-let _kpoolSeq=0;
+let _kpoolSeq=0, keeperLegend=()=>{};
 function renderKeeperRows(){
   const box=$("#keeper-rows");box.innerHTML="";
   const cur={};keeperPicks().forEach(l=>{cur[l.team]={name:players[l.id].name,price:l.price};});
   Object.values(teams).forEach(t=>{
     const c=cur[t.name]||{name:"",price:""};
     const row=document.createElement("div");
-    row.className="krow"+(ANNOUNCED[t.name]?" declared":"");row.dataset.team=t.name;
+    row.className="krow";row.dataset.team=t.name;
     // Only THIS manager's prior roster is keepable, so each row gets its own list rather than
     // the whole league — offering 216 names when 15 are legal invites an impossible keeper.
     // No pool (never scraped, or a manager who wasn't in the league) falls back to everyone.
@@ -1874,16 +1877,19 @@ function renderKeeperRows(){
     // legal keepers become invisible. The roster is a closed set of ~15, so offer it outright.
     const pool=KEEPER_POOL[t.name]||[];
     const chosen=c.name;
-    const opts=pool.slice().sort((a,b)=>b.cost-a.cost).map(r=>
-      `<option value="${escAttr(r.name)}"${r.name===chosen?" selected":""}>`+
-      `${escAttr(r.name)} — ${r.pos} ${money(r.cost)}</option>`).join("");
+    // the declared pick stays visible in the list even after you pick someone else, so you
+    // can always see what you moved away from — and get back to it
+    const said=ANNOUNCED[t.name]||null;
+    const opts=pool.slice().sort((a,b)=>b.cost-a.cost).map(r=>{
+      const isSaid=said&&r.name.toLowerCase()===said.toLowerCase();
+      return `<option value="${escAttr(r.name)}"${r.name===chosen?" selected":""}>`+
+        `${escAttr(r.name)} — ${r.pos} ${money(r.cost)}${isSaid?" ◆ "+escAttr(SRC_LABEL):""}</option>`;
+    }).join("");
     const namefield=pool.length
       ? `<select class="kname"><option value="">— no keeper —</option>${opts}</select>`
       : `<input class="kname" list="player-names" autocomplete="off" placeholder="player — blank for none" value="${escAttr(chosen)}">`;
     row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}</div>
-      <div class="ksrc">${ANNOUNCED[t.name]
-        ?`<span class="srcchip from-real" data-tip="Pulled from ${escAttr(SRC_LABEL)} — this manager actually set this keeper${ANNOUNCED_AT?", as of "+escAttr(ANNOUNCED_AT):""}.">${escAttr(SRC_LABEL)}</span>`
-        :`<span class="srcchip from-model" data-tip="Nobody has declared a keeper for this team. This is the console's own pick: the biggest saving against what the player would cost at auction.">projected</span>`}</div>
+      <div class="ksrc"></div>
       ${namefield}
       <input class="kprice mono" inputmode="numeric" placeholder="$" value="${c.price===""?"":c.price}">
       <div class="ksurplus"></div>`;
@@ -1894,16 +1900,44 @@ function renderKeeperRows(){
       const e=keeperEntry(t.name,v);
       if(e)row.querySelector(".kprice").value=e.cost;
       else if(!v.trim())row.querySelector(".kprice").value="";   // "no keeper" clears the price
-      updateKeeperRow(row);
+      updateKeeperRow(row);keeperLegend();
     };
     row.querySelector(".kname").addEventListener("input",onName);
     row.querySelector(".kname").addEventListener("change",onName);   // <select> fires change
     row.querySelector(".kprice").addEventListener("input",()=>updateKeeperRow(row));
     updateKeeperRow(row);
   });
+  keeperLegend();
+}
+/* The source chip is recomputed on every edit rather than painted once, because overriding a
+   declared keeper changes what the row IS: it stops being what the manager set and becomes
+   your own read. Silently leaving it labelled "Sleeper" would be the console asserting
+   something false about a rival's roster. */
+function refreshSrcChip(row){
+  const box=row.querySelector(".ksrc"), team=row.dataset.team;
+  const said=ANNOUNCED[team]||null;
+  const cur=(row.querySelector(".kname").value||"").trim();
+  let cls,txt,tip;
+  if(!said){
+    cls="from-model";txt="projected";
+    tip="Nobody has declared a keeper for this team. This is the console's own pick: the "
+       +"biggest saving against what the player would cost at auction.";
+  }else if(cur.toLowerCase()===said.toLowerCase()){
+    cls="from-real";txt=SRC_LABEL;
+    tip="Pulled from "+SRC_LABEL+" — this manager actually set this keeper"
+       +(ANNOUNCED_AT?", as of "+ANNOUNCED_AT:"")+".";
+  }else{
+    cls="from-drift";txt="drifted";
+    tip="You changed this. "+SRC_LABEL+" says "+said+(cur?", you have "+cur:", you have nobody")
+       +" — marked ◆ in the dropdown so you can put it back.";
+  }
+  box.innerHTML=`<span class="srcchip ${cls}" data-tip="${escAttr(tip)}">${escAttr(txt)}</span>`;
+  row.classList.toggle("declared",cls==="from-real");
+  row.classList.toggle("drifted",cls==="from-drift");
 }
 // live surplus readout: what the keeper is worth this season against what he costs
 function updateKeeperRow(row){
+  refreshSrcChip(row);
   const nm=row.querySelector(".kname").value.trim(), out=row.querySelector(".ksurplus");
   out.className="ksurplus";
   if(!nm){out.textContent="—";return;}
@@ -1964,6 +1998,12 @@ function applyKeepers(){
 }
 function openKeepers(){
   const nDeclared=Object.keys(ANNOUNCED).filter(t=>t in teams).length;
+  keeperLegend=()=>{
+    const rows=[...$("#keeper-rows").querySelectorAll(".krow")];
+    const drift=rows.filter(r=>r.classList.contains("drifted")).length;
+    const el=$("#keeper-drift");
+    if(el)el.innerHTML=drift?`<span class="srcchip from-drift">drifted</span> ${drift} changed from ${escAttr(SRC_LABEL)}`:"";
+  };
   $("#keeper-legend").innerHTML=nDeclared
     ? `<span class="srcchip from-real">${escAttr(SRC_LABEL)}</span> ${nDeclared} set by the manager`
       + (ANNOUNCED_AT?` (as of ${escAttr(ANNOUNCED_AT)})`:"")
