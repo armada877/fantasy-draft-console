@@ -16,11 +16,60 @@ import lib
 PROJ = json.load(open(os.path.join(os.path.dirname(__file__), os.pardir,
               "draft_sheets", "elboberto_projections.json")))
 SUFFIX = {"jr", "sr", "ii", "iii", "iv", "v"}
-LEAGUE_MULT = {"QB": 0.41, "RB": 1.31, "WR": 1.47, "TE": 0.74}
 POS = ("QB", "RB", "WR", "TE")
-# roster: 1QB 2RB 2WR 1TE 2FLEX(RB/WR/TE) + 6 bench = 14 spendable; DST=$1 sep
-START = {"QB": 1, "RB": 2, "WR": 2, "TE": 1}
-NFLEX, NBENCH, BUDGET = 2, 6, 199
+
+
+def _league_shape():
+    """Roster and budget for the season being simulated, from the same config the console
+    builds against. The old hardcoded 2 FLEX / 6 bench / $199 no longer matched the league —
+    it starts 1 FLEX, 5 bench, a kicker and a defence on a $200 budget — so the sim was
+    allocating a different roster than the one being drafted.
+
+    K and DST are folded into the bench count rather than modelled: they are one-dollar slots
+    (every kicker in this league has sold for exactly $1), so all they do is reserve money.
+    """
+    cfg, start, flex, bench, budget = _cfg_json(), {"QB": 1, "RB": 2, "WR": 2, "TE": 1}, 1, 5, 200
+    roster = cfg.get("roster") or {}
+    starters = roster.get("starters")
+    if not starters:
+        raw = os.path.join(os.path.dirname(__file__), os.pardir, "scraping", "raw",
+                           str(cfg.get("season", 2026)), "league_full.json")
+        if os.path.exists(raw):
+            with open(raw) as f:
+                d = json.load(f)
+            d = (d[0] if d else {}) if isinstance(d, list) else d
+            st = (d.get("settings") or {})
+            counts = (st.get("rosterSettings") or {}).get("lineupSlotCounts") or {}
+            m = {"0": "QB", "2": "RB", "4": "WR", "6": "TE", "16": "DST", "17": "K"}
+            starters = {}
+            for slot, n in counts.items():
+                if m.get(slot) and int(n or 0):
+                    starters[m[slot]] = int(n)
+            flex = int(counts.get("23") or flex)
+            bench = int(counts.get("20") or bench)
+            budget = int(((st.get("draftSettings") or {}).get("auctionBudget")) or budget)
+    else:
+        flex = int(roster.get("flex", flex))
+        bench = int(roster.get("bench", bench))
+    if starters:
+        onedollar = sum(int(starters.get(p, 0)) for p in ("K", "DST"))
+        start = {p: int(starters.get(p, 0)) for p in POS if int(starters.get(p, 0))}
+        bench += onedollar
+    return start, flex, bench, budget
+
+
+def _cfg_json():
+    p = os.path.join(os.path.dirname(__file__), os.pardir, "config", "league.json")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+START, NFLEX, NBENCH, BUDGET = _league_shape()
+# fallback for a manager+position with too little history: what the ROOM pays there, computed
+# from the calibrated agents rather than pinned to a decade-old constant
+LEAGUE_MULT = {"QB": 0.41, "RB": 1.31, "WR": 1.47, "TE": 0.74}
 
 
 def norm(n):
@@ -260,14 +309,50 @@ def starter_vbd(roster):
     return tot, slots
 
 
+def _me_canonical(opp):
+    """config's `me` is the console/display name; build_agents keys by canonical identity.
+
+    Both resolve from the same owner id, so bridge through it. Without this the sim dies with
+    a KeyError on a league whose display names differ from their canonical ones — which is
+    every league that has changed platform.
+    """
+    if lib.ME in opp:
+        return lib.ME
+    cfg = _cfg_json()
+    raw = os.path.join(os.path.dirname(__file__), os.pardir, "scraping", "raw",
+                       str(cfg.get("season", 2026)), "league_full.json")
+    if os.path.exists(raw):
+        with open(raw) as f:
+            d = json.load(f)
+        d = (d[0] if d else {}) if isinstance(d, list) else d
+        for mem in (d.get("members") or []):
+            if (mem.get("displayName") or "") == lib.ME:
+                canon = lib.MANAGER_CANON.get(mem.get("id"))
+                if canon in opp:
+                    return canon
+    raise SystemExit("`me` = %r matches no calibrated manager. Calibrated: %s"
+                     % (lib.ME, ", ".join(sorted(opp))))
+
+
 def main():
     opp = build_agents()
-    field = [m for m in {lib.manager(2025, t) for t in lib.team_owner(2025)} if m != lib.ME]
-    field = [m for m in field if m in opp][:11]
+    me = _me_canonical(opp)
+    # the room this year, not whoever happened to be in the last ESPN season
+    cur = set()
+    cfg = _cfg_json()
+    raw = os.path.join(os.path.dirname(__file__), os.pardir, "scraping", "raw",
+                       str(cfg.get("season", 2026)), "league_full.json")
+    if os.path.exists(raw):
+        with open(raw) as f:
+            d = json.load(f)
+        d = (d[0] if d else {}) if isinstance(d, list) else d
+        for mem in (d.get("members") or []):
+            cur.add(lib.MANAGER_CANON.get(mem.get("id")) or mem.get("displayName"))
+    field = [m for m in sorted(cur) if m != me and m in opp][:11]
 
     NSIM = 100
     results = {}
-    for variant, hp in [("validated", VALIDATED_HARRY), ("historical", opp[lib.ME])]:
+    for variant, hp in [("validated", VALIDATED_HARRY), ("historical", opp[me])]:
         agents = {m: opp[m] for m in field}
         agents["Harry"] = hp
         strengths = []; rosters = []

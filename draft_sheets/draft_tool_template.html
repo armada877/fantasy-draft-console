@@ -271,6 +271,7 @@ input::placeholder{color:var(--faint)}
 .srcchip.from-drift{color:var(--warn-ink);border:1px solid var(--warn);background:var(--warn-bg)}
 .krow.declared{box-shadow:inset 2px 0 0 var(--go-line)}
 .krow.drifted{box-shadow:inset 2px 0 0 var(--warn)}
+.tgtedit[readonly]{opacity:.6;cursor:default}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -1462,9 +1463,14 @@ function renderBuild(){
   // ── startable slots (editable targets) ──
   const NDOT=`background:var(--raise);color:var(--muted)`;
   slots.forEach(s=>{
-    const tgt=liveOf(s), got=fill.get(s);
-    const plan=targetOf(s);
-    const status=got?(got.price<=tgt+2?"ok":"over"):"open";
+    const got=fill.get(s), plan=targetOf(s);
+    // A FILLED slot's target is what it actually cost. Leaving the planned figure there shows
+    // the same money twice — once as headroom on a slot that is already gone, and again inside
+    // the raised target of whichever open slot absorbed it — so the column stopped summing to
+    // the budget and the plan looked frozen. The delta still measures against the entry plan,
+    // which is where "you got this $33 under" belongs.
+    const tgt=got?got.price:liveOf(s);
+    const status=got?(got.price<=plan+2?"ok":"over"):"open";
     const dot=s.flex?`<span class="posdot" style="${NDOT}">FLX</span>`:`<span class="posdot p-${s.pos}">${s.pos}</span>`;
     // for an open slot, the realistic tier/player you can WIN at this budget (priced by will-go)
     const h=got?null:slotHint(s,tgt);
@@ -1472,9 +1478,10 @@ function renderBuild(){
     const div=document.createElement("div");div.className="brow";
     div.innerHTML=`<span class="blab">${dot}${s.flex?"Flex":s.label}</span>`+
       `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"`+
-        (!got&&tgt!==plan?` data-tip="Entry plan said $${plan}; re-spread to $${tgt} because the budget still in hand no longer matches the slots still open."`:"")+
+        (got?` readonly data-tip="Filled — this is what you paid. The entry plan was $${plan}."`
+            :(tgt!==plan?` data-tip="Entry plan said $${plan}; re-spread to $${tgt} because the budget still in hand no longer matches the slots still open."`:""))+
         `></span>`+
-      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-tgt)}`:openHint}</span>`;
+      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-plan)}`:openHint}</span>`;
     box.appendChild(div);
   });
   // ── bench (editable bench budget) ──
