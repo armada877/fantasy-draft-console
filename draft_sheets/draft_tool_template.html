@@ -699,6 +699,12 @@ const POS_ORDER=["RB","WR","TE","QB","K","DST"];
 const POS_ALL=POS_ORDER.filter(p=>p in STARTERS)
   .concat(Object.keys(STARTERS).filter(p=>!POS_ORDER.includes(p)));
 const FLEX_POS=["RB","WR","TE"];
+/* League-average multiplier per position, from the calibrated profiles themselves. A raw
+   argmax over a manager's multipliers is nearly useless as a read: this room pays ~1.5x at WR
+   and ~1.3x at RB, so the biggest number is WR or RB for almost everybody and every team card
+   ends up saying the same thing. What distinguishes a manager is where he sits RELATIVE to
+   the room, so the card reports his largest deviation from these averages instead. */
+const LEAGUE_MULT={};
 const ROSTER_SLOTS = SPEND_SLOTS + BENCH;
 const players = DATA.players.map((p,i)=>({...p,id:i,drafted:null,price:0}));
 const teams = {};
@@ -1159,8 +1165,19 @@ function renderBoard(){
   });
 }
 
+// how far a manager sits from the room at a position (1.0 = exactly league average)
+function relMult(t,p){
+  const lg=LEAGUE_MULT[p]||1, m=(t.mult||{})[p];
+  return (m>0&&lg>0)?m/lg:1;
+}
 function renderTeams(){
   const box=$("#teams");box.innerHTML="";
+  if(!Object.keys(LEAGUE_MULT).length){
+    POS_ALL.forEach(p=>{
+      const v=Object.values(teams).map(t=>(t.mult||{})[p]).filter(x=>x>0);
+      LEAGUE_MULT[p]=v.length?v.reduce((a,b)=>a+b,0)/v.length:1;
+    });
+  }
   const infl=inflation();
   const kept={};keeperPicks().forEach(l=>{kept[l.team]=players[l.id].name+" "+money(l.price);});
   Object.values(teams).sort((a,b)=>b.budget-a.budget).forEach(t=>{
@@ -1169,14 +1186,15 @@ function renderTeams(){
     Object.entries(t.need).forEach(([k,v])=>{for(let i=0;i<v;i++)needArr.push(k);});
     for(let i=0;i<t.flex;i++)needArr.push("FLX");
     // threat = big budget + still needs starters + strong bidder
-    const strongPos=POS_ALL.reduce((a,p)=>(t.mult[p]||0)>(t.mult[a]||0)?p:a,"RB");
+    const strongPos=POS_ALL.reduce((a,p)=>relMult(t,p)>relMult(t,a)?p:a,"RB");
+    const relPct=Math.round(100*(relMult(t,strongPos)-1));
     const threat=t.name!==ME && t.budget>60 && needArr.length>2;
     const clock=ORDER.length&&onTheClock()===t.name;
     const div=document.createElement("div");
     div.className="team"+(t.name===ME?" me":threat?" threat":"")+(clock?" onclock":"");
     const maxb=money(t.budget-(open-1));
     div.innerHTML=`<div class="team-top"><div class="nm">${shortName(t.name)}${t.name===ME?' <span class="tag">you</span>':''}
-        <span class="maxbid">max ${maxb} · loves ${strongPos}</span></div>
+        <span class="maxbid">max ${maxb} · ${relPct>=8?`${strongPos} +${relPct}%`:relPct<=-8?`${strongPos} ${relPct}%`:"pays market"}</span></div>
       <div class="bud">${money(t.budget)}${clock?'<span class="clockchip">on the clock</span>':''}</div></div>
       <div class="bar"><i style="width:${Math.max(2,t.budget/DATA.budget*100)}%"></i></div>
       <div class="needs">${POS_ALL.map(pos=>{
