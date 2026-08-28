@@ -278,6 +278,9 @@ input::placeholder{color:var(--faint)}
 .rwp b{color:var(--ink);font-weight:650}
 .rwp.reach{border-color:var(--go-line);color:var(--go-ink)}
 .rwp.reach b{color:var(--go-ink)}
+.c-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.ceiling.s-stop .c-why{color:var(--stop-ink)}
+.ceiling.s-go .c-why{color:var(--go-ink)}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -555,9 +558,10 @@ body.phase-rfa .rfa-only{display:inline-block}
           <div class="eval-decision">
             <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span><button class="hero-tag" id="ev-tag"></button></div>
             <div class="ceiling" id="ceiling">
-              <div class="c-k">Bid up to</div>
+              <div class="c-k" data-tip="The most this player is worth to YOU — never pay above it. The call underneath is a different question: whether you will actually GET him at that price. 'Let it go' means the room will bid past your ceiling, not that your ceiling is wrong.">Bid up to</div>
               <div class="c-v mono" id="ev-max"></div>
               <div class="c-state" id="ev-state"></div>
+              <div class="c-why" id="ev-why"></div>
             </div>
             <div class="verdict" id="ev-verdict"></div>
           </div>
@@ -1046,18 +1050,29 @@ function showEval(p){
   $("#ev-max").textContent=money(mb);
   // the call answers the glance question: can I land him at/under my ceiling?
   const gap=mb-pred;                 // headroom of your max over the likely sale price
-  let state,word;
-  if(slotFor(teams[ME],p.pos)===null){state="stop";word="No slot";}
-  else if(mb<=0){state="stop";word="Can't afford";}
-  else if(gap>=5){state="go";word="Target";}
-  else if(gap<=-5){state="stop";word="Let it go";}
-  else{state="hold";word="Fair value";}
+  // The ceiling and the call answer DIFFERENT questions — what he is worth to you, and
+  // whether you will win him at that price. Shown side by side with nothing linking them,
+  // "$54" above "Let it go" reads as a contradiction, so the call now carries the comparison
+  // that produced it.
+  let state,word,why;
+  if(slotFor(teams[ME],p.pos)===null){
+    state="stop";word="No slot";why="every "+p.pos+" slot is already filled";
+  }else if(mb<=0){
+    state="stop";word="Can't afford";why="holding $1 for each open slot leaves nothing to bid";
+  }else if(gap>=5){
+    state="go";word="Target";why="likely "+money(pred)+" — "+money(gap)+" under your ceiling";
+  }else if(gap<=-5){
+    state="stop";word="Let it go";why="likely "+money(pred)+" — "+money(-gap)+" past your ceiling";
+  }else{
+    state="hold";word="Fair value";why="likely "+money(pred)+" — lands about at your ceiling";
+  }
   const cc=$("#ceiling");
   cc.className="ceiling s-"+state;
   cc.classList.remove("pop"); void cc.offsetWidth; cc.classList.add("pop");   // replay the count-in
   // non-hue cue so the call reads without relying on red/green (colorblind-safe)
   const glyph={go:"▲",hold:"◆",stop:"✕"}[state]||"";
   $("#ev-state").textContent=(glyph?glyph+"  ":"")+word;
+  $("#ev-why").textContent=why;
   const v=$("#ev-verdict");
   v.className="verdict s-"+state;
   v.textContent=maxRationale(p);
