@@ -294,6 +294,14 @@ def read_cheatsheet(wb):
                 name = grid[rr][col["NAME"]]
                 if name is None or str(name).strip() == "":
                     break
+                # The CheatSheet stacks blocks VERTICALLY as well as side by side — TE sits
+                # directly under QB in the same columns, separated by its own header rather
+                # than a blank row. Reading to the first empty cell therefore swallowed that
+                # header as a player called "NAME" and then the whole TE list as quarterbacks,
+                # in every season. Stop at the next header instead.
+                flat = str(name).strip()
+                if flat.upper() == "NAME" or "Positional Scarcity" in flat:
+                    break
                 worth = _num(grid[rr][col["$"]])
                 vbd = _num(grid[rr][col.get("VBD", -1)]) if "VBD" in col else 0.0
                 tier = grid[rr][col["TIER"]] if "TIER" in col else None

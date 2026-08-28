@@ -31,6 +31,8 @@ Needs ANTHROPIC_API_KEY (config/.env is read automatically). Without it every de
 back to the a18 rule and the run is labelled as such, so the harness still works offline.
 """
 import argparse
+import datetime
+import io
 import json
 import os
 import random
@@ -48,6 +50,54 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 POS = a18.POS
+
+
+class Tee:
+    """Echo everything to the terminal AND to the run log.
+
+    A draft simulation is worth keeping: it is slow, it costs API calls, and its value is
+    mostly in comparing one run against another later. Printing it to a terminal that will
+    scroll away loses that, so every run is written to reports/sims/ (gitignored, like every
+    other league-specific output) and indexed.
+    """
+
+    def __init__(self, path):
+        self.f = io.open(path, "w", encoding="utf-8")
+        self.out = sys.stdout
+
+    def write(self, t):
+        self.out.write(t)
+        self.f.write(t)
+
+    def flush(self):
+        self.out.flush()
+        self.f.flush()
+
+    def close(self):
+        self.f.close()
+
+
+def open_log(args):
+    """Create reports/sims/<stamp>.txt and return (Tee, path)."""
+    d = os.path.join(ROOT, "reports", "sims")
+    os.makedirs(d, exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    path = os.path.join(d, "a20-%s.txt" % stamp)
+    return Tee(path), path
+
+
+def index_run(path, args, model_used, headline):
+    """One line per run in reports/sims/index.md, newest last."""
+    idx = os.path.join(ROOT, "reports", "sims", "index.md")
+    new = not os.path.exists(idx)
+    with io.open(idx, "a", encoding="utf-8") as f:
+        if new:
+            f.write("# Draft simulation runs\n\n"
+                    "| when | file | sims | decisions by | result |\n"
+                    "|---|---|---|---|---|\n")
+        f.write("| %s | `%s` | %d | %s | %s |\n"
+                % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                   os.path.basename(path), args.sims, model_used, headline))
 
 
 def load_dotenv():
@@ -305,6 +355,8 @@ def main():
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
+    log, log_path = open_log(args)
+    sys.stdout = log
     load_dotenv()
     td = tool_data()
     opp = a18.build_agents()
@@ -338,20 +390,57 @@ def main():
     print("=" * 78)
     print("keepers seeded: %d   sims: %d\n" % (len(keepers), args.sims))
 
-    vbds, spends = [], []
+    vbds, runs = [], []
     for s in range(args.sims):
         teams = run(agents, brain, keepers, 900 + s, args.verbose, prior=prior)
         vbd, slots = a18.starter_vbd(teams[me]["roster"])
         vbds.append(vbd)
-        # roster entries are the projection dict plus `pay`/`slot`
-        spends.append(sorted(((x["name"], x["pay"]) for x in teams[me]["roster"]["players"]),
-                             key=lambda x: -x[1])[:6])
-        print("sim %d: your starter VBD %.0f  |  %s" % (
-            s + 1, vbd, ", ".join("%s $%d" % (n.split()[-1], pr) for n, pr in spends[-1])))
+        runs.append((vbd, teams, {id(x) for x in slots}))
+        print("sim %d: your starter VBD %.0f" % (s + 1, vbd))
 
-    print("\nmedian starter VBD %.0f  (range %.0f-%.0f)"
-          % (statistics.median(vbds), min(vbds), max(vbds)))
+    # report the MEDIAN draft in full, not the best one — the typical outcome is the useful
+    # one, and picking the strongest of three would flatter the model
+    runs.sort(key=lambda r: r[0])
+    vbd, teams, starting = runs[len(runs) // 2]
+    roster = teams[me]["roster"]
+    spent = sum(x["pay"] for x in roster["players"])
+
+    print("\n" + "=" * 78)
+    print("YOUR ROSTER — median of %d drafts (starter VBD %.0f)" % (args.sims, vbd))
+    print("=" * 78)
+    print("%-4s %-26s %-6s %7s %7s   %s" % ("", "player", "slot", "paid", "worth", "vs worth"))
+    for x in sorted(roster["players"],
+                    key=lambda r: (0 if id(r) in starting else 1, -r["pay"])):
+        w = x.get("proj_value") or 0
+        mark = "STARTS" if id(x) in starting else "bench"
+        print("%-4s %-26s %-6s %7s %7s   %+d"
+              % (x["pos"], x["name"][:26], mark, "$%d" % x["pay"], "$%.0f" % w, round(w - x["pay"])))
+    print("%-4s %-26s %-6s %7s" % ("", "TOTAL", "", "$%d" % spent))
+    print("     $%d left unspent of $%d" % (a18.BUDGET - spent, a18.BUDGET))
+
+    # where that finished in the room
+    table = []
+    for m in teams:
+        v, _ = a18.starter_vbd(teams[m]["roster"])
+        table.append((v, m))
+    table.sort(reverse=True)
+    print("\nprojected starter strength across the room")
+    for i, (v, m) in enumerate(table, 1):
+        print("  %2d. %-20s %5.0f%s" % (i, m[:20], v, "   <- you" if m == me else ""))
+
+    print("\nacross all %d drafts: median starter VBD %.0f (range %.0f-%.0f)"
+          % (args.sims, statistics.median(vbds), min(vbds), max(vbds)))
     print("LLM calls %d, rule fallbacks %d" % (brain.calls, brain.fallbacks))
+
+    headline = ("median VBD %.0f (range %.0f-%.0f), you finished %d/%d"
+                % (statistics.median(vbds), min(vbds), max(vbds),
+                   [m for _, m in table].index(me) + 1, len(table)))
+    sys.stdout = log.out
+    log.write("\n")
+    log.close()
+    index_run(log_path, args, mode, headline)
+    print("\nrun saved: %s" % os.path.relpath(log_path, ROOT))
+    print("indexed in: %s" % os.path.join("reports", "sims", "index.md"))
 
 
 if __name__ == "__main__":
