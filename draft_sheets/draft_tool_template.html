@@ -2016,7 +2016,12 @@ function ensurePlayer(md){
   players.push(p);_byNorm[normPlayer(name)]=p;
   return p;
 }
-async function sj(url){const r=await fetch(url);if(!r.ok)throw new Error(url+" -> "+r.status);return r.json();}
+async function sj(url){
+  const r=await fetch(url);
+  if(r.status===429){const e=new Error("rate limited");e.rateLimited=true;throw e;}
+  if(!r.ok)throw new Error(url+" -> "+r.status);
+  return r.json();
+}
 async function sleeperResolve(){
   const drafts=await sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/drafts");
   const auction=drafts.filter(d=>d.type==="auction").sort((a,b)=>(b.created||0)-(a.created||0));
@@ -2031,6 +2036,8 @@ async function sleeperResolve(){
 }
 async function sleeperPoll(){
   const picks=await sj("https://api.sleeper.app/v1/draft/"+SYNC.draftId+"/picks");
+  // once every roster slot in the league is sold there is nothing left to watch
+  if(picks.length&&picks.length>=Object.keys(teams).length*ROSTER_SLOTS)SYNC.done=true;
   picks.sort((a,b)=>(a.pick_no||0)-(b.pick_no||0));
   const unmatched=[];let added=0,seq=0;
   for(const pk of picks){
@@ -2054,13 +2061,39 @@ function syncPaint(txt,bad){
   const el=$("#sync-state");el.hidden=false;el.textContent=txt;el.classList.toggle("bad",!!bad);
   $("#sync-btn").classList.toggle("sync-on",SYNC.on);
 }
+/* Poll once a second. A nomination runs 20s and any bid inside the last 10s resets the clock
+   to 10, so a 5s poll could show a player as still open with only a couple of seconds left to
+   react. One second costs 60 small requests a minute, comfortably inside Sleeper's limits.
+   Requests never overlap — a slow response skips the tick rather than queueing behind it —
+   and an error backs off to 2s, 4s, 8s so a broken draft id cannot hammer the API. */
+/* Sleeper publishes a guideline of under 1000 calls a minute; one poll a second is 60, so
+   roughly 6% of it. The headroom is not the safety mechanism though — these are:
+   a 429 backs off for a full 30s rather than the normal doubling, polling pauses entirely
+   while the tab is hidden, and it stops for good once the draft reports complete. */
+const SYNC_MS=1000, SYNC_MAX_BACKOFF=8000, SYNC_RATELIMIT_MS=30000;
 async function syncTick(){
+  if(SYNC.busy)return;                      // previous request still in flight
+  SYNC.busy=true;
   try{
     const r=await sleeperPoll();
-    SYNC.lastErr=null;
+    SYNC.lastErr=null;SYNC.backoff=0;
+    if(SYNC.done){syncStop();syncPaint("draft complete — "+r.total+" picks synced");return;}
+    if(SYNC.on)syncSchedule(SYNC_MS);
     syncPaint(r.total+" picks"+(r.added?" · +"+r.added:"")+(r.unmatched?" · "+r.unmatched+" unmatched":"")
       +" · "+new Date().toLocaleTimeString());
-  }catch(e){SYNC.lastErr=String(e);syncPaint("sync error — retrying",true);}
+  }catch(e){
+    SYNC.lastErr=String(e);
+    // a rate limit is not a transient blip — stand well back rather than doubling into it
+    SYNC.backoff=e.rateLimited?SYNC_RATELIMIT_MS
+      :Math.min(SYNC_MAX_BACKOFF,(SYNC.backoff||SYNC_MS)*2);
+    if(SYNC.on)syncSchedule(SYNC.backoff);
+    syncPaint((e.rateLimited?"rate limited — pausing ":"sync error — retrying in ")
+      +Math.round(SYNC.backoff/1000)+"s",true);
+  }finally{SYNC.busy=false;}
+}
+function syncSchedule(ms){
+  if(SYNC.timer)clearTimeout(SYNC.timer);
+  SYNC.timer=setTimeout(syncTick,ms);
 }
 async function syncStart(){
   try{
@@ -2068,18 +2101,24 @@ async function syncStart(){
     if(!SYNC.draftId)await sleeperResolve();
     const missing=Object.keys(teams).filter(n=>!Object.values(SYNC.byRoster).includes(n));
     if(missing.length)console.warn("Sleeper roster not matched for:",missing);
-    SYNC.on=true;await syncTick();
-    SYNC.timer=setInterval(syncTick,5000);
+    SYNC.on=true;SYNC.backoff=0;
+    await syncTick();                        // schedules the next tick itself
     $("#sync-btn").classList.add("sync-on");
   }catch(e){SYNC.on=false;syncPaint("cannot reach Sleeper",true);console.error(e);}
 }
 function syncStop(){
-  SYNC.on=false;if(SYNC.timer)clearInterval(SYNC.timer);SYNC.timer=null;
+  SYNC.on=false;if(SYNC.timer)clearTimeout(SYNC.timer);SYNC.timer=null;
   $("#sync-btn").classList.remove("sync-on");syncPaint("sync off");
 }
 if(SLEEPER_LEAGUE){
   $("#sync-btn").hidden=false;
   $("#sync-btn").onclick=()=>SYNC.on?syncStop():syncStart();
+  // a backgrounded tab does not need second-by-second prices; resume on return
+  document.addEventListener("visibilitychange",()=>{
+    if(!SYNC.on)return;
+    if(document.hidden){if(SYNC.timer)clearTimeout(SYNC.timer);SYNC.timer=null;syncPaint("paused — tab hidden");}
+    else syncSchedule(0);
+  });
 }
 
 restoreDraft();   // replay any saved picks for this league so history survives reloads

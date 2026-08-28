@@ -53,6 +53,20 @@ RFA_ROUND = bool(_load_config("league.json").get("rfa_round", False))
 # 0 disables weighting entirely (every season equal, max-buy stays a true maximum).
 RECENCY_HALF_LIFE = float(_load_config("league.json").get("recency_half_life", 0) or 0)
 
+# How many recent seasons a max-buy ceiling may be drawn from. Max-buy is deliberately NOT
+# recency-weighted (a ceiling is not an average), so it needs its own window — and tying that
+# window to the half-life breaks once the half-life is short enough to weight the multipliers
+# the way you want: at 0.8 seasons "within one half-life" is the latest season alone, which
+# pins every ceiling to whether a manager happened to chase a stud once. 0 keeps the old
+# behaviour (one half-life).
+MAXBUY_WINDOW = int(_load_config("league.json").get("maxbuy_window", 0) or 0)
+
+# Managers who have LEFT the league. Their drafts are still in the history and would otherwise
+# calibrate a profile nobody can use and, worse, pull the league-average multipliers that the
+# console reads as "what this room pays" toward someone who will not be bidding. Filtered at
+# draft_picks() so every downstream analysis drops them at once. Canonical names.
+EXCLUDE_MANAGERS = {str(n) for n in (_load_config("league.json").get("exclude_managers") or [])}
+
 POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST",
        7: "OP", 9: "DL", 10: "LB", 11: "DB", 12: "DP", 13: "DT", 14: "DE"}
 
@@ -295,10 +309,13 @@ def draft_picks(season):
         pid = p.get("playerId")
         tid = p.get("teamId")
         prim = to.get(tid, {}).get("owner")
+        mgr_name = MANAGER_CANON.get(prim, to.get(tid, {}).get("ownerName", "?"))
+        if str(mgr_name) in EXCLUDE_MANAGERS:
+            continue                      # departed manager — not part of this room any more
         out.append({
             "teamId": tid,
             "owner": prim,
-            "manager": MANAGER_CANON.get(prim, to.get(tid, {}).get("ownerName", "?")),
+            "manager": mgr_name,
             "ownerName": to.get(tid, {}).get("ownerName", "?"),
             "teamName": to.get(tid, {}).get("name", "?"),
             "playerId": pid,

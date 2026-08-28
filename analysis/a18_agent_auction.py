@@ -59,7 +59,10 @@ def _recency_stat(pairs, latest, peak):
         # one half-life. A weighted mean of peaks would be dominated by the single latest
         # season, so a manager who simply did not chase a stud last year would get an
         # artificially low ceiling and the model would under-predict what they will pay.
-        recent = [v for y, v in pairs if season_weight(y, latest) >= 0.5]
+        if lib.MAXBUY_WINDOW > 0:
+            recent = [v for y, v in pairs if latest - y < lib.MAXBUY_WINDOW]
+        else:
+            recent = [v for y, v in pairs if season_weight(y, latest) >= 0.5]
         return max(recent) if recent else max(v for _, v in pairs)
     wsum = sum(season_weight(y, latest) for y, _ in pairs)
     return sum(season_weight(y, latest) * v for y, v in pairs) / (wsum or 1.0)
