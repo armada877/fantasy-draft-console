@@ -70,6 +70,7 @@ def current_league_aliases(season):
 
 
 def main():
+    seasons = a18.lib.available_seasons()
     agents = a18.build_agents()
     if not agents:
         raise SystemExit(
@@ -86,6 +87,12 @@ def main():
         }
         for name, a in agents.items()
     }
+    # RFA fields only exist for leagues that run the round, so tendencies.json stays
+    # byte-identical for everyone else.
+    if a18.lib.RFA_ROUND:
+        for name, a in agents.items():
+            tendencies[name]["rfa_share"] = round(a.get("rfa_share", 0.0))
+            tendencies[name]["rfa_retain"] = round(a.get("rfa_retain", 0.0))
 
     # Emit under the current league's console names too, so returning managers whose
     # scraped display name differs from their calibration identity still match.
@@ -102,12 +109,57 @@ def main():
     # audit table — same view a18 prints, so a calibrate run is self-documenting
     print(f"Calibrated {len(tendencies)} managers from auction history "
           f"(league fallback mult {a18.LEAGUE_MULT}).")
-    print(f"   {'manager':20}{'QB':>6}{'RB':>6}{'WR':>6}{'TE':>6}{'conc%':>7}{'maxbuy':>8}")
+    # Say which seasons actually contributed. build_agents() reads fixed season ranges and
+    # load() now tolerates gaps, so a partial scrape calibrates quietly off less than you
+    # might assume — and a per-position multiplier needs >=3 priced picks or it falls back
+    # to the league mean. Without this line a one-season model looks like a nine-season one.
+    hl = a18.lib.RECENCY_HALF_LIFE
+    if hl > 0:
+        latest = max(seasons) if seasons else 0
+        wts = ", ".join(f"{y}×{a18.season_weight(y, latest):.2f}" for y in seasons)
+        print(f"   recency half-life {hl:g} seasons — {wts}")
+        print("   (max-buy is a weighted typical peak, not an all-time maximum)")
+    else:
+        print("   recency weighting OFF — every season counts equally, max-buy is the "
+              "all-time maximum. Set \"recency_half_life\" in config/league.json to weight "
+              "recent drafts more heavily.")
+    ms = getattr(a18.build_agents, "mult_seasons", seasons)
+    cs = getattr(a18.build_agents, "conc_seasons", seasons)
+    print(f"   seasons — multipliers: {', '.join(map(str, ms)) or 'NONE'}")
+    print(f"             conc/maxbuy: {', '.join(map(str, cs)) or 'NONE'}")
+    unpriced = [y for y in a18.lib.ALL_SEASONS
+                if (a18.lib.load(y).get('draftDetail') or {}).get('picks')
+                and not a18.lib.has_auction_prices(y)]
+    if unpriced:
+        print(f"   skipped (drafted offline, no bid amounts): "
+              f"{', '.join(map(str, unpriced))}")
+    gap = [y for y in cs if y not in ms]
+    if gap:
+        print(f"   note: {', '.join(map(str, gap))} inform concentration/max-buy only — "
+              "multipliers need a projection workbook for the season.")
+    fallbacks = sum(1 for t in tendencies.values() for p in POS
+                    if abs(t["mult"][p] - round(a18.LEAGUE_MULT[p], 2)) < 0.005)
+    total = len(tendencies) * len(POS)
+    if fallbacks:
+        print(f"   {fallbacks}/{total} positional multipliers fell back to the league mean "
+              "(too few priced picks for that manager+position).")
+    if len(seasons) < 3:
+        print("   THIN HISTORY: with fewer than 3 seasons these tendencies are noisy — "
+              "treat conc/maxbuy as indicative and expect most mults to be league-mean.")
+    rfa = a18.lib.RFA_ROUND
+    hdr = f"   {'manager':20}{'QB':>6}{'RB':>6}{'WR':>6}{'TE':>6}{'conc%':>7}{'maxbuy':>8}"
+    print(hdr + (f"{'rfa$%':>7}{'keep%':>7}" if rfa else ""))
     for name in sorted(tendencies, key=lambda m: -tendencies[m]["mult"]["RB"]):
         t = tendencies[name]
         m = t["mult"]
-        print(f"   {name:20}{m['QB']:>6.2f}{m['RB']:>6.2f}{m['WR']:>6.2f}{m['TE']:>6.2f}"
-              f"{t['conc']:>7}{t['maxbuy']:>8}")
+        row = (f"   {name:20}{m['QB']:>6.2f}{m['RB']:>6.2f}{m['WR']:>6.2f}{m['TE']:>6.2f}"
+               f"{t['conc']:>7}{t['maxbuy']:>8}")
+        print(row + (f"{t['rfa_share']:>7}{t['rfa_retain']:>7}" if rfa else ""))
+    if rfa:
+        print("   rfa$% = share of draft budget spent in the restricted round; "
+              "keep% = how often they retained the player they nominated.")
+        print("   Multipliers EXCLUDE rfa picks (a retention matches a price the field "
+              "set, so it is not a willingness-to-pay signal).")
     if aliases:
         print("\n   aliased to current-league scrape names: "
               + ", ".join(f"{c} = {k}" for k, c in aliases.items()))

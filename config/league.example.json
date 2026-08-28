@@ -2,13 +2,32 @@
   "_comment": "Copy this to config/league.json and fill it in for YOUR league. It is gitignored (league-specific). Used by scraping/scrape_league.py and draft_sheets/build_tool_data.py.",
 
   "league_id": 0,
-  "_league_id": "Your ESPN league id (the number in the fantasy.espn.com/…/leagues/<THIS> URL). Leave 0 to AUTO-DISCOVER from your cookies (scrape_league.py picks it, or lists them if you're in more than one).",
+  "_league_id": "Your ESPN league id (the number in the fantasy.espn.com/…/leagues/<THIS> URL). Leave 0 to AUTO-DISCOVER from your cookies (scrape_league.py picks it, or lists them if you're in more than one). Ignored if you're on Sleeper.",
+
+  "sleeper_league_id": "",
+  "_sleeper_league_id": "SLEEPER ONLY. Your Sleeper league id (the number in the sleeper.com/leagues/<THIS>/team URL). Set this instead of league_id and run scraping/scrape_sleeper.py — no cookies needed, Sleeper's read API is public. Leave blank if you're on ESPN.",
+
+  "sleeper_username": "",
+  "_sleeper_username": "SLEEPER ONLY. Optional. Your Sleeper display name — scrape_sleeper.py matches it to a manager and writes 'me' for you (the equivalent of ESPN's SWID auto-detect).",
 
   "season": 2026,
   "_season": "Draft season / year.",
 
   "first_season": 2013,
   "_first_season": "Optional. Earliest season your league existed — only used by scraping/scrape.py (deep history) to know how far back to pull. Defaults to 2013.",
+
+  "recency_half_life": 0,
+  "_recency_half_life": "Optional, ANALYSIS ONLY. Seasons. Weights recent drafts more heavily when calibrating opponents — a season N years old counts 0.5**(N/half_life). Managers drift, so a draft from a decade ago predicts today's bidding poorly, and an unweighted average treats it as equally informative. Setting this ALSO changes max-buy from a true all-time maximum (where one ancient splurge pins the ceiling forever) to a recency-weighted typical peak. 0 = disabled, every season equal. Try 4 if you have many seasons of history.",
+
+  "rfa_round": false,
+  "_rfa_round": "Optional, ANALYSIS ONLY. Set true if your league runs a restricted-free-agent round before the open auction — each manager's FIRST nomination must come from their prior roster and the incumbent may retain at market price. Calibration then tags those picks separately, excludes them from the positional multipliers (a retention matches a price the field set, so it says nothing about willingness to pay) and reports rfa_share / rfa_retain per manager. Leave false otherwise, or ordinary first nominations get mislabelled.",
+
+  "keeper_bump": 5,
+  "_keeper_bump": "Dollars added to a keeper's prior value: keeper cost = keeper_bump + (last season's draft price, or keeper_waiver_value for a waiver pickup). Drives the console's keeper auto-fill and analysis/keeper_outlook.py.",
+  "keeper_waiver_value": 1,
+  "_keeper_waiver_value": "What a player picked up off waivers counts as before the bump, so a free pickup costs keeper_waiver_value + keeper_bump to keep. ESPN's keeperValueFuture is NOT usable for waiver adds — it reports a computed value for players nobody bid on — so this replaces it. Players acquired by trade carry the original drafter's price and are priced as drafted.",
+  "keeper_inflation": 0,
+  "_keeper_inflation": "Optional, ANALYSIS ONLY. ESPN has no native keeper-cost field, so some leagues record a keeper at (true cost + N) as a house convention. Set N here and calibration subtracts it back off. Leave 0 — the default — if your league prices keepers directly (e.g. 'last year's cost + $5'), because then the recorded bid IS the true cost and subtracting anything drives keepers to $0 and skews concentration/max-buy. Sanity check: if per-team raw draft spend already reconciles to the auction budget, you want 0.",
 
   "me": "",
   "_me": "The team you are drafting. Leave blank to AUTO-DETECT (scrape_league.py matches your SWID to the league members). If set, must match a manager name from the scrape (ESPN owner display name). The console tracks THIS team's budget, roster and needs.",
@@ -17,5 +36,5 @@
   "_projections_xlsm": "Path to the checked-in Elboberto projections workbook (the universal baseline). build_tool_data.py reads its CheatSheet + LeagueInfo sheets.",
 
   "my_mult": {"QB": 1.0, "RB": 1.0, "WR": 1.0, "TE": 1.0},
-  "_my_mult": "Optional positional tilt for YOUR max-bid model (how much you value each position vs. baseline). 1.0 = neutral. Raise a position to pay up for it. Leave neutral until you have a strategy."
+  "_my_mult": "Positional tilt for YOUR max-bid model: how far above (or below) computed worth you will bid, by position. 1.0 = neutral, >1 pays up, <1 holds back. NOT cosmetic — 'your max' is worth x this tilt x scarcity x market trend, and the trend term is exactly 1.0 until prices are logged, so leaving every position at 1.0 makes 'your max' equal 'worth' on nearly every row. That reads as a broken column, and worse, in a room that clears above worth at a position it advises walking away from every player there. Set it from what your league actually pays: raise the positions you must pay market to win, lower the ones the room overbids."
 }

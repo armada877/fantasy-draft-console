@@ -259,6 +259,33 @@ input::placeholder{color:var(--faint)}
 .hidepick{display:inline-flex;gap:6px;align-items:center;font-size:11px;text-transform:uppercase;
   letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none}
 .hidepick input{width:14px;height:14px;padding:0;accent-color:var(--go)}
+.hidepick[hidden]{display:none}
+#rfa-only-who{color:var(--ink)}
+.sync-on{background:var(--go);color:#04160f;border-color:var(--go)}
+#sync-state.bad{color:var(--stop-ink);border-color:var(--stop)}
+.ksrc{min-width:0}
+.srcchip{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+  border-radius:4px;padding:1px 5px;white-space:nowrap;display:inline-block}
+.srcchip.from-real{color:var(--go-ink);border:1px solid var(--go-line);background:var(--go-bg)}
+.srcchip.from-model{color:var(--faint);border:1px dashed var(--line2)}
+.srcchip.from-drift{color:var(--warn-ink);border:1px solid var(--warn);background:var(--warn-bg)}
+.krow.declared{box-shadow:inset 2px 0 0 var(--go-line)}
+.krow.drifted{box-shadow:inset 2px 0 0 var(--warn)}
+.tgtedit[readonly]{opacity:.6;cursor:default}
+.rwtop{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 7px 12px}
+.rwp{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:5px;
+  padding:1px 6px;white-space:nowrap}
+.rwp b{color:var(--ink);font-weight:650}
+.rwp.reach{border-color:var(--go-line);color:var(--go-ink)}
+.rwp.reach b{color:var(--go-ink)}
+.risk{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:4px;padding:0 4px;margin-left:6px;white-space:nowrap;border:1px solid}
+.risk.r-out{color:var(--stop-ink);border-color:var(--stop);background:var(--stop-bg)}
+.risk.r-unsigned{color:var(--stop-ink);border-color:var(--stop);background:var(--stop-bg)}
+.risk.r-watch{color:var(--warn-ink);border-color:var(--warn);background:var(--warn-bg)}
+.c-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.ceiling.s-stop .c-why{color:var(--stop-ink)}
+.ceiling.s-go .c-why{color:var(--go-ink)}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -340,6 +367,8 @@ td.edge-cell{position:relative}
   vertical-align:middle}
 .p-RB{background:var(--rb-bg);color:var(--rb)} .p-WR{background:var(--wr-bg);color:var(--wr)}
 .p-TE{background:var(--te-bg);color:var(--te)} .p-QB{background:var(--qb-bg);color:var(--qb)}
+/* K and D/ST are $1 roster filler — deliberately colourless so they never pull the eye */
+.p-K,.p-DST{background:var(--raise);color:var(--muted)}
 .who .posdot{height:22px;min-width:34px;font-size:12px}
 
 /* the room — condensed (its tab pane handles scrolling) */
@@ -453,6 +482,51 @@ td.edge-cell{position:relative}
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:0s !important;animation-iteration-count:1 !important;transition:none !important}
 }
+/* ---- phase control (keepers / RFA / open auction) ---- */
+.phasebar{display:flex;align-items:center;gap:8px;margin-left:auto}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:var(--panel2)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;
+  font-weight:600;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{color:var(--ink)}
+/* active phase uses the ink-inverse idiom — green stays reserved for the GO decision */
+.seg button.on{background:var(--ink);color:var(--ground)}
+.rfa-only{display:none}
+body.phase-rfa .rfa-only{display:inline-block}
+.kept{color:var(--faint);font-size:11px;margin-left:6px;white-space:nowrap}
+#s-nom{font-size:15px;font-weight:650}
+#s-nom.me{color:var(--go-ink)}
+.team.onclock{outline:1px solid var(--go-line)}
+.team .clockchip{font-size:10px;color:var(--go-ink);margin-left:5px}
+.lkind{font-size:9px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);
+  border-radius:4px;padding:1px 4px;margin-right:6px;color:var(--faint);font-weight:700}
+.lkind.k-keeper{color:var(--muted);border-color:var(--line2)}
+.lkind.k-rfa{color:var(--warn-ink);border-color:var(--warn)}
+/* ---- keeper modal ---- */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;
+  justify-content:center;z-index:60;padding:16px}
+.modal[hidden]{display:none}
+.modal-card{background:var(--panel);border:1px solid var(--line2);border-radius:var(--r);
+  width:min(760px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.modal-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.modal-head h2{margin:0;font-size:15px}
+.modal-head .btn{margin-left:auto;padding:5px 10px}
+.modal-body{overflow:auto;padding:6px 16px}
+.modal-foot{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line)}
+.modal-note{font-size:12px;color:var(--faint);flex:1;min-width:0}
+.modal-note.bad{color:var(--stop-ink)}
+.krow{display:grid;grid-template-columns:minmax(88px,1fr) 74px 2fr 70px minmax(96px,1fr);
+  gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.krow:last-child{border-bottom:0}
+.kteam{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.krow input,.krow select{background:var(--ground);border:1px solid var(--line);border-radius:7px;
+  color:var(--ink);font:inherit;font-size:12px;padding:6px 8px;min-width:0}
+.krow input:focus,.krow select:focus{outline:0;border-color:var(--line2)}
+.krow select{cursor:pointer}
+.ksurplus{font-size:11px;color:var(--faint);text-align:right;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.ksurplus.good{color:var(--go-ink)}
+.ksurplus.bad{color:var(--stop-ink)}
 </style>
 
 <div class="wrap">
@@ -464,6 +538,7 @@ td.edge-cell{position:relative}
       <div class="vital"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="note">reserves $1 / open slot</div></div>
       <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
       <div class="vital"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="note" id="s-phase">pre-draft</div></div>
+      <div class="vital" id="v-nom" hidden><div class="k">Nominating</div><div class="v" id="s-nom">—</div><div class="note" id="s-nom-next"></div></div>
       <button class="themebtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
     </div>
 
@@ -472,15 +547,26 @@ td.edge-cell{position:relative}
         <span class="onblock">On the block</span>
         <div class="suggest"><input class="search" id="block-search" placeholder="Search a player to evaluate…" autocomplete="off"><div class="sug-list" id="block-sug" style="display:none"></div></div>
         <span class="pill" id="block-hint">type a player</span>
+        <div class="phasebar">
+          <span class="seg" id="phase-seg">
+            <button data-phase="keepers" data-tip="Pre-draft keepers — formula-priced, so they never inform the market read">Keepers</button>
+            <button data-phase="rfa" data-tip="RFA round — one nomination per manager; the incumbent may retain at the market price">RFA</button>
+            <button data-phase="auction" data-tip="Open auction — everything after the RFA round">Auction</button>
+          </span>
+          <button class="btn ghost" id="keepers-btn">Set keepers&hellip;</button>
+          <button class="btn ghost" id="sync-btn" hidden>&#8635; Sleeper sync</button>
+          <span class="pill" id="sync-state" hidden></span>
+        </div>
       </div>
       <div class="eval" id="eval">
         <div class="eval-grid">
           <div class="eval-decision">
             <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span><button class="hero-tag" id="ev-tag"></button></div>
             <div class="ceiling" id="ceiling">
-              <div class="c-k">Bid up to</div>
+              <div class="c-k" data-tip="The most this player is worth to YOU — never pay above it. The call underneath is a different question: whether you will actually GET him at that price. 'Let it go' means the room will bid past your ceiling, not that your ceiling is wrong.">Bid up to</div>
               <div class="c-v mono" id="ev-max"></div>
               <div class="c-state" id="ev-state"></div>
+              <div class="c-why" id="ev-why"></div>
             </div>
             <div class="verdict" id="ev-verdict"></div>
           </div>
@@ -497,6 +583,8 @@ td.edge-cell{position:relative}
           <button class="btn bid" id="bid-btn">Nominate</button>
           <div class="logrow">
             <label>Sold $</label><input class="mono" id="log-price" inputmode="numeric">
+            <label class="rfa-only">nom. by</label>
+            <select id="log-by" class="rfa-only"></select>
             <label>to</label>
             <select id="log-team"></select>
             <button class="btn primary" id="log-btn">Log pick</button>
@@ -524,6 +612,7 @@ td.edge-cell{position:relative}
           <span id="pos-filters"></span>
           <span class="rgroup">
             <label class="hidepick"><input type="checkbox" id="hide-picked" checked> hide picked</label>
+            <label class="hidepick rfaonly" id="rfa-only-wrap" hidden><input type="checkbox" id="rfa-only" checked> only <b id="rfa-only-who">nominator</b>'s roster</label>
             <span id="board-modes"></span>
           </span>
         </div>
@@ -570,6 +659,27 @@ td.edge-cell{position:relative}
   </div>
 
   <div class="foot" id="foot"></div>
+
+  <!-- keeper entry: one row per manager, applied as a locked pre-draft block of picks -->
+  <div class="modal" id="keeper-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Keepers</h2>
+        <span class="pill" id="keeper-sub">one per team &middot; leave blank for none</span>
+        <span class="modal-note" id="keeper-legend"></span>
+        <span class="modal-note" id="keeper-drift"></span>
+        <button class="btn ghost" id="keeper-close" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modal-body" id="keeper-rows"></div>
+      <div class="modal-foot">
+        <span class="modal-note" id="keeper-note"></span>
+        <button class="btn ghost" id="keeper-auto">Auto-fill likely</button>
+        <button class="btn ghost" id="keeper-clear">Clear all</button>
+        <button class="btn primary" id="keeper-apply">Apply keepers</button>
+      </div>
+    </div>
+  </div>
+  <datalist id="player-names"></datalist>
  </div><!-- /app-main -->
 
  <!-- ADVISOR (LLM) — its own full-height rail, pinned to the right all draft -->
@@ -609,7 +719,20 @@ const DATA = /*DATA*/;
 /* ---------- state ---------- */
 const ME = DATA.me;   // which team is you — set in config/league.json, injected via tool_data.json
 const STARTERS = DATA.starters, FLEX = DATA.flex, BENCH = DATA.bench;
-const SPEND_SLOTS = Object.values(STARTERS).reduce((a,b)=>a+b,0)+FLEX; // 8 startable
+const SPEND_SLOTS = Object.values(STARTERS).reduce((a,b)=>a+b,0)+FLEX; // startable slots
+// Every position this league actually starts, in board order — a league with a kicker and a
+// defence must not have them silently dropped from filters, needs, plans or the advisor.
+// FLEX is separate: it only ever holds RB/WR/TE, whatever else the league rosters.
+const POS_ORDER=["RB","WR","TE","QB","K","DST"];
+const POS_ALL=POS_ORDER.filter(p=>p in STARTERS)
+  .concat(Object.keys(STARTERS).filter(p=>!POS_ORDER.includes(p)));
+const FLEX_POS=["RB","WR","TE"];
+/* League-average multiplier per position, from the calibrated profiles themselves. A raw
+   argmax over a manager's multipliers is nearly useless as a read: this room pays ~1.5x at WR
+   and ~1.3x at RB, so the biggest number is WR or RB for almost everybody and every team card
+   ends up saying the same thing. What distinguishes a manager is where he sits RELATIVE to
+   the room, so the card reports his largest deviation from these averages instead. */
+const LEAGUE_MULT={};
 const ROSTER_SLOTS = SPEND_SLOTS + BENCH;
 const players = DATA.players.map((p,i)=>({...p,id:i,drafted:null,price:0}));
 const teams = {};
@@ -618,7 +741,30 @@ DATA.managers.forEach(m=>{
     need:{...STARTERS}, flex:FLEX, bench:BENCH};
 });
 const harryMult=DATA.my_mult||{QB:1,RB:1,WR:1,TE:1}; // your positional value tilt (config.my_mult; 1 = neutral)
+/* Nomination order — defined after `teams` exists, since it validates against it. An auction
+   rotates: the manager nominating the Nth auctioned player is ORDER[N % 12]. Keepers are
+   excluded from that count because they are locked before anyone nominates; counting them
+   would put the wrong team on the clock from the very first pick. */
+const ORDER=(DATA.draft_order||[]).filter(n=>n in teams);
+const nominatorAt=i=>ORDER.length?ORDER[((i%ORDER.length)+ORDER.length)%ORDER.length]:null;
 let log=[];
+/* ---------- draft phases ----------
+   Three rounds that price on completely different terms, so every log entry carries its kind:
+     keeper  - locked pre-draft at a formula price (last season's + a bump). NOT market signal.
+     rfa     - one nomination per manager from their own prior roster; the incumbent may retain
+               at whatever the bidding reaches, which makes this round run hot.
+     auction - the open auction, everything after.
+   Saves written before phases existed have no kind and are read as auction picks. */
+const PHASES=["keepers","rfa","auction"], KINDS=["keeper","rfa","auction"];
+const KIND_RANK={keeper:0,rfa:1,auction:2};
+let PHASE="auction";
+const kindOf=l=>l.kind||"auction";
+const phaseKind=()=>PHASE==="keepers"?"keeper":PHASE==="rfa"?"rfa":"auction";
+const keeperPicks=()=>log.filter(l=>kindOf(l)==="keeper");
+const rfaPicks=()=>log.filter(l=>kindOf(l)==="rfa");
+const rfaNominators=()=>new Set(rfaPicks().map(l=>l.by).filter(Boolean));
+const nominationsMade=()=>log.filter(l=>kindOf(l)!=="keeper").length;
+const onTheClock=()=>nominatorAt(nominationsMade());
 
 /* ---------- persistence (per league + season) ---------- */
 const LKEY="dc:"+String(DATA.league_name||"lg").replace(/\s+/g,"_")+":"+(DATA.season||"");
@@ -626,6 +772,7 @@ function lsGet(k,def){try{return JSON.parse(localStorage.getItem(LKEY+":"+k))??d
 function lsSet(k,v){try{localStorage.setItem(LKEY+":"+k,JSON.stringify(v));}catch(e){}}
 // player flags (prep list): {playerName: "target"|"sleeper"|"avoid"}
 let TAGS=lsGet("tags",{})||{};
+PHASE=PHASES.includes(lsGet("phase","auction"))?lsGet("phase","auction"):"auction";
 const TAG_GLYPH={none:"○",target:"◎",sleeper:"☾",avoid:"⊘"};
 const TAG_LABEL={target:"Target",sleeper:"Sleeper",avoid:"Avoid"};
 function saveTags(){lsSet("tags",TAGS);}
@@ -666,17 +813,30 @@ document.addEventListener("click",e=>{if(!e.target.closest(".tagmenu")&&!e.targe
 document.addEventListener("keydown",e=>{if(e.key==="Escape")hideTagMenu();});
 window.addEventListener("scroll",hideTagMenu,true);
 // draft history: persist the pick log (by player NAME so it survives id reordering) and replay it
-function saveDraft(){lsSet("log",log.map(l=>({name:players[l.id].name,price:l.price,team:l.team})));}
+function saveDraft(){lsSet("log",log.map(l=>({name:players[l.id].name,price:l.price,team:l.team,
+  kind:kindOf(l),by:l.by||null,pos:players[l.id].offBoard?players[l.id].pos:undefined})));}
 function restoreDraft(){
   const saved=lsGet("log",[])||[];
   const byName={};players.forEach(p=>{byName[p.name]=p.id;});
+  // picks synthesised from Sleeper for players outside the trimmed board: recreate them on
+  // replay, otherwise a reload would quietly hand those dollars back
+  saved.forEach(x=>{
+    if(byName[x.name]===undefined&&x.pos&&(x.pos in STARTERS||FLEX_POS.includes(x.pos))){
+      const p={name:x.name,pos:x.pos,tier:x.pos+"·",worth:1,vbd:0,fpts:0,
+               id:players.length,drafted:null,price:0,offBoard:true};
+      players.push(p);byName[p.name]=p.id;
+    }
+  });
   log=[];
   saved.forEach(s=>{
     const id=byName[s.name];
     if(id===undefined||!teams[s.team])return;
     players[id].drafted=s.team;players[id].price=s.price;
-    log.push({id,price:s.price,team:s.team});
+    const e={id,price:s.price,team:s.team,kind:KINDS.includes(s.kind)?s.kind:"auction"};
+    if(e.kind==="rfa"&&s.by&&teams[s.by])e.by=s.by;
+    log.push(e);
   });
+  log.sort((a,b)=>KIND_RANK[kindOf(a)]-KIND_RANK[kindOf(b)]);   // keepers, then RFA, then auction
   Object.keys(teams).forEach(rebuildTeam);
 }
 // brand the console from the injected league (name + season); harmless if absent
@@ -703,12 +863,18 @@ function slotFor(t,pos){
   if(t.bench>0)return "bench";
   return null;
 }
-function inflation(){
+// Market read, computed PER PHASE. Keepers are formula-priced, so they are never market
+// signal - including them would read a $6 keeper worth $23 as a deflating room. The RFA round
+// and the open auction are genuinely different markets (the incumbent's right to match keeps
+// RFA prices at or above value), so neither borrows the other's rate: a prediction made inside
+// a phase uses that phase's comps only, and falls back to neutral until it has enough of them.
+function inflationOf(kind){
   let paid=0,worth=0;
-  log.forEach(l=>{const p=players[l.id];paid+=l.price;worth+=Math.max(p.worth,1);});
-  if(worth<40)return 1;                 // not enough signal yet
+  log.forEach(l=>{if(kindOf(l)!==kind)return;const p=players[l.id];paid+=l.price;worth+=Math.max(p.worth,1);});
+  if(worth<40)return null;              // not enough signal yet
   return Math.min(1.5,Math.max(0.6,paid/worth));
 }
+function inflation(){const r=inflationOf(PHASE==="rfa"?"rfa":"auction");return r===null?1:r;}
 // what a team would bid for a player right now
 function teamBid(t,p,infl){
   const slot=slotFor(t,p.pos);
@@ -741,7 +907,7 @@ function harryMaxBid(p){
   // scarcity here = the POSITION getting thin relative to what you still need (not the local gap between two
   // studs — that would over-reward the guy before a cliff and invert two elites). Local cliff stays an info signal.
   const sc=scarcity(p);
-  const stillNeed=(t.need[p.pos]||0)+(["RB","WR","TE"].includes(p.pos)?t.flex:0);
+  const stillNeed=(t.need[p.pos]||0)+(FLEX_POS.includes(p.pos)?t.flex:0);
   let scar=1;
   if(sc.tierLeft===0)scar+=0.10;                                       // last of its tier → pay up
   if(stillNeed>0&&sc.posLeft<=stillNeed+2)scar+=0.18;                  // barely enough startable bodies left for your slots
@@ -760,7 +926,7 @@ function maxRationale(p){
   const t=teams[ME];
   if(slotFor(t,p.pos)===null) return "roster full at "+p.pos+" — no open slot";
   const sc=scarcity(p), infl=inflation();
-  const stillNeed=(t.need[p.pos]||0)+(["RB","WR","TE"].includes(p.pos)?t.flex:0);
+  const stillNeed=(t.need[p.pos]||0)+(FLEX_POS.includes(p.pos)?t.flex:0);
   const affordable=t.budget-(openSlots(t)-1), mb=harryMaxBid(p);
   const elite=p.worth>=35;
   const bits=[];
@@ -816,11 +982,41 @@ function renderStatus(){
   $("#s-infl").textContent=infl.toFixed(2)+"×";
   const mv=$("#s-infl").closest(".vital");
   if(mv){mv.classList.toggle("hot",infl>1.12);mv.classList.toggle("cold",infl<0.88);}
-  const picks=log.length, tot=Object.keys(teams).length*SPEND_SLOTS;
-  const pct=picks/tot;
-  let phase = pct<0.01?"pre-draft":pct<0.2?"opening — studs fly, pay for your anchor":
-    pct<0.4?"early — trap zone, hold budget":pct<0.6?"VALUE WINDOW — pounce":"late — $1 darts";
-  $("#s-phase").textContent=phase+" · "+picks+"/"+tot;
+  const rr=inflationOf("rfa"), ar=inflationOf("auction"), mvv=$("#s-infl").closest(".vital");
+  if(mvv)mvv.setAttribute("data-tip","Market read for the current phase only. RFA round "+
+    (rr===null?"no comps yet":rr.toFixed(2)+"×")+" · open auction "+
+    (ar===null?"no comps yet":ar.toFixed(2)+"×")+" · keepers excluded (formula-priced, not market).");
+  const picks=log.length, nTeams=Object.keys(teams).length, tot=nTeams*SPEND_SLOTS;
+  let phase;
+  if(PHASE==="keepers"){
+    phase="keepers · "+keeperPicks().length+"/"+nTeams+" set";
+  }else if(PHASE==="rfa"){
+    const used=rfaNominators().size;
+    phase="RFA round · "+rfaPicks().length+" sold"+(used?" · "+used+"/"+nTeams+" nominated":"")+
+      " — incumbent may match";
+  }else{
+    // the opening/trap/value-window read tracks money actually auctioned, so keepers - which
+    // fill slots without a nomination - must not advance it. The counter still shows every
+    // filled slot, keepers included, because that is what "how full is the room" means.
+    const nKeep=keeperPicks().length, sold=picks-nKeep;
+    const pct=sold/Math.max(1,tot-nKeep);
+    phase=(pct<0.01?"pre-draft":pct<0.2?"opening — studs fly, pay for your anchor":
+      pct<0.4?"early — trap zone, hold budget":pct<0.6?"VALUE WINDOW — pounce":"late — $1 darts")
+      +" · "+picks+"/"+tot;
+  }
+  $("#s-phase").textContent=phase;
+  // who nominates next — in the RFA round the nominator IS the incumbent who may match,
+  // so the "nominated by" field follows the clock instead of being retyped every time
+  const vnom=$("#v-nom");
+  if(ORDER.length){
+    vnom.hidden=false;
+    const now=onTheClock(), nxt=nominatorAt(nominationsMade()+1);
+    const el=$("#s-nom");
+    el.textContent=shortName(now); el.classList.toggle("me",now===ME);
+    $("#s-nom-next").textContent="next: "+shortName(nxt)+
+      (PHASE==="rfa"?" · "+Math.max(0,ORDER.length-nominationsMade())+" left in round":"");
+    const by=$("#log-by"); if(by&&PHASE==="rfa"&&!by.dataset.touched) by.value=now;
+  }else vnom.hidden=true;
 }
 
 function showEval(p){
@@ -831,7 +1027,7 @@ function showEval(p){
   const infl=inflation();
   const pred=predictPrice(p), mb=harryMaxBid(p);
   // identity
-  $("#ev-name").textContent=p.name;
+  $("#ev-name").innerHTML=escAttr(p.name)+riskChip(p,true);
   $("#ev-tier").textContent=p.tier;
   $("#ev-pos").textContent=p.pos;
   $("#ev-pos").className="posdot p-"+p.pos;
@@ -859,18 +1055,29 @@ function showEval(p){
   $("#ev-max").textContent=money(mb);
   // the call answers the glance question: can I land him at/under my ceiling?
   const gap=mb-pred;                 // headroom of your max over the likely sale price
-  let state,word;
-  if(slotFor(teams[ME],p.pos)===null){state="stop";word="No slot";}
-  else if(mb<=0){state="stop";word="Can't afford";}
-  else if(gap>=5){state="go";word="Target";}
-  else if(gap<=-5){state="stop";word="Let it go";}
-  else{state="hold";word="Fair value";}
+  // The ceiling and the call answer DIFFERENT questions — what he is worth to you, and
+  // whether you will win him at that price. Shown side by side with nothing linking them,
+  // "$54" above "Let it go" reads as a contradiction, so the call now carries the comparison
+  // that produced it.
+  let state,word,why;
+  if(slotFor(teams[ME],p.pos)===null){
+    state="stop";word="No slot";why="every "+p.pos+" slot is already filled";
+  }else if(mb<=0){
+    state="stop";word="Can't afford";why="holding $1 for each open slot leaves nothing to bid";
+  }else if(gap>=5){
+    state="go";word="Target";why="likely "+money(pred)+" — "+money(gap)+" under your ceiling";
+  }else if(gap<=-5){
+    state="stop";word="Let it go";why="likely "+money(pred)+" — "+money(-gap)+" past your ceiling";
+  }else{
+    state="hold";word="Fair value";why="likely "+money(pred)+" — lands about at your ceiling";
+  }
   const cc=$("#ceiling");
   cc.className="ceiling s-"+state;
   cc.classList.remove("pop"); void cc.offsetWidth; cc.classList.add("pop");   // replay the count-in
   // non-hue cue so the call reads without relying on red/green (colorblind-safe)
   const glyph={go:"▲",hold:"◆",stop:"✕"}[state]||"";
   $("#ev-state").textContent=(glyph?glyph+"  ":"")+word;
+  $("#ev-why").textContent=why;
   const v=$("#ev-verdict");
   v.className="verdict s-"+state;
   v.textContent=maxRationale(p);
@@ -897,6 +1104,18 @@ function renderBoard(){
   renderTierFilters();
   // base pool: hide picked or keep them (faded + struck)
   let base = hidePicked ? avail() : players.slice();
+  // In the RFA round a nomination must come from the NOMINATOR's own prior roster, so the
+  // other ~360 players on the board are noise. Narrow to the ~15 he could actually put up.
+  const rfaWrap=$("#rfa-only-wrap"), nomNow=ORDER.length?onTheClock():null;
+  const rfaPool=(PHASE==="rfa"&&nomNow)?(KEEPER_POOL[nomNow]||[]):[];
+  if(rfaWrap){
+    rfaWrap.hidden=!(PHASE==="rfa"&&rfaPool.length);
+    if(!rfaWrap.hidden)$("#rfa-only-who").textContent=shortName(nomNow);
+  }
+  if(!rfaWrap.hidden && $("#rfa-only").checked){
+    const legal=new Set(rfaPool.map(r=>r.name.toLowerCase()));
+    base=base.filter(p=>legal.has(p.name.toLowerCase()));
+  }
   if(!overall) base=base.filter(p=>p.pos===filterPos);
   if(boardMode==="proj" && filterTier!=="ALL") base=base.filter(p=>p.tier===filterTier);
   if(filterTag!=="ALL") base=base.filter(p=>(TAGS[p.name]||"none")===filterTag);  // flag filter (both views)
@@ -904,7 +1123,9 @@ function renderBoard(){
   if(boardMode==="proj"){
     // RAW projection data + tiers, live (reflects who's already gone)
     const tierName = filterTier==="ALL"?"by tier":filterTier;
-    $("#board-title").textContent=overall?"Projections — overall by VORP":"Projections — "+filterPos+" "+tierName;
+    $("#board-title").textContent=(!rfaWrap.hidden&&$("#rfa-only").checked)
+      ? "RFA candidates — "+shortName(nomNow)+"'s roster"
+      : (overall?"Projections — overall by VORP":"Projections — "+filterPos+" "+tierName);
     let list=base.slice().sort((a,b)=>b.vbd-a.vbd);
     const maxVbd=Math.max(1,list.length?list[0].vbd:1);   // scale for the VORP magnitude bar
     const span=overall?8:7;
@@ -933,7 +1154,7 @@ function renderBoard(){
       const sc=gone?null:scarcity(p), hot=sc&&sc.cliff>=15;
       const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"")+((band%2)?" bandalt":"")+(tag!=="none"?" tag-"+tag:"");
       tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
-        <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+        <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${riskChip(p)}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
         ${overall?`<td class="num tier">${p.pos}</td>`:''}
         <td class="num tier">${p.tier}</td>
         <td class="num">${Math.round(p.fpts)}</td>
@@ -948,7 +1169,9 @@ function renderBoard(){
   }
 
   // VALUE mode — Harry-centric best available
-  $("#board-title").textContent="Value board — best available";
+  $("#board-title").textContent=(!rfaWrap.hidden&&$("#rfa-only").checked)
+    ? "RFA candidates — "+shortName(nomNow)+"'s roster"
+    : "Value board — best available";
   head.innerHTML=`<tr>`+
     `<th class="tagcol" data-tip="Your prep flags. Click a row's marker to set ◎ target · ☾ sleeper · ⊘ avoid. Filter by flag above. Saved per league.">◎</th>`+
     `<th class="l">Player</th>`+
@@ -978,7 +1201,7 @@ function renderBoard(){
     const need=slotFor(teams[ME],p.pos)!==null;
     const pocket=!gone&&edge>=5&&need;
     tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
-      <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+      <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${riskChip(p)}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
       <td class="num tier">${p.tier}</td>
       <td class="num">${money(p.worth)}</td>
       <td class="num">${gone?'—':money(pred)}</td>
@@ -990,28 +1213,43 @@ function renderBoard(){
   });
 }
 
+// how far a manager sits from the room at a position (1.0 = exactly league average)
+function relMult(t,p){
+  const lg=LEAGUE_MULT[p]||1, m=(t.mult||{})[p];
+  return (m>0&&lg>0)?m/lg:1;
+}
 function renderTeams(){
   const box=$("#teams");box.innerHTML="";
+  if(!Object.keys(LEAGUE_MULT).length){
+    POS_ALL.forEach(p=>{
+      const v=Object.values(teams).map(t=>(t.mult||{})[p]).filter(x=>x>0);
+      LEAGUE_MULT[p]=v.length?v.reduce((a,b)=>a+b,0)/v.length:1;
+    });
+  }
   const infl=inflation();
+  const kept={};keeperPicks().forEach(l=>{kept[l.team]=players[l.id].name+" "+money(l.price);});
   Object.values(teams).sort((a,b)=>b.budget-a.budget).forEach(t=>{
     const open=openSlots(t);
     const needArr=[];
     Object.entries(t.need).forEach(([k,v])=>{for(let i=0;i<v;i++)needArr.push(k);});
     for(let i=0;i<t.flex;i++)needArr.push("FLX");
     // threat = big budget + still needs starters + strong bidder
-    const strongPos=["RB","WR","TE","QB"].reduce((a,p)=>(t.mult[p]||0)>(t.mult[a]||0)?p:a,"RB");
+    const strongPos=POS_ALL.reduce((a,p)=>relMult(t,p)>relMult(t,a)?p:a,"RB");
+    const relPct=Math.round(100*(relMult(t,strongPos)-1));
     const threat=t.name!==ME && t.budget>60 && needArr.length>2;
+    const clock=ORDER.length&&onTheClock()===t.name;
     const div=document.createElement("div");
-    div.className="team"+(t.name===ME?" me":threat?" threat":"");
+    div.className="team"+(t.name===ME?" me":threat?" threat":"")+(clock?" onclock":"");
     const maxb=money(t.budget-(open-1));
     div.innerHTML=`<div class="team-top"><div class="nm">${shortName(t.name)}${t.name===ME?' <span class="tag">you</span>':''}
-        <span class="maxbid">max ${maxb} · loves ${strongPos}</span></div>
-      <div class="bud">${money(t.budget)}</div></div>
+        <span class="maxbid">max ${maxb} · ${relPct>=8?`${strongPos} +${relPct}%`:relPct<=-8?`${strongPos} ${relPct}%`:"pays market"}</span></div>
+      <div class="bud">${money(t.budget)}${clock?'<span class="clockchip">on the clock</span>':''}</div></div>
       <div class="bar"><i style="width:${Math.max(2,t.budget/DATA.budget*100)}%"></i></div>
-      <div class="needs">${["QB","RB","WR","TE"].map(pos=>{
+      <div class="needs">${POS_ALL.map(pos=>{
         const openp=t.need[pos]>0; const n=t.need[pos];
         return n>0?`<span class="need open">${pos}×${n}</span>`:'';
-      }).join("")}${t.flex>0?`<span class="need open">FLX×${t.flex}</span>`:''}${open===0?'<span class="need">FULL</span>':''}</div>`;
+      }).join("")}${t.flex>0?`<span class="need open">FLX×${t.flex}</span>`:''}${open===0?'<span class="need">FULL</span>':''}</div>`
+      +(kept[t.name]?`<div class="kept">kept: ${kept[t.name]}</div>`:"");
     box.appendChild(div);
   });
 }
@@ -1024,7 +1262,7 @@ function renderRecs(){
   Object.values(teams).forEach(t=>{
     if(t.name===ME)return;
     const need=Object.entries(t.need).filter(([k,v])=>v>0).map(([k])=>k);
-    const wantFlex=t.flex>0?["RB","WR","TE"]:[];
+    const wantFlex=t.flex>0?FLEX_POS:[];
     const wants=[...new Set([...need,...wantFlex])];
     wants.forEach(pos=>{
       const score=t.budget*(t.mult[pos]||1);
@@ -1053,17 +1291,53 @@ function renderRecs(){
   box.innerHTML+=`<div class="rec"><div class="lbl">Phase play</div>${adv}</div>`;
 }
 
+// surname is the useful half of a player's name — except for a defence, where the last word
+// is always "D/ST" and the nickname in front of it is the only part that identifies anyone
+/* Availability flag. Deliberately three states and no more: OUT covers the designations that
+   mean he may not play at all (IR/PUP/NFI) plus an inactive roster status, FA means no NFL
+   team, and WATCH is the weekly injury report. Nothing here predicts a TRADE — the feed
+   carries no such signal, so the console does not pretend to. */
+function riskChip(p,big){
+  const r=p.risk;
+  if(!r)return "";
+  const word=r.kind==="out"?(r.label||"OUT"):r.kind==="unsigned"?"FA":(r.label||"Q");
+  const tip=(r.kind==="unsigned"?"Not on an NFL roster":
+            (r.label||"listed on the injury report")+(r.body?" — "+r.body:""))
+    +(r.news_days!=null?" · reported "+(r.news_days===0?"today":r.news_days+"d ago"):"")
+    +(r.kind==="watch"?". A weekly designation, not a ruling — but you draft before it clears."
+                      :". He may not be available when the season starts.");
+  return `<span class="risk r-${r.kind}"${big?"":""} data-tip="${escAttr(tip)}">${escAttr(word)}</span>`;
+}
+function shortPlayer(p){
+  const parts=p.name.split(" ");
+  return /D\/ST$/.test(p.name)?parts[0]:parts[parts.length-1];
+}
 function renderRunway(){
   const box=$("#runway");box.innerHTML="";
   const me=teams[ME];
-  const thresh={RB:20,WR:20,TE:8,QB:10}; // "startable" worth floor
-  ["RB","WR","TE","QB"].forEach(pos=>{
-    const left=avail().filter(p=>p.pos===pos&&p.worth>=thresh[pos]).length;
+  // "startable" worth floor. K and DST have no floor worth setting — every one of them is a
+  // $1 body — and without an entry here `worth >= undefined` is false for all of them, which
+  // reported "0 left · tight" on two positions that are never scarce.
+  const thresh={RB:20,WR:20,TE:8,QB:10,K:1,DST:1};
+  POS_ALL.forEach(pos=>{
+    const pool=avail().filter(p=>p.pos===pos&&p.worth>=(thresh[pos]||1))
+                      .sort((a,b)=>b.worth-a.worth);
+    const left=pool.length;
     const needing=Object.values(teams).filter(t=>slotFor(t,pos)!==null).length;
     const meNeed=slotFor(me,pos)!==null;
     const tight=left<=needing;
+    // the three actually on the table, priced by what they will SELL for rather than worth —
+    // "who do I go after next" is a question about money, not about projection
+    const top=pool.slice(0,3).map(p=>{
+      const go=Math.round(predictPrice(p)), mx=Math.round(harryMaxBid(p));
+      const reach=meNeed&&mx>=go;
+      return `<span class="rwp${reach?" reach":""}" data-tip="${escAttr(p.name)} — worth ${money(p.worth)}, `
+        +`likely sells ${money(go)}, your max ${money(mx)}${reach?" (winnable)":""}">`
+        +`${escAttr(shortPlayer(p))} <b>$${go}</b></span>`;
+    }).join("");
     box.innerHTML+=`<div class="runway"><span>${meNeed?'▸ ':''}${pos} <span style="color:var(--muted)">startable</span></span>
-      <span class="n" style="color:${tight?'var(--bad-ink)':'var(--ink)'}">${left} left · ${needing} teams want${tight?' · tight':''}</span></div>`;
+      <span class="n" style="color:${tight?'var(--stop-ink)':'var(--ink)'}">${left} left · ${needing} teams want${tight?' · tight':''}</span></div>`
+      +(top?`<div class="rwtop">${top}</div>`:"");
   });
 }
 
@@ -1072,9 +1346,13 @@ function renderLog(){
   if(!log.length){box.innerHTML='<div class="empty">No picks logged yet.</div>';return;}
   box.innerHTML="";
   log.map((l,i)=>({l,i})).reverse().forEach(({l,i})=>{
-    const p=players[l.id];
+    const p=players[l.id],k=kindOf(l);
+    const badge=k==="auction"?"":`<span class="lkind k-${k}">${k==="keeper"?"keep":"rfa"}</span>`;
+    // in the RFA round the incumbent may match, so a sale is either a retention or a poach
+    const outcome=(k==="rfa"&&l.by)
+      ?` <span style="color:var(--faint)">${l.by===l.team?"retained":"poached from "+shortName(l.by)}</span>`:"";
     const row=document.createElement("div");row.className="lrow";
-    row.innerHTML=`<div class="lmid"><span>${p.name} <span style="color:var(--faint)">${p.pos}</span></span>
+    row.innerHTML=`<div class="lmid"><span>${badge}${p.name} <span style="color:var(--faint)">${p.pos}</span>${outcome}</span>
       <span class="mono">${money(l.price)} → ${shortName(l.team)}</span></div>
       <button class="rm" title="Remove this pick">✕</button>`;
     row.querySelector(".rm").onclick=()=>removePick(i);
@@ -1122,10 +1400,10 @@ function buildTarget(){
   });
   const plan=DATA.plan||null;
   // neutral fallback reference (only used when no backtest plan is configured)
-  const pool={};["QB","RB","WR","TE"].forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
+  const pool={};POS_ALL.forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
   const idx={QB:0,RB:0,WR:0,TE:0};
   slots.filter(s=>!s.flex).forEach(s=>{s.ref=pool[s.pos][idx[s.pos]++]||null;});
-  slots.filter(s=>s.flex).forEach(s=>{let b=null,bp=null;["RB","WR","TE"].forEach(p=>{const c=pool[p][idx[p]];if(c&&(!b||c.worth>b.worth)){b=c;bp=p;}});if(b){idx[bp]++;s.ref=b;}});
+  slots.filter(s=>s.flex).forEach(s=>{let b=null,bp=null;FLEX_POS.forEach(p=>{const c=pool[p][idx[p]];if(c&&(!b||c.worth>b.worth)){b=c;bp=p;}});if(b){idx[bp]++;s.ref=b;}});
   const sumRef=slots.reduce((a,s)=>a+Math.max(1,s.ref?s.ref.worth:1),0)||1;
   const spendable=Math.max(1,DATA.budget-BENCH);
   slots.forEach(s=>{
@@ -1138,8 +1416,17 @@ function buildTarget(){
 // the player will actually AUCTION FOR (predictPrice / "will go"), NOT worth. Picks the best
 // available player of the slot's position(s) whose will-go price fits the target, else the
 // cheapest available. Moves as the board clears.
+// The most a slot could ever need: what the priciest player still eligible for it will go
+// for. Funding a slot past this is money that cannot convert — there is nobody left to spend
+// it on — so it is the natural ceiling when overflow is poured back in.
+function slotCeiling(s){
+  const poss=s.flex?FLEX_POS:[s.pos];
+  let top=1;
+  avail().forEach(p=>{if(poss.includes(p.pos)){const g=predictPrice(p);if(g>top)top=g;}});
+  return Math.ceil(top);
+}
 function slotHint(s,t){
-  const poss=s.flex?["RB","WR","TE"]:[s.pos];
+  const poss=s.flex?FLEX_POS:[s.pos];
   const cands=avail().filter(p=>poss.includes(p.pos))
                      .map(p=>({p,go:predictPrice(p)})).sort((a,b)=>b.go-a.go);
   if(!cands.length)return null;
@@ -1153,38 +1440,82 @@ function renderBuild(){
   Object.values(byPos).forEach(a=>a.sort((x,y)=>y.price-x.price));
   const left=me.budget;
   const slots=buildTarget();
-  // assign my players to slots — dedicated first, FLEX from any leftover RB/WR/TE, rest → bench
+  // Assign my players to slots by the role they actually fill: each player takes the OPEN slot
+  // whose target is closest to his worth, best player first. Rank-matching (priciest player to
+  // the priciest slot) is wrong once a cheap keeper is involved — a $6 keeper worth $23 would
+  // claim the bellcow slot and leave the cheap one open, hiding the fact that the expensive
+  // RB is the hole still to fill. Matching on worth rather than price keeps a bargain buy in
+  // the slot his production belongs to.
   const used=new Set(), fill=new Map();
-  [...slots.filter(s=>!s.flex),...slots.filter(s=>s.flex)].forEach(s=>{
-    let pick;
-    if(!s.flex)pick=byPos[s.pos].find(p=>!used.has(p.id));
-    else pick=["RB","WR","TE"].flatMap(p=>byPos[p]).filter(p=>!used.has(p.id)).sort((a,b)=>b.price-a.price)[0];
-    if(pick)used.add(pick.id); fill.set(s,pick||null);
+  slots.forEach(s=>fill.set(s,null));
+  const mine=me.players.map(id=>players[id]).sort((a,b)=>b.worth-a.worth);
+  mine.forEach(p=>{
+    const open=slots.filter(s=>!fill.get(s)&&(s.flex?FLEX_POS.includes(p.pos):s.pos===p.pos));
+    if(!open.length)return;                       // no startable slot left — he is a bench body
+    open.sort((a,b)=>(Math.abs(targetOf(a)-p.worth)-Math.abs(targetOf(b)-p.worth))
+                     ||(targetOf(a)-targetOf(b)));
+    fill.set(open[0],p);used.add(p.id);
   });
   const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
   const benchFilled=benchPlayers.length, benchSpent=benchPlayers.reduce((a,p)=>a+p.price,0);
   const _slotSum=slots.reduce((a,s)=>a+targetOf(s),0);
+  // Bench absorbs the remainder so the plan sums to budget, but never below $1 per empty
+  // spot — a $3 reserve against 5 open bench slots is not a plan, it is two players you
+  // cannot afford, and it silently over-funds the starters by the difference.
+  const benchFloor=Math.max(0,BENCH-benchFilled);
   const benchTarget=("BN" in BUDGET_OVR)?BUDGET_OVR.BN
-    :Math.max(0,DATA.budget-_slotSum);   // bench absorbs the remainder so the plan sums to budget
-  // PACE: remaining budget vs what the still-open slots + remaining bench should cost
+    :Math.max(benchFloor,DATA.budget-_slotSum);
+  // PACE: remaining budget vs what the ENTRY plan says the still-open slots should cost.
+  // Deliberately measured against the entry plan, not the redistributed targets below —
+  // those always fit by construction, so they could never tell you that you are behind.
   const openStart=slots.filter(s=>!fill.get(s));
-  const remainingPlan=openStart.reduce((a,s)=>a+targetOf(s),0)+Math.max(0,benchTarget-benchSpent);
+  const benchRemaining=Math.max(0,benchTarget-benchSpent);
+  const remainingPlan=openStart.reduce((a,s)=>a+targetOf(s),0)+benchRemaining;
   const diff=left-remainingPlan;   // ≥0 = cushion; <0 = value you must still find
-  // ALLOCATION: the whole plan (all slot targets + bench) should sum to the league budget
-  const allocated=slots.reduce((a,s)=>a+targetOf(s),0)+benchTarget;
-  const allocDiff=allocated-DATA.budget;
+  // LIVE TARGETS: money already spent is spent, so what matters is how the money still IN HAND
+  // should be spread over the slots still OPEN. Re-spread proportionally to the plan's shape,
+  // which routes a bargain's leftover to the slots that were always meant to carry weight —
+  // fill an RB slot with a $6 keeper and the open RB slot inherits most of the difference.
+  // A target you typed yourself is treated as pinned and is never re-spread.
+  const pinned=openStart.filter(s=>s.key in BUDGET_OVR);
+  const flexible=openStart.filter(s=>!(s.key in BUDGET_OVR));
+  const pot=Math.max(0,left-benchRemaining-pinned.reduce((a,s)=>a+targetOf(s),0));
+  const LIVE=new Map();
+  slots.forEach(s=>LIVE.set(s,targetOf(s)));
+  const baseSum=flexible.reduce((a,s)=>a+Math.max(1,targetOf(s)),0)||1;
+  if(pot<=baseSum){
+    // behind the plan: everything shrinks together, since no one slot is at fault
+    flexible.forEach(s=>LIVE.set(s,Math.max(1,Math.round(Math.max(1,targetOf(s))/baseSum*pot))));
+  }else{
+    // ahead of it: hold every slot at its planned figure, then pour the surplus into the
+    // BIGGEST slots first rather than dusting it evenly over all of them. A cheap keeper
+    // should turn into a better RB1, not four dollars spread across a kicker and two
+    // receivers you were never going to win. Each slot caps at what the best player still
+    // available for it costs; whatever survives that falls through to the bench.
+    flexible.forEach(s=>LIVE.set(s,Math.max(1,targetOf(s))));
+    let surplus=pot-baseSum;
+    flexible.slice().sort((a,b)=>targetOf(b)-targetOf(a)).forEach(s=>{
+      if(surplus<=0)return;
+      const room=Math.max(0,slotCeiling(s)-LIVE.get(s));
+      const add=Math.min(surplus,room);
+      LIVE.set(s,LIVE.get(s)+add); surplus-=add;
+    });
+  }
+  const liveOf=s=>LIVE.get(s);
   // delta chip — signed $, colored (over = red, under = green). No "saved" wording.
   const del=v=>`<span class="bdelta ${v>2?'over':v<-2?'under':'ok'}">${v>=0?'+$':'−$'}${Math.abs(v)}</span>`;
   const box=$("#build-slots");box.innerHTML="";
   // ── pacing headline (the actionable verdict) ──
   const pace=document.createElement("div");pace.className="budpace "+(diff>=0?"good":"bad");
   const paceMain=diff>0?`$${diff} cushion`:diff<0?`Make up $${-diff}`:"On budget";
-  const allocCls=allocDiff===0?"ok":"warn";
-  const allocMsg=allocDiff===0?`Plan adds up to $${DATA.budget} ✓`
-    :allocDiff>0?`Plan is $${allocDiff} over your $${DATA.budget} — trim targets`
-    :`$${-allocDiff} of $${DATA.budget} still unallocated`;
+  const allocCls=(flexible.length&&pot<=0)?"warn":"ok";
+  const allocMsg=!openStart.length?`Every startable slot filled`
+    :!flexible.length?`All ${openStart.length} open slot${openStart.length===1?"":"s"} pinned to your own targets`
+    :pot<=0?`Nothing left to spread — pinned targets and bench already use your $${left}`
+    :pot<=baseSum?`$${pot} across ${flexible.length} open slot${flexible.length===1?"":"s"} — trimmed to fit`
+    :`$${pot-baseSum} surplus poured into your top slots first`;
   pace.innerHTML=`<div class="bp-top"><div class="bp-main">${paceMain}</div>`+
-    `<div class="bp-sub">$${left} left · plan needs ≈<b>$${remainingPlan}</b> more</div></div>`+
+    `<div class="bp-sub">$${left} left · entry plan wanted ≈<b>$${remainingPlan}</b> more</div></div>`+
     `<div class="bp-alloc ${allocCls}"><span>${allocMsg}</span><button class="linkbtn" id="bud-reset" title="Reset targets to the suggested plan">reset plan</button></div>`;
   box.appendChild(pace);
   // ── column header ──
@@ -1194,16 +1525,25 @@ function renderBuild(){
   // ── startable slots (editable targets) ──
   const NDOT=`background:var(--raise);color:var(--muted)`;
   slots.forEach(s=>{
-    const tgt=targetOf(s), got=fill.get(s);
-    const status=got?(got.price<=tgt+2?"ok":"over"):"open";
+    const got=fill.get(s), plan=targetOf(s);
+    // A FILLED slot's target is what it actually cost. Leaving the planned figure there shows
+    // the same money twice — once as headroom on a slot that is already gone, and again inside
+    // the raised target of whichever open slot absorbed it — so the column stopped summing to
+    // the budget and the plan looked frozen. The delta still measures against the entry plan,
+    // which is where "you got this $33 under" belongs.
+    const tgt=got?got.price:liveOf(s);
+    const status=got?(got.price<=plan+2?"ok":"over"):"open";
     const dot=s.flex?`<span class="posdot" style="${NDOT}">FLX</span>`:`<span class="posdot p-${s.pos}">${s.pos}</span>`;
     // for an open slot, the realistic tier/player you can WIN at this budget (priced by will-go)
     const h=got?null:slotHint(s,tgt);
     const openHint=h?`<span class="btier">${h.tier}</span> ${h.name} <span class="bsub">goes ~$${h.go}</span>`:"—";
     const div=document.createElement("div");div.className="brow";
     div.innerHTML=`<span class="blab">${dot}${s.flex?"Flex":s.label}</span>`+
-      `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"></span>`+
-      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-tgt)}`:openHint}</span>`;
+      `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"`+
+        (got?` readonly data-tip="Filled — this is what you paid. The entry plan was $${plan}."`
+            :(tgt!==plan?` data-tip="Entry plan said $${plan}; re-spread to $${tgt} because the budget still in hand no longer matches the slots still open."`:""))+
+        `></span>`+
+      `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-plan)}`:openHint}</span>`;
     box.appendChild(div);
   });
   // ── bench (editable bench budget) ──
@@ -1216,14 +1556,16 @@ function renderBuild(){
   box.querySelectorAll(".tgtedit").forEach(inp=>{inp.onchange=()=>setSlotTarget(inp.dataset.key,inp.value);});
   const _rb=$("#bud-reset"); if(_rb) _rb.onclick=resetBudget;
   // ── per-group budget bars: QB/RB/WR/TE + FLEX + Bench, spent vs target ──
-  const groups={RB:{t:0,s:0},WR:{t:0,s:0},TE:{t:0,s:0},QB:{t:0,s:0},FLX:{t:0,s:0}};
-  slots.forEach(s=>{const g=s.flex?"FLX":s.pos;groups[g].t+=targetOf(s);const got=fill.get(s);if(got)groups[g].s+=got.price;});
+  const groups={};POS_ALL.forEach(p=>groups[p]={t:0,s:0});groups.FLX={t:0,s:0};
+  slots.forEach(s=>{const g=s.flex?"FLX":s.pos;const got=fill.get(s);
+    groups[g].t+=got?got.price:liveOf(s);   // a filled slot's "target" is what it actually cost
+    if(got)groups[g].s+=got.price;});
   groups.BN={t:benchTarget,s:benchSpent};
-  const LBL={RB:"RB",WR:"WR",TE:"TE",QB:"QB",FLX:"FLEX",BN:"Bench"};
-  $("#build-budget").innerHTML=["RB","WR","TE","QB","FLX","BN"].map(g=>{
+  const LBL={FLX:"FLEX",BN:"Bench",DST:"D/ST"};
+  $("#build-budget").innerHTML=POS_ALL.concat(["FLX","BN"]).map(g=>{
     const t=groups[g].t, s=groups[g].s, tt=Math.max(1,t), pct=Math.min(100,100*s/tt);
     const note = s>t ? `<span class="bdelta over">$${s-t} over</span>` : (s>0?`<span class="bdelta ok">$${t-s} left</span>`:"");
-    return `<div class="bbudrow"><span>${LBL[g]}</span><span class="mono">$${s} / $${t} ${note}</span>`+
+    return `<div class="bbudrow"><span>${LBL[g]||g}</span><span class="mono">$${s} / $${t} ${note}</span>`+
       `<div class="bbar"><i style="width:${pct}%;background:${s>t?'var(--stop)':'var(--go)'}"></i></div></div>`;
   }).join("");
 }
@@ -1232,13 +1574,16 @@ function renderAll(){renderStatus();renderBoard();renderTeams();renderRecs();ren
   if(selected&&selected.drafted===null)showEval(selected);else{selected=null;$("#eval").classList.remove("on");$("#block-hint").textContent="type a player";}}
 
 /* ---------- actions ---------- */
-function logPick(id,price,team){
+function logPick(id,price,team,kind,by){
   const p=players[id];if(!p||p.drafted!==null)return;
+  const k=KINDS.includes(kind)?kind:phaseKind();
   const t=teams[team];const slot=slotFor(t,p.pos)||"bench";
   p.drafted=team;p.price=price;
   if(slot==="start")t.need[p.pos]--;else if(slot==="flex")t.flex--;else t.bench--;
   t.budget-=price;t.players.push(id);
-  log.push({id,price,team});
+  const entry={id,price,team,kind:k};
+  if(k==="rfa"&&by&&teams[by])entry.by=by;   // who nominated - a sale is a retention or a poach
+  log.push(entry);
   saveDraft();
   $("#block-search").value="";selected=null;
   renderAll();
@@ -1299,12 +1644,13 @@ document.addEventListener("click",e=>{if(!e.target.closest(".suggest"))sug.style
 
 /* ---------- wire up ---------- */
 function initTeamSelect(){
-  const sel=$("#log-team");
-  sel.innerHTML=Object.keys(teams).map(n=>`<option ${n===ME?'selected':''}>${n}</option>`).join("");
+  const opts=Object.keys(teams).map(n=>`<option ${n===ME?'selected':''}>${n}</option>`).join("");
+  $("#log-team").innerHTML=opts;
+  $("#log-by").innerHTML=opts;     // who put the player up in the RFA round
 }
 function initFilters(){
   const box=$("#pos-filters");
-  ["ALL","RB","WR","TE","QB"].forEach(p=>{
+  ["ALL"].concat(POS_ALL).forEach(p=>{
     const b=document.createElement("button");b.className="chip"+(p==="ALL"?" on":"");b.textContent=p;
     b.onclick=()=>{filterPos=p;filterTier="ALL";box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===p));renderBoard();};
     box.appendChild(b);
@@ -1330,6 +1676,7 @@ function initModes(){
   });
 }
 $("#hide-picked").onchange=e=>{hidePicked=e.target.checked;renderBoard();};
+$("#rfa-only").onchange=()=>renderBoard();   // let me see the whole board again when I want it
 // take the current player off the block WITHOUT logging a sale
 function clearBlock(){
   selected=null;
@@ -1339,11 +1686,14 @@ function clearBlock(){
   $("#block-sug").style.display="none";
   $("#block-hint").textContent="type a player";
 }
+// once you override the nominator by hand, stop steering it from the clock
+$("#log-by").addEventListener("change",e=>{e.target.dataset.touched="1";});
 $("#log-btn").onclick=()=>{
   if(!selected){return;}
   const price=Math.max(1,parseInt($("#log-price").value)||1);
   const team=$("#log-team").value;
-  logPick(selected.id,price,team);
+  logPick(selected.id,price,team,phaseKind(),PHASE==="rfa"?$("#log-by").value:null);
+  delete $("#log-by").dataset.touched;    // next nomination follows the clock again
 };
 $("#undo-btn").onclick=clearBlock;   // "Clear" — cancel the nomination on the block
 $("#undo-last").onclick=undo;        // "Undo last" — reverse the last logged pick
@@ -1360,13 +1710,39 @@ function draftStateForAdvisor(){
       roster:t.players.map(id=>({name:players[id].name,pos:players[id].pos,price:players[id].price}))};
   });
   const topAvail={};
-  ["RB","WR","TE","QB"].forEach(pos=>{
+  POS_ALL.forEach(pos=>{
     topAvail[pos]=avail().filter(p=>p.pos===pos).sort((a,b)=>b.worth-a.worth).slice(0,8)
       .map(p=>({name:p.name,tier:p.tier,worth:p.worth,est_price:predictPrice(p)}));
   });
+  const kept=keeperPicks().map(l=>({team:l.team,name:players[l.id].name,pos:players[l.id].pos,
+    price:l.price,worth:players[l.id].worth,surplus:Math.round(players[l.id].worth-l.price)}));
+  const rfa=rfaPicks().map(l=>({name:players[l.id].name,pos:players[l.id].pos,price:l.price,
+    worth:players[l.id].worth,nominated_by:l.by||null,won_by:l.team,
+    outcome:l.by?(l.by===l.team?"retained":"poached"):null}));
+  const nominated=rfaNominators();
   return {me:ME, my_budget:teams[ME].budget, inflation:+inflation().toFixed(2),
+    phase:PHASE,
+    nomination:ORDER.length?{on_the_clock:onTheClock(),
+      next_up:[1,2,3].map(k=>nominatorAt(nominationsMade()+k)),
+      order:ORDER, picks_nominated:nominationsMade()}:null,
+    keepers:kept,
+    rfa_round:{sold:rfa, spent:rfa.reduce((a,b)=>a+b.price,0),
+      nominations_used:nominated.size,
+      yet_to_nominate:Object.keys(teams).filter(n=>!nominated.has(n))},
+    inflation_by_phase:{rfa:inflationOf("rfa"), auction:inflationOf("auction")},
     picks_made:log.length, on_the_block:selected?{name:selected.name,pos:selected.pos,
-      worth:selected.worth,est_price:predictPrice(selected),your_max:harryMaxBid(selected)}:null,
+      worth:selected.worth,est_price:predictPrice(selected),your_max:harryMaxBid(selected),
+      // In the RFA round the matching right belongs to the player, so whether this one was on
+      // the nominator's own roster is the difference between a lot you can win and one where
+      // bidding only taxes him. The advisor cannot infer it — the prior rosters are not in the
+      // state — so it has to be told.
+      ...(PHASE==="rfa"&&ORDER.length?(function(){
+        const nom=onTheClock();
+        const own=(KEEPER_POOL[nom]||[]).some(r=>r.name.toLowerCase()===selected.name.toLowerCase());
+        return {nominated_by:nom, was_on_nominators_roster:own,
+          retain_right:own?(nom+" may match the winning bid and take him"):
+                           "no matching right — an ordinary lot, winnable at value"};
+      })():{})}:null,
     teams:teamState, best_available:topAvail};
 }
 // tiny, safe markdown → HTML (escape first, then a few inline styles)
@@ -1483,6 +1859,409 @@ const _dock=$("#dock");
 const _onScroll=()=>_dock.classList.toggle("stuck",window.scrollY>4);
 window.addEventListener("scroll",_onScroll,{passive:true});_onScroll();
 
+/* ---------- keepers & the phase control ----------
+   A keeper is modelled as a locked pre-draft pick: it comes off the board, its price comes
+   out of that manager's budget, and it fills a roster slot - exactly what rebuildTeam already
+   does for any pick - but it is tagged "keeper" so it never feeds the market read. */
+const escAttr=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+/* Last season's roster for every manager, already priced by the house rule in the builder:
+   cost = bump + (the player's draft price, or the waiver value for a free pickup). A trade
+   passes the original draft value to the new team, which is what ESPN records, so a traded
+   player prices exactly like a drafted one. */
+const KEEPER_POOL=DATA.keeper_pool||{};
+function keeperEntry(team,name){
+  const k=String(name||"").trim().toLowerCase();
+  return (KEEPER_POOL[team]||[]).find(r=>r.name.toLowerCase()===k)||null;
+}
+/* What each manager has actually DECLARED. A real announcement beats a surplus projection
+   every time, so these override the model rather than competing with it — the model only
+   fills the managers who have not said anything yet. */
+const ANNOUNCED=DATA.announced_keepers||{};
+// Where the declared list came from. Sleeper exposes each roster's chosen keepers, so a row
+// sourced there is the manager's actual decision; anything else is this console guessing.
+const ANNOUNCED_SRC=DATA.announced_source||null, ANNOUNCED_AT=DATA.announced_pulled||null;
+const SRC_LABEL=ANNOUNCED_SRC==="sleeper"?"Sleeper":"declared";
+// most likely keep: biggest surplus, and where two are level the CHEAPER one - identical
+// surplus for less money is strictly better, since the difference stays in the budget
+/* Most likely keep = the biggest saving against the MARKET, not against worth.
+   The counterfactual for not keeping someone is buying him back at auction, and this room
+   pays well above worth (about 1.3x at RB, 1.5x at WR), so worth-minus-cost systematically
+   undervalues a cheap keeper at an inflated position. It got Al's call wrong: on surplus,
+   Gibbs (+43) beat Chase (+41) — but Gibbs costs $65 against a $108 market (saves $43) while
+   Chase costs $28 against a $99 market (saves $71), and Chase is what he actually kept. The
+   same logic pushes the whole room toward cheap keepers: the expensive man is not lost, he
+   can be put up in the RFA round and retained at market. */
+function likeliestKeeper(team){
+  // A player already applied as a keeper is STILL a candidate. Applying replaces the whole
+  // keeper set, so treating him as "taken" would make re-running the auto-fill skip the very
+  // man it just picked and hand back the runner-up instead.
+  const keptIds=new Set(keeperPicks().map(l=>l.id));
+  const rows=(KEEPER_POOL[team]||[]).map(r=>{
+    const p=playerByName(r.name);
+    if(!p||!(p.drafted===null||keptIds.has(p.id)))return null;
+    // You only save what you would actually have spent. A rival pays market, so market is his
+    // counterfactual — but YOURS is your own max bid, and pretending otherwise credits you for
+    // "saving" $47 on a receiver you would never have bid past $24 for. Without this cap the
+    // inflated positions win your own row every time, purely because the room overpays there.
+    const mkt=predictPrice(p);
+    const ceiling=(team===ME)?Math.min(mkt,harryMaxBid(p)):mkt;
+    return {...r,worth:p.worth,surplus:p.worth-r.cost,mkt,saving:ceiling-r.cost};
+  }).filter(Boolean);
+  const said=ANNOUNCED[team];
+  if(said){
+    const hit=rows.find(r=>r.name.toLowerCase()===said.toLowerCase());
+    if(hit)return {...hit,announced:true};
+  }
+  rows.sort((a,b)=>(b.saving-a.saving)||(a.cost-b.cost));
+  return rows[0]||null;
+}
+function autofillKeepers(){
+  let n=0;
+  $("#keeper-rows").querySelectorAll(".krow").forEach(row=>{
+    const best=likeliestKeeper(row.dataset.team);
+    if(!best)return;
+    row.querySelector(".kname").value=best.name;
+    row.querySelector(".kprice").value=best.cost;
+    updateKeeperRow(row);n++;
+  });
+  const note=$("#keeper-note");note.className="modal-note";
+  const said=Object.keys(ANNOUNCED).filter(t=>t in teams).length;
+  note.textContent=n
+    ?("Filled "+n+" — "+said+" announced, "+(n-said)+" projected from surplus. Edit any row, then Apply.")
+    :"No prior-season rosters in this build — enter keepers by hand.";
+}
+function playerByName(n){
+  const k=String(n||"").trim().toLowerCase();
+  return k?(players.find(p=>p.name.toLowerCase()===k)||null):null;
+}
+function setPhase(ph){
+  PHASE=PHASES.includes(ph)?ph:"auction";
+  lsSet("phase",PHASE);
+  document.querySelectorAll("#phase-seg button").forEach(b=>b.classList.toggle("on",b.dataset.phase===PHASE));
+  document.body.classList.toggle("phase-rfa",PHASE==="rfa");   // reveals the "nominated by" field
+  renderAll();
+}
+let _kpoolSeq=0, keeperLegend=()=>{};
+function renderKeeperRows(){
+  const box=$("#keeper-rows");box.innerHTML="";
+  const cur={};keeperPicks().forEach(l=>{cur[l.team]={name:players[l.id].name,price:l.price};});
+  Object.values(teams).forEach(t=>{
+    const c=cur[t.name]||{name:"",price:""};
+    const row=document.createElement("div");
+    row.className="krow";row.dataset.team=t.name;
+    // Only THIS manager's prior roster is keepable, so each row gets its own list rather than
+    // the whole league — offering 216 names when 15 are legal invites an impossible keeper.
+    // No pool (never scraped, or a manager who wasn't in the league) falls back to everyone.
+    // A <select>, not an <input list=…>: a datalist FILTERS itself against whatever is already
+    // typed, so once a keeper is chosen the dropdown collapses to that one name and the other
+    // legal keepers become invisible. The roster is a closed set of ~15, so offer it outright.
+    const pool=KEEPER_POOL[t.name]||[];
+    const chosen=c.name;
+    // the declared pick stays visible in the list even after you pick someone else, so you
+    // can always see what you moved away from — and get back to it
+    const said=ANNOUNCED[t.name]||null;
+    const opts=pool.slice().sort((a,b)=>b.cost-a.cost).map(r=>{
+      const isSaid=said&&r.name.toLowerCase()===said.toLowerCase();
+      return `<option value="${escAttr(r.name)}"${r.name===chosen?" selected":""}>`+
+        `${escAttr(r.name)} — ${r.pos} ${money(r.cost)}${isSaid?" ◆ "+escAttr(SRC_LABEL):""}</option>`;
+    }).join("");
+    const namefield=pool.length
+      ? `<select class="kname"><option value="">— no keeper —</option>${opts}</select>`
+      : `<input class="kname" list="player-names" autocomplete="off" placeholder="player — blank for none" value="${escAttr(chosen)}">`;
+    row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}</div>
+      <div class="ksrc"></div>
+      ${namefield}
+      <input class="kprice mono" inputmode="numeric" placeholder="$" value="${c.price===""?"":c.price}">
+      <div class="ksurplus"></div>`;
+    box.appendChild(row);
+    // choosing a player prices him from the rule; editing the price by hand then sticks
+    const onName=()=>{
+      const v=row.querySelector(".kname").value;
+      const e=keeperEntry(t.name,v);
+      if(e)row.querySelector(".kprice").value=e.cost;
+      else if(!v.trim())row.querySelector(".kprice").value="";   // "no keeper" clears the price
+      updateKeeperRow(row);keeperLegend();
+    };
+    row.querySelector(".kname").addEventListener("input",onName);
+    row.querySelector(".kname").addEventListener("change",onName);   // <select> fires change
+    row.querySelector(".kprice").addEventListener("input",()=>updateKeeperRow(row));
+    updateKeeperRow(row);
+  });
+  keeperLegend();
+}
+/* The source chip is recomputed on every edit rather than painted once, because overriding a
+   declared keeper changes what the row IS: it stops being what the manager set and becomes
+   your own read. Silently leaving it labelled "Sleeper" would be the console asserting
+   something false about a rival's roster. */
+function refreshSrcChip(row){
+  const box=row.querySelector(".ksrc"), team=row.dataset.team;
+  const said=ANNOUNCED[team]||null;
+  const cur=(row.querySelector(".kname").value||"").trim();
+  let cls,txt,tip;
+  if(!said){
+    cls="from-model";txt="projected";
+    tip="Nobody has declared a keeper for this team. This is the console's own pick: the "
+       +"biggest saving against what the player would cost at auction.";
+  }else if(cur.toLowerCase()===said.toLowerCase()){
+    cls="from-real";txt=SRC_LABEL;
+    tip="Pulled from "+SRC_LABEL+" — this manager actually set this keeper"
+       +(ANNOUNCED_AT?", as of "+ANNOUNCED_AT:"")+".";
+  }else{
+    cls="from-drift";txt="drifted";
+    tip="You changed this. "+SRC_LABEL+" says "+said+(cur?", you have "+cur:", you have nobody")
+       +" — marked ◆ in the dropdown so you can put it back.";
+  }
+  box.innerHTML=`<span class="srcchip ${cls}" data-tip="${escAttr(tip)}">${escAttr(txt)}</span>`;
+  row.classList.toggle("declared",cls==="from-real");
+  row.classList.toggle("drifted",cls==="from-drift");
+}
+// live surplus readout: what the keeper is worth this season against what he costs
+function updateKeeperRow(row){
+  refreshSrcChip(row);
+  const nm=row.querySelector(".kname").value.trim(), out=row.querySelector(".ksurplus");
+  out.className="ksurplus";
+  if(!nm){out.textContent="—";return;}
+  const p=playerByName(nm);
+  if(!p){out.textContent="not in pool";out.classList.add("bad");return;}
+  if((KEEPER_POOL[row.dataset.team]||[]).length && !keeperEntry(row.dataset.team,nm)){
+    out.textContent="not on their roster";out.classList.add("bad");return;
+  }
+  const price=parseInt(row.querySelector(".kprice").value);
+  const e=keeperEntry(row.dataset.team,nm);
+  const pf=row.querySelector(".kprice");
+  if(e)pf.setAttribute("data-tip",e.acq==="ADD"?("waiver pickup — priced off the waiver value")
+    :(e.acq==="TRADE"?"acquired by trade — carries the original draft price":"drafted last season")
+    +", so the rule makes him "+money(e.cost));
+  else pf.removeAttribute("data-tip");
+  if(!(price>=0)){out.textContent="worth "+money(p.worth);return;}
+  // what keeping him saves against buying him back at this room's price
+  const mkt=Math.round(predictPrice(p)), saving=mkt-price;
+  out.textContent=(saving>=0?"saves ":"loses ")+money(Math.abs(saving))+" · mkt "+money(mkt);
+  out.title="worth "+money(p.worth)+" · goes for about "+money(mkt)+" · keeper cost "+money(price);
+  out.classList.add(saving>=0?"good":"bad");
+}
+function applyKeepers(){
+  const note=$("#keeper-note");note.className="modal-note";
+  const rows=[...$("#keeper-rows").querySelectorAll(".krow")], want=[], bad=[], seen={};
+  for(const row of rows){
+    const nm=row.querySelector(".kname").value.trim();
+    if(!nm)continue;
+    const p=playerByName(nm);
+    if(!p){bad.push(nm+" — not in the pool");continue;}
+    if((KEEPER_POOL[row.dataset.team]||[]).length && !keeperEntry(row.dataset.team,nm)){
+      bad.push(p.name+" — not on " + shortName(row.dataset.team) + "'s prior roster");continue;
+    }
+    if(seen[p.id]){bad.push(p.name+" — listed twice");continue;}
+    seen[p.id]=1;
+    want.push({p,price:Math.max(0,parseInt(row.querySelector(".kprice").value)||0),team:row.dataset.team});
+  }
+  if(bad.length){note.textContent="Fix first: "+bad.join("; ");note.classList.add("bad");return;}
+  // idempotent: drop every existing keeper first, so re-applying EDITS the set rather than stacking
+  for(let i=log.length-1;i>=0;i--){
+    if(kindOf(log[i])==="keeper"){const e=log[i];players[e.id].drafted=null;players[e.id].price=0;log.splice(i,1);}
+  }
+  const clash=[];
+  want.forEach(k=>{
+    if(k.p.drafted!==null){clash.push(k.p.name+" (already sold to "+shortName(k.p.drafted)+")");return;}
+    k.p.drafted=k.team;k.p.price=k.price;
+    log.push({id:k.p.id,price:k.price,team:k.team,kind:"keeper"});
+  });
+  // keepers are locked before a ball is nominated, so they lead the log. Array.sort is stable,
+  // so this only moves whole phases - order within the RFA round and the auction is untouched.
+  log.sort((a,b)=>KIND_RANK[kindOf(a)]-KIND_RANK[kindOf(b)]);
+  Object.keys(teams).forEach(rebuildTeam);
+  saveDraft();renderAll();renderKeeperRows();
+  if(clash.length){note.textContent="Skipped: "+clash.join("; ");note.classList.add("bad");}
+  else note.textContent=want.length
+    ?want.length+" keeper"+(want.length===1?"":"s")+" applied — off the board, out of the budgets."
+    :"Keepers cleared.";
+}
+function openKeepers(){
+  const nDeclared=Object.keys(ANNOUNCED).filter(t=>t in teams).length;
+  keeperLegend=()=>{
+    const rows=[...$("#keeper-rows").querySelectorAll(".krow")];
+    const drift=rows.filter(r=>r.classList.contains("drifted")).length;
+    const el=$("#keeper-drift");
+    if(el)el.innerHTML=drift?`<span class="srcchip from-drift">drifted</span> ${drift} changed from ${escAttr(SRC_LABEL)}`:"";
+  };
+  $("#keeper-legend").innerHTML=nDeclared
+    ? `<span class="srcchip from-real">${escAttr(SRC_LABEL)}</span> ${nDeclared} set by the manager`
+      + (ANNOUNCED_AT?` (as of ${escAttr(ANNOUNCED_AT)})`:"")
+      + ` &middot; <span class="srcchip from-model">projected</span> ${Object.keys(teams).length-nDeclared} still the console's guess`
+    : `<span class="srcchip from-model">projected</span> nobody has declared a keeper yet — every row is the console's guess`;
+  renderKeeperRows();
+  const n=$("#keeper-note");n.className="modal-note";n.textContent="";
+  $("#keeper-modal").hidden=false;
+  const first=$("#keeper-rows .kname");if(first)first.focus();
+}
+function closeKeepers(){$("#keeper-modal").hidden=true;}
+$("#keepers-btn").onclick=openKeepers;
+$("#keeper-close").onclick=closeKeepers;
+$("#keeper-apply").onclick=applyKeepers;
+$("#keeper-auto").onclick=autofillKeepers;
+$("#keeper-clear").onclick=()=>{
+  $("#keeper-rows").querySelectorAll(".krow").forEach(r=>{
+    r.querySelector(".kname").value="";r.querySelector(".kprice").value="";updateKeeperRow(r);});
+  const n=$("#keeper-note");n.className="modal-note";n.textContent="Cleared — press Apply to commit.";
+};
+$("#keeper-modal").addEventListener("click",e=>{if(e.target.id==="keeper-modal")closeKeepers();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#keeper-modal").hidden)closeKeepers();});
+document.querySelectorAll("#phase-seg button").forEach(b=>b.onclick=()=>setPhase(b.dataset.phase));
+
+/* ---------- live Sleeper draft sync ----------
+   Sleeper's read API is public and sends permissive CORS headers, so the page polls it
+   directly; no server proxy and no credentials. Picks are only ever ADDED — a player already
+   logged is skipped — so syncing can never undo work you did by hand, and pulling the same
+   pick twice is a no-op.
+
+   Sleeper records who WON each pick but not who nominated it, so the nominator is taken from
+   the rotation the league announced: the Nth auctioned player is nominated by
+   draft_order[N % 12]. That same index decides the phase — the first pass through the order
+   is the RFA round, everything after is the open auction — and picks flagged is_keeper are
+   tagged keeper and never counted in that sequence. */
+const SLEEPER_LEAGUE=DATA.sleeper_league_id||null;
+const SYNC={on:false,timer:null,draftId:null,byRoster:{},unmatched:[],lastErr:null};
+const SUFFIX_RE=/\b(jr|sr|ii|iii|iv|v)\b/g;
+function normPlayer(n){
+  return String(n||"").toLowerCase().replace(/[.'`]/g,"").replace(/[-\/]/g," ")
+    .replace(SUFFIX_RE,"").replace(/\s+/g," ").trim();
+}
+const _byNorm={};players.forEach(p=>{_byNorm[normPlayer(p.name)]=p;});
+// a Sleeper DEF pick is named for the franchise ("Houston Texans"); the board calls it
+// "Texans D/ST", so collapse to the nickname both forms share
+function sleeperPlayer(md){
+  if((md.position||"")==="DEF"){
+    const nick=String(md.last_name||md.first_name||"").trim().split(" ").pop();
+    return _byNorm[normPlayer(nick+" D/ST")]||null;
+  }
+  return _byNorm[normPlayer((md.first_name||"")+" "+(md.last_name||""))]||null;
+}
+/* A draft can rostered anyone, but the board is a TRIMMED pool — the deep end of every
+   position is cut after valuation. Skipping a pick we cannot find would silently drop that
+   manager's spend, and budgets drive every prediction on the page, so an unknown player is
+   admitted at $1 of worth instead. He is drafted the instant he is created, so he never
+   appears on the board; all he does is carry the money and the roster slot. */
+function ensurePlayer(md){
+  const hit=sleeperPlayer(md);
+  if(hit)return hit;
+  const pos=(md.position||"").toUpperCase()==="DEF"?"DST":(md.position||"").toUpperCase();
+  if(!(pos in STARTERS)&&!FLEX_POS.includes(pos))return null;   // IDP etc — not our game
+  const name=pos==="DST"
+    ? String(md.last_name||md.first_name||"").trim().split(" ").pop()+" D/ST"
+    : ((md.first_name||"")+" "+(md.last_name||"")).trim();
+  if(!name)return null;
+  const p={name,pos,tier:pos+"·",worth:1,vbd:0,fpts:0,id:players.length,drafted:null,price:0,
+           offBoard:true};
+  players.push(p);_byNorm[normPlayer(name)]=p;
+  return p;
+}
+async function sj(url){
+  const r=await fetch(url);
+  if(r.status===429){const e=new Error("rate limited");e.rateLimited=true;throw e;}
+  if(!r.ok)throw new Error(url+" -> "+r.status);
+  return r.json();
+}
+async function sleeperResolve(){
+  const drafts=await sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/drafts");
+  const auction=drafts.filter(d=>d.type==="auction").sort((a,b)=>(b.created||0)-(a.created||0));
+  if(!auction.length)throw new Error("no auction draft on this Sleeper league");
+  SYNC.draftId=auction[0].draft_id;
+  const [rosters,users]=await Promise.all([
+    sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/rosters"),
+    sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/users")]);
+  const nameOf={};users.forEach(u=>{nameOf[u.user_id]=(u.display_name||"").trim();});
+  SYNC.byRoster={};
+  rosters.forEach(r=>{const n=nameOf[r.owner_id];if(n&&n in teams)SYNC.byRoster[r.roster_id]=n;});
+}
+async function sleeperPoll(){
+  const picks=await sj("https://api.sleeper.app/v1/draft/"+SYNC.draftId+"/picks");
+  // once every roster slot in the league is sold there is nothing left to watch
+  if(picks.length&&picks.length>=Object.keys(teams).length*ROSTER_SLOTS)SYNC.done=true;
+  picks.sort((a,b)=>(a.pick_no||0)-(b.pick_no||0));
+  const unmatched=[];let added=0,seq=0;
+  for(const pk of picks){
+    const md=pk.metadata||{};
+    const isKeeper=!!pk.is_keeper;
+    const idx=isKeeper?null:seq++;                 // keepers sit outside the nomination order
+    const p=ensurePlayer(md);
+    const team=SYNC.byRoster[pk.roster_id];
+    if(!p||!team){unmatched.push(((md.first_name||"")+" "+(md.last_name||"")).trim()||("roster "+pk.roster_id));continue;}
+    if(p.drafted!==null)continue;                  // already on the board — never re-log
+    const price=Math.max(0,parseInt(md.amount)||0);
+    const kind=isKeeper?"keeper":(ORDER.length&&idx<ORDER.length?"rfa":"auction");
+    const by=(kind==="rfa"&&ORDER.length)?nominatorAt(idx):null;
+    logPick(p.id,price,team,kind,by);
+    added++;
+  }
+  SYNC.unmatched=unmatched;
+  return {total:picks.length,added,unmatched:unmatched.length};
+}
+function syncPaint(txt,bad){
+  const el=$("#sync-state");el.hidden=false;el.textContent=txt;el.classList.toggle("bad",!!bad);
+  $("#sync-btn").classList.toggle("sync-on",SYNC.on);
+}
+/* Poll once a second. A nomination runs 20s and any bid inside the last 10s resets the clock
+   to 10, so a 5s poll could show a player as still open with only a couple of seconds left to
+   react. One second costs 60 small requests a minute, comfortably inside Sleeper's limits.
+   Requests never overlap — a slow response skips the tick rather than queueing behind it —
+   and an error backs off to 2s, 4s, 8s so a broken draft id cannot hammer the API. */
+/* Sleeper publishes a guideline of under 1000 calls a minute; one poll a second is 60, so
+   roughly 6% of it. The headroom is not the safety mechanism though — these are:
+   a 429 backs off for a full 30s rather than the normal doubling, polling pauses entirely
+   while the tab is hidden, and it stops for good once the draft reports complete. */
+const SYNC_MS=1000, SYNC_MAX_BACKOFF=8000, SYNC_RATELIMIT_MS=30000;
+async function syncTick(){
+  if(SYNC.busy)return;                      // previous request still in flight
+  SYNC.busy=true;
+  try{
+    const r=await sleeperPoll();
+    SYNC.lastErr=null;SYNC.backoff=0;
+    if(SYNC.done){syncStop();syncPaint("draft complete — "+r.total+" picks synced");return;}
+    if(SYNC.on)syncSchedule(SYNC_MS);
+    syncPaint(r.total+" picks"+(r.added?" · +"+r.added:"")+(r.unmatched?" · "+r.unmatched+" unmatched":"")
+      +" · "+new Date().toLocaleTimeString());
+  }catch(e){
+    SYNC.lastErr=String(e);
+    // a rate limit is not a transient blip — stand well back rather than doubling into it
+    SYNC.backoff=e.rateLimited?SYNC_RATELIMIT_MS
+      :Math.min(SYNC_MAX_BACKOFF,(SYNC.backoff||SYNC_MS)*2);
+    if(SYNC.on)syncSchedule(SYNC.backoff);
+    syncPaint((e.rateLimited?"rate limited — pausing ":"sync error — retrying in ")
+      +Math.round(SYNC.backoff/1000)+"s",true);
+  }finally{SYNC.busy=false;}
+}
+function syncSchedule(ms){
+  if(SYNC.timer)clearTimeout(SYNC.timer);
+  SYNC.timer=setTimeout(syncTick,ms);
+}
+async function syncStart(){
+  try{
+    syncPaint("connecting…");
+    if(!SYNC.draftId)await sleeperResolve();
+    const missing=Object.keys(teams).filter(n=>!Object.values(SYNC.byRoster).includes(n));
+    if(missing.length)console.warn("Sleeper roster not matched for:",missing);
+    SYNC.on=true;SYNC.backoff=0;
+    await syncTick();                        // schedules the next tick itself
+    $("#sync-btn").classList.add("sync-on");
+  }catch(e){SYNC.on=false;syncPaint("cannot reach Sleeper",true);console.error(e);}
+}
+function syncStop(){
+  SYNC.on=false;if(SYNC.timer)clearTimeout(SYNC.timer);SYNC.timer=null;
+  $("#sync-btn").classList.remove("sync-on");syncPaint("sync off");
+}
+if(SLEEPER_LEAGUE){
+  $("#sync-btn").hidden=false;
+  $("#sync-btn").onclick=()=>SYNC.on?syncStop():syncStart();
+  // a backgrounded tab does not need second-by-second prices; resume on return
+  document.addEventListener("visibilitychange",()=>{
+    if(!SYNC.on)return;
+    if(document.hidden){if(SYNC.timer)clearTimeout(SYNC.timer);SYNC.timer=null;syncPaint("paused — tab hidden");}
+    else syncSchedule(0);
+  });
+}
+
 restoreDraft();   // replay any saved picks for this league so history survives reloads
-initTeamSelect();initFilters();initFlagFilters();initModes();renderAll();
+initTeamSelect();initFilters();initFlagFilters();initModes();
+$("#player-names").innerHTML=players.map(p=>`<option value="${escAttr(p.name)}">`).join("");
+setPhase(PHASE);   // paints the segmented control + RFA-only fields, then renders everything
 </script>

@@ -16,11 +16,60 @@ import lib
 PROJ = json.load(open(os.path.join(os.path.dirname(__file__), os.pardir,
               "draft_sheets", "elboberto_projections.json")))
 SUFFIX = {"jr", "sr", "ii", "iii", "iv", "v"}
-LEAGUE_MULT = {"QB": 0.41, "RB": 1.31, "WR": 1.47, "TE": 0.74}
 POS = ("QB", "RB", "WR", "TE")
-# roster: 1QB 2RB 2WR 1TE 2FLEX(RB/WR/TE) + 6 bench = 14 spendable; DST=$1 sep
-START = {"QB": 1, "RB": 2, "WR": 2, "TE": 1}
-NFLEX, NBENCH, BUDGET = 2, 6, 199
+
+
+def _league_shape():
+    """Roster and budget for the season being simulated, from the same config the console
+    builds against. The old hardcoded 2 FLEX / 6 bench / $199 no longer matched the league —
+    it starts 1 FLEX, 5 bench, a kicker and a defence on a $200 budget — so the sim was
+    allocating a different roster than the one being drafted.
+
+    K and DST are folded into the bench count rather than modelled: they are one-dollar slots
+    (every kicker in this league has sold for exactly $1), so all they do is reserve money.
+    """
+    cfg, start, flex, bench, budget = _cfg_json(), {"QB": 1, "RB": 2, "WR": 2, "TE": 1}, 1, 5, 200
+    roster = cfg.get("roster") or {}
+    starters = roster.get("starters")
+    if not starters:
+        raw = os.path.join(os.path.dirname(__file__), os.pardir, "scraping", "raw",
+                           str(cfg.get("season", 2026)), "league_full.json")
+        if os.path.exists(raw):
+            with open(raw) as f:
+                d = json.load(f)
+            d = (d[0] if d else {}) if isinstance(d, list) else d
+            st = (d.get("settings") or {})
+            counts = (st.get("rosterSettings") or {}).get("lineupSlotCounts") or {}
+            m = {"0": "QB", "2": "RB", "4": "WR", "6": "TE", "16": "DST", "17": "K"}
+            starters = {}
+            for slot, n in counts.items():
+                if m.get(slot) and int(n or 0):
+                    starters[m[slot]] = int(n)
+            flex = int(counts.get("23") or flex)
+            bench = int(counts.get("20") or bench)
+            budget = int(((st.get("draftSettings") or {}).get("auctionBudget")) or budget)
+    else:
+        flex = int(roster.get("flex", flex))
+        bench = int(roster.get("bench", bench))
+    if starters:
+        onedollar = sum(int(starters.get(p, 0)) for p in ("K", "DST"))
+        start = {p: int(starters.get(p, 0)) for p in POS if int(starters.get(p, 0))}
+        bench += onedollar
+    return start, flex, bench, budget
+
+
+def _cfg_json():
+    p = os.path.join(os.path.dirname(__file__), os.pardir, "config", "league.json")
+    if os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+START, NFLEX, NBENCH, BUDGET = _league_shape()
+# fallback for a manager+position with too little history: what the ROOM pays there, computed
+# from the calibrated agents rather than pinned to a decade-old constant
+LEAGUE_MULT = {"QB": 0.41, "RB": 1.31, "WR": 1.47, "TE": 0.74}
 
 
 def norm(n):
@@ -34,6 +83,40 @@ def proj_lookup(year):
     return {norm(p["name"]): p for p in PROJ[str(year)] if p.get("proj_value") is not None}
 
 
+def season_weight(yr, latest):
+    """Exponential recency weight: 1.0 for `latest`, halving every RECENCY_HALF_LIFE
+    seasons. Returns 1.0 for every season when the half-life is 0 (weighting disabled)."""
+    hl = lib.RECENCY_HALF_LIFE
+    return 1.0 if hl <= 0 else 0.5 ** ((latest - yr) / hl)
+
+
+def _recency_stat(pairs, latest, peak):
+    """Collapse [(season, value)] to one number.
+
+    peak=True is the max-buy case. With weighting OFF this stays a true max over all
+    history (unchanged behaviour). With weighting ON it becomes a recency-weighted mean
+    of each season's peak — "what they typically top out at lately" rather than "the
+    single biggest bid they ever made", so one ancient splurge no longer pins the ceiling
+    for a decade. peak=False is the plain concentration mean.
+    """
+    if not pairs:
+        return 0.0
+    if lib.RECENCY_HALF_LIFE <= 0:
+        return max(v for _, v in pairs) if peak else statistics.mean(v for _, v in pairs)
+    if peak:
+        # Stay a MAXIMUM — a ceiling is not an average — but bound it to seasons within
+        # one half-life. A weighted mean of peaks would be dominated by the single latest
+        # season, so a manager who simply did not chase a stud last year would get an
+        # artificially low ceiling and the model would under-predict what they will pay.
+        if lib.MAXBUY_WINDOW > 0:
+            recent = [v for y, v in pairs if latest - y < lib.MAXBUY_WINDOW]
+        else:
+            recent = [v for y, v in pairs if season_weight(y, latest) >= 0.5]
+        return max(recent) if recent else max(v for _, v in pairs)
+    wsum = sum(season_weight(y, latest) for y, _ in pairs)
+    return sum(season_weight(y, latest) * v for y, v in pairs) / (wsum or 1.0)
+
+
 def build_agents():
     """Per-manager: pos_mult (DOLLAR-WEIGHTED paid/proj by pos — stud-weighted, so
     cheap darts don't drag it down and keeper-suppressed years don't distort it),
@@ -41,26 +124,59 @@ def build_agents():
     paid_sum = defaultdict(lambda: defaultdict(float))
     proj_sum = defaultdict(lambda: defaultdict(float))
     ncount = defaultdict(lambda: defaultdict(int))
-    for yr in [2022, 2023, 2024, 2025]:
+    # Multipliers compare paid vs PROJECTED value, so a season needs both real bids and a
+    # projection workbook. Only the tracked *_elboberto.xlsm years qualify — older priced
+    # seasons cannot contribute here however much history exists.
+    mult_seasons = [yr for yr in sorted(int(y) for y in PROJ)
+                    if lib.has_auction_prices(yr)]
+    latest = max(mult_seasons + lib.available_seasons() or [0])
+    for yr in mult_seasons:
         pl = proj_lookup(yr)
+        w = season_weight(yr, latest)
         for p in lib.draft_picks(yr):
-            if p["is_keeper"] or p["cost"] < 1:
+            # Keeper prices come from a house rule, and an RFA price is set by a retention
+            # right rather than a free bid — the incumbent matches a number the field set.
+            # Neither reveals willingness to pay, so neither belongs in the multipliers.
+            if p["is_keeper"] or p.get("phase") == "rfa" or p["cost"] < 1:
                 continue
             e = pl.get(norm(p["name"]))
             if e and (e["proj_value"] or 0) >= 3:
-                paid_sum[p["manager"]][p["pos"]] += p["cost"]
-                proj_sum[p["manager"]][p["pos"]] += e["proj_value"]
-                ncount[p["manager"]][p["pos"]] += 1
+                # weight both sides so the RATIO is unchanged in scale, only in emphasis
+                paid_sum[p["manager"]][p["pos"]] += p["cost"] * w
+                proj_sum[p["manager"]][p["pos"]] += e["proj_value"] * w
+                ncount[p["manager"]][p["pos"]] += 1   # raw count: the >=3 sample gate
     top3 = defaultdict(list); maxbuy = defaultdict(list)
-    for yr in range(2017, 2026):
+    # RFA behaviour, tracked separately: how much of a manager's draft budget goes in the
+    # restricted round, and how often they actually retain the player they nominated.
+    rfa_spend = defaultdict(float); all_spend = defaultdict(float)
+    rfa_nom = defaultdict(int); rfa_kept = defaultdict(int)
+    # Concentration and max-buy are derived from costs alone — no projections needed — so
+    # they can use EVERY priced season on disk rather than a fixed recent window.
+    conc_seasons = lib.available_seasons()
+    for yr in conc_seasons:
         byteam = defaultdict(list)
         for p in lib.draft_picks(yr):
             byteam[p["teamId"]].append(p)
+            all_spend[p["manager"]] += p["cost"]
+            if p.get("phase") != "rfa":
+                continue
+            # spend is credited to the WINNER; the nomination to the incumbent, so a
+            # poached RFA counts against the incumbent's retention rate
+            rfa_spend[p["manager"]] += p["cost"]
+            nt = p.get("nominatingTeamId")
+            if nt is None:
+                continue
+            nom = lib.manager(yr, nt)
+            rfa_nom[nom] += 1
+            if nom == p["manager"]:
+                rfa_kept[nom] += 1
         for tid, ps in byteam.items():
             m = lib.manager(yr, tid)
             costs = sorted((x["cost"] for x in ps), reverse=True)
             sp = sum(costs) or 1
-            top3[m].append(100*sum(costs[:3])/sp); maxbuy[m].append(costs[0] if costs else 0)
+            # keep the season alongside the value so it can be recency-weighted below
+            top3[m].append((yr, 100.0 * sum(costs[:3]) / sp))
+            maxbuy[m].append((yr, costs[0] if costs else 0))
     agents = {}
     for m in top3:
         mult = {}
@@ -72,8 +188,18 @@ def build_agents():
             else:
                 mult[pos] = LEAGUE_MULT[pos]
         agents[m] = {"mult": mult,
-                     "conc": statistics.mean(top3[m]),
-                     "maxbuy": max(maxbuy[m]) * 1.15 if maxbuy[m] else 100}
+                     "conc": _recency_stat(top3[m], latest, peak=False),
+                     "maxbuy": (_recency_stat(maxbuy[m], latest, peak=True) * 1.15
+                                if maxbuy[m] else 100),
+                     # 0.0 for every manager when the league has no RFA round
+                     "rfa_share": (100.0 * rfa_spend[m] / all_spend[m]
+                                   if all_spend.get(m) else 0.0),
+                     "rfa_retain": (100.0 * rfa_kept[m] / rfa_nom[m]
+                                    if rfa_nom.get(m) else 0.0)}
+    # the two windows differ (multipliers are gated on projection availability), so report
+    # both rather than a single "seasons used" that overstates one of them
+    build_agents.mult_seasons = mult_seasons
+    build_agents.conc_seasons = conc_seasons
     return agents
 
 
@@ -183,14 +309,50 @@ def starter_vbd(roster):
     return tot, slots
 
 
+def _me_canonical(opp):
+    """config's `me` is the console/display name; build_agents keys by canonical identity.
+
+    Both resolve from the same owner id, so bridge through it. Without this the sim dies with
+    a KeyError on a league whose display names differ from their canonical ones — which is
+    every league that has changed platform.
+    """
+    if lib.ME in opp:
+        return lib.ME
+    cfg = _cfg_json()
+    raw = os.path.join(os.path.dirname(__file__), os.pardir, "scraping", "raw",
+                       str(cfg.get("season", 2026)), "league_full.json")
+    if os.path.exists(raw):
+        with open(raw) as f:
+            d = json.load(f)
+        d = (d[0] if d else {}) if isinstance(d, list) else d
+        for mem in (d.get("members") or []):
+            if (mem.get("displayName") or "") == lib.ME:
+                canon = lib.MANAGER_CANON.get(mem.get("id"))
+                if canon in opp:
+                    return canon
+    raise SystemExit("`me` = %r matches no calibrated manager. Calibrated: %s"
+                     % (lib.ME, ", ".join(sorted(opp))))
+
+
 def main():
     opp = build_agents()
-    field = [m for m in {lib.manager(2025, t) for t in lib.team_owner(2025)} if m != lib.ME]
-    field = [m for m in field if m in opp][:11]
+    me = _me_canonical(opp)
+    # the room this year, not whoever happened to be in the last ESPN season
+    cur = set()
+    cfg = _cfg_json()
+    raw = os.path.join(os.path.dirname(__file__), os.pardir, "scraping", "raw",
+                       str(cfg.get("season", 2026)), "league_full.json")
+    if os.path.exists(raw):
+        with open(raw) as f:
+            d = json.load(f)
+        d = (d[0] if d else {}) if isinstance(d, list) else d
+        for mem in (d.get("members") or []):
+            cur.add(lib.MANAGER_CANON.get(mem.get("id")) or mem.get("displayName"))
+    field = [m for m in sorted(cur) if m != me and m in opp][:11]
 
     NSIM = 100
     results = {}
-    for variant, hp in [("validated", VALIDATED_HARRY), ("historical", opp[lib.ME])]:
+    for variant, hp in [("validated", VALIDATED_HARRY), ("historical", opp[me])]:
         agents = {m: opp[m] for m in field}
         agents["Harry"] = hp
         strengths = []; rosters = []
