@@ -272,6 +272,12 @@ input::placeholder{color:var(--faint)}
 .krow.declared{box-shadow:inset 2px 0 0 var(--go-line)}
 .krow.drifted{box-shadow:inset 2px 0 0 var(--warn)}
 .tgtedit[readonly]{opacity:.6;cursor:default}
+.rwtop{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 7px 12px}
+.rwp{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:5px;
+  padding:1px 6px;white-space:nowrap}
+.rwp b{color:var(--ink);font-weight:650}
+.rwp.reach{border-color:var(--go-line);color:var(--go-ink)}
+.rwp.reach b{color:var(--go-ink)}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -1265,17 +1271,38 @@ function renderRecs(){
   box.innerHTML+=`<div class="rec"><div class="lbl">Phase play</div>${adv}</div>`;
 }
 
+// surname is the useful half of a player's name — except for a defence, where the last word
+// is always "D/ST" and the nickname in front of it is the only part that identifies anyone
+function shortPlayer(p){
+  const parts=p.name.split(" ");
+  return /D\/ST$/.test(p.name)?parts[0]:parts[parts.length-1];
+}
 function renderRunway(){
   const box=$("#runway");box.innerHTML="";
   const me=teams[ME];
-  const thresh={RB:20,WR:20,TE:8,QB:10}; // "startable" worth floor
+  // "startable" worth floor. K and DST have no floor worth setting — every one of them is a
+  // $1 body — and without an entry here `worth >= undefined` is false for all of them, which
+  // reported "0 left · tight" on two positions that are never scarce.
+  const thresh={RB:20,WR:20,TE:8,QB:10,K:1,DST:1};
   POS_ALL.forEach(pos=>{
-    const left=avail().filter(p=>p.pos===pos&&p.worth>=thresh[pos]).length;
+    const pool=avail().filter(p=>p.pos===pos&&p.worth>=(thresh[pos]||1))
+                      .sort((a,b)=>b.worth-a.worth);
+    const left=pool.length;
     const needing=Object.values(teams).filter(t=>slotFor(t,pos)!==null).length;
     const meNeed=slotFor(me,pos)!==null;
     const tight=left<=needing;
+    // the three actually on the table, priced by what they will SELL for rather than worth —
+    // "who do I go after next" is a question about money, not about projection
+    const top=pool.slice(0,3).map(p=>{
+      const go=Math.round(predictPrice(p)), mx=Math.round(harryMaxBid(p));
+      const reach=meNeed&&mx>=go;
+      return `<span class="rwp${reach?" reach":""}" data-tip="${escAttr(p.name)} — worth ${money(p.worth)}, `
+        +`likely sells ${money(go)}, your max ${money(mx)}${reach?" (winnable)":""}">`
+        +`${escAttr(shortPlayer(p))} <b>$${go}</b></span>`;
+    }).join("");
     box.innerHTML+=`<div class="runway"><span>${meNeed?'▸ ':''}${pos} <span style="color:var(--muted)">startable</span></span>
-      <span class="n" style="color:${tight?'var(--bad-ink)':'var(--ink)'}">${left} left · ${needing} teams want${tight?' · tight':''}</span></div>`;
+      <span class="n" style="color:${tight?'var(--stop-ink)':'var(--ink)'}">${left} left · ${needing} teams want${tight?' · tight':''}</span></div>`
+      +(top?`<div class="rwtop">${top}</div>`:"");
   });
 }
 
@@ -1669,7 +1696,18 @@ function draftStateForAdvisor(){
       yet_to_nominate:Object.keys(teams).filter(n=>!nominated.has(n))},
     inflation_by_phase:{rfa:inflationOf("rfa"), auction:inflationOf("auction")},
     picks_made:log.length, on_the_block:selected?{name:selected.name,pos:selected.pos,
-      worth:selected.worth,est_price:predictPrice(selected),your_max:harryMaxBid(selected)}:null,
+      worth:selected.worth,est_price:predictPrice(selected),your_max:harryMaxBid(selected),
+      // In the RFA round the matching right belongs to the player, so whether this one was on
+      // the nominator's own roster is the difference between a lot you can win and one where
+      // bidding only taxes him. The advisor cannot infer it — the prior rosters are not in the
+      // state — so it has to be told.
+      ...(PHASE==="rfa"&&ORDER.length?(function(){
+        const nom=onTheClock();
+        const own=(KEEPER_POOL[nom]||[]).some(r=>r.name.toLowerCase()===selected.name.toLowerCase());
+        return {nominated_by:nom, was_on_nominators_roster:own,
+          retain_right:own?(nom+" may match the winning bid and take him"):
+                           "no matching right — an ordinary lot, winnable at value"};
+      })():{})}:null,
     teams:teamState, best_available:topAvail};
 }
 // tiny, safe markdown → HTML (escape first, then a few inline styles)
