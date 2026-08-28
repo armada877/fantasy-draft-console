@@ -22,6 +22,10 @@
   "rfa_round": false,
   "_rfa_round": "Optional, ANALYSIS ONLY. Set true if your league runs a restricted-free-agent round before the open auction — each manager's FIRST nomination must come from their prior roster and the incumbent may retain at market price. Calibration then tags those picks separately, excludes them from the positional multipliers (a retention matches a price the field set, so it says nothing about willingness to pay) and reports rfa_share / rfa_retain per manager. Leave false otherwise, or ordinary first nominations get mislabelled.",
 
+  "keeper_bump": 5,
+  "_keeper_bump": "Dollars added to a keeper's prior value: keeper cost = keeper_bump + (last season's draft price, or keeper_waiver_value for a waiver pickup). Drives the console's keeper auto-fill and analysis/keeper_outlook.py.",
+  "keeper_waiver_value": 1,
+  "_keeper_waiver_value": "What a player picked up off waivers counts as before the bump, so a free pickup costs keeper_waiver_value + keeper_bump to keep. ESPN's keeperValueFuture is NOT usable for waiver adds — it reports a computed value for players nobody bid on — so this replaces it. Players acquired by trade carry the original drafter's price and are priced as drafted.",
   "keeper_inflation": 0,
   "_keeper_inflation": "Optional, ANALYSIS ONLY. ESPN has no native keeper-cost field, so some leagues record a keeper at (true cost + N) as a house convention. Set N here and calibration subtracts it back off. Leave 0 — the default — if your league prices keepers directly (e.g. 'last year's cost + $5'), because then the recorded bid IS the true cost and subtracting anything drives keepers to $0 and skews concentration/max-buy. Sanity check: if per-team raw draft spend already reconciles to the auction budget, you want 0.",
 

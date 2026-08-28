@@ -632,6 +632,7 @@ body.phase-rfa .rfa-only{display:inline-block}
       <div class="modal-body" id="keeper-rows"></div>
       <div class="modal-foot">
         <span class="modal-note" id="keeper-note"></span>
+        <button class="btn ghost" id="keeper-auto">Auto-fill likely</button>
         <button class="btn ghost" id="keeper-clear">Clear all</button>
         <button class="btn primary" id="keeper-apply">Apply keepers</button>
       </div>
@@ -1271,38 +1272,60 @@ function renderBuild(){
   Object.values(byPos).forEach(a=>a.sort((x,y)=>y.price-x.price));
   const left=me.budget;
   const slots=buildTarget();
-  // assign my players to slots — dedicated first, FLEX from any leftover RB/WR/TE, rest → bench
+  // Assign my players to slots by the role they actually fill: each player takes the OPEN slot
+  // whose target is closest to his worth, best player first. Rank-matching (priciest player to
+  // the priciest slot) is wrong once a cheap keeper is involved — a $6 keeper worth $23 would
+  // claim the bellcow slot and leave the cheap one open, hiding the fact that the expensive
+  // RB is the hole still to fill. Matching on worth rather than price keeps a bargain buy in
+  // the slot his production belongs to.
   const used=new Set(), fill=new Map();
-  [...slots.filter(s=>!s.flex),...slots.filter(s=>s.flex)].forEach(s=>{
-    let pick;
-    if(!s.flex)pick=byPos[s.pos].find(p=>!used.has(p.id));
-    else pick=["RB","WR","TE"].flatMap(p=>byPos[p]).filter(p=>!used.has(p.id)).sort((a,b)=>b.price-a.price)[0];
-    if(pick)used.add(pick.id); fill.set(s,pick||null);
+  slots.forEach(s=>fill.set(s,null));
+  const mine=me.players.map(id=>players[id]).sort((a,b)=>b.worth-a.worth);
+  mine.forEach(p=>{
+    const open=slots.filter(s=>!fill.get(s)&&(s.flex?["RB","WR","TE"].includes(p.pos):s.pos===p.pos));
+    if(!open.length)return;                       // no startable slot left — he is a bench body
+    open.sort((a,b)=>(Math.abs(targetOf(a)-p.worth)-Math.abs(targetOf(b)-p.worth))
+                     ||(targetOf(a)-targetOf(b)));
+    fill.set(open[0],p);used.add(p.id);
   });
   const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
   const benchFilled=benchPlayers.length, benchSpent=benchPlayers.reduce((a,p)=>a+p.price,0);
   const _slotSum=slots.reduce((a,s)=>a+targetOf(s),0);
   const benchTarget=("BN" in BUDGET_OVR)?BUDGET_OVR.BN
     :Math.max(0,DATA.budget-_slotSum);   // bench absorbs the remainder so the plan sums to budget
-  // PACE: remaining budget vs what the still-open slots + remaining bench should cost
+  // PACE: remaining budget vs what the ENTRY plan says the still-open slots should cost.
+  // Deliberately measured against the entry plan, not the redistributed targets below —
+  // those always fit by construction, so they could never tell you that you are behind.
   const openStart=slots.filter(s=>!fill.get(s));
-  const remainingPlan=openStart.reduce((a,s)=>a+targetOf(s),0)+Math.max(0,benchTarget-benchSpent);
+  const benchRemaining=Math.max(0,benchTarget-benchSpent);
+  const remainingPlan=openStart.reduce((a,s)=>a+targetOf(s),0)+benchRemaining;
   const diff=left-remainingPlan;   // ≥0 = cushion; <0 = value you must still find
-  // ALLOCATION: the whole plan (all slot targets + bench) should sum to the league budget
-  const allocated=slots.reduce((a,s)=>a+targetOf(s),0)+benchTarget;
-  const allocDiff=allocated-DATA.budget;
+  // LIVE TARGETS: money already spent is spent, so what matters is how the money still IN HAND
+  // should be spread over the slots still OPEN. Re-spread proportionally to the plan's shape,
+  // which routes a bargain's leftover to the slots that were always meant to carry weight —
+  // fill an RB slot with a $6 keeper and the open RB slot inherits most of the difference.
+  // A target you typed yourself is treated as pinned and is never re-spread.
+  const pinned=openStart.filter(s=>s.key in BUDGET_OVR);
+  const flexible=openStart.filter(s=>!(s.key in BUDGET_OVR));
+  const forFlexible=Math.max(0,left-benchRemaining-pinned.reduce((a,s)=>a+targetOf(s),0));
+  const wsum=flexible.reduce((a,s)=>a+Math.max(1,targetOf(s)),0)||1;
+  const LIVE=new Map();
+  slots.forEach(s=>LIVE.set(s,targetOf(s)));
+  flexible.forEach(s=>LIVE.set(s,Math.max(1,Math.round(Math.max(1,targetOf(s))/wsum*forFlexible))));
+  const liveOf=s=>LIVE.get(s);
   // delta chip — signed $, colored (over = red, under = green). No "saved" wording.
   const del=v=>`<span class="bdelta ${v>2?'over':v<-2?'under':'ok'}">${v>=0?'+$':'−$'}${Math.abs(v)}</span>`;
   const box=$("#build-slots");box.innerHTML="";
   // ── pacing headline (the actionable verdict) ──
   const pace=document.createElement("div");pace.className="budpace "+(diff>=0?"good":"bad");
   const paceMain=diff>0?`$${diff} cushion`:diff<0?`Make up $${-diff}`:"On budget";
-  const allocCls=allocDiff===0?"ok":"warn";
-  const allocMsg=allocDiff===0?`Plan adds up to $${DATA.budget} ✓`
-    :allocDiff>0?`Plan is $${allocDiff} over your $${DATA.budget} — trim targets`
-    :`$${-allocDiff} of $${DATA.budget} still unallocated`;
+  const allocCls=(flexible.length&&forFlexible<=0)?"warn":"ok";
+  const allocMsg=!openStart.length?`Every startable slot filled`
+    :!flexible.length?`All ${openStart.length} open slot${openStart.length===1?"":"s"} pinned to your own targets`
+    :forFlexible<=0?`Nothing left to spread — pinned targets and bench already use your $${left}`
+    :`$${forFlexible} re-spread across ${flexible.length} open slot${flexible.length===1?"":"s"}`;
   pace.innerHTML=`<div class="bp-top"><div class="bp-main">${paceMain}</div>`+
-    `<div class="bp-sub">$${left} left · plan needs ≈<b>$${remainingPlan}</b> more</div></div>`+
+    `<div class="bp-sub">$${left} left · entry plan wanted ≈<b>$${remainingPlan}</b> more</div></div>`+
     `<div class="bp-alloc ${allocCls}"><span>${allocMsg}</span><button class="linkbtn" id="bud-reset" title="Reset targets to the suggested plan">reset plan</button></div>`;
   box.appendChild(pace);
   // ── column header ──
@@ -1312,7 +1335,8 @@ function renderBuild(){
   // ── startable slots (editable targets) ──
   const NDOT=`background:var(--raise);color:var(--muted)`;
   slots.forEach(s=>{
-    const tgt=targetOf(s), got=fill.get(s);
+    const tgt=liveOf(s), got=fill.get(s);
+    const plan=targetOf(s);
     const status=got?(got.price<=tgt+2?"ok":"over"):"open";
     const dot=s.flex?`<span class="posdot" style="${NDOT}">FLX</span>`:`<span class="posdot p-${s.pos}">${s.pos}</span>`;
     // for an open slot, the realistic tier/player you can WIN at this budget (priced by will-go)
@@ -1320,7 +1344,9 @@ function renderBuild(){
     const openHint=h?`<span class="btier">${h.tier}</span> ${h.name} <span class="bsub">goes ~$${h.go}</span>`:"—";
     const div=document.createElement("div");div.className="brow";
     div.innerHTML=`<span class="blab">${dot}${s.flex?"Flex":s.label}</span>`+
-      `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"></span>`+
+      `<span class="btgt">$<input class="tgtedit mono" type="number" min="0" data-key="${s.key}" value="${tgt}"`+
+        (!got&&tgt!==plan?` data-tip="Entry plan said $${plan}; re-spread to $${tgt} because the budget still in hand no longer matches the slots still open."`:"")+
+        `></span>`+
       `<span class="bgot mono ${status}">${got?`${got.name.split(" ").slice(-1)[0]} $${got.price} ${del(got.price-tgt)}`:openHint}</span>`;
     box.appendChild(div);
   });
@@ -1335,7 +1361,9 @@ function renderBuild(){
   const _rb=$("#bud-reset"); if(_rb) _rb.onclick=resetBudget;
   // ── per-group budget bars: QB/RB/WR/TE + FLEX + Bench, spent vs target ──
   const groups={RB:{t:0,s:0},WR:{t:0,s:0},TE:{t:0,s:0},QB:{t:0,s:0},FLX:{t:0,s:0}};
-  slots.forEach(s=>{const g=s.flex?"FLX":s.pos;groups[g].t+=targetOf(s);const got=fill.get(s);if(got)groups[g].s+=got.price;});
+  slots.forEach(s=>{const g=s.flex?"FLX":s.pos;const got=fill.get(s);
+    groups[g].t+=got?got.price:liveOf(s);   // a filled slot's "target" is what it actually cost
+    if(got)groups[g].s+=got.price;});
   groups.BN={t:benchTarget,s:benchSpent};
   const LBL={RB:"RB",WR:"WR",TE:"TE",QB:"QB",FLX:"FLEX",BN:"Bench"};
   $("#build-budget").innerHTML=["RB","WR","TE","QB","FLX","BN"].map(g=>{
@@ -1622,6 +1650,42 @@ window.addEventListener("scroll",_onScroll,{passive:true});_onScroll();
    out of that manager's budget, and it fills a roster slot - exactly what rebuildTeam already
    does for any pick - but it is tagged "keeper" so it never feeds the market read. */
 const escAttr=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+/* Last season's roster for every manager, already priced by the house rule in the builder:
+   cost = bump + (the player's draft price, or the waiver value for a free pickup). A trade
+   passes the original draft value to the new team, which is what ESPN records, so a traded
+   player prices exactly like a drafted one. */
+const KEEPER_POOL=DATA.keeper_pool||{};
+function keeperEntry(team,name){
+  const k=String(name||"").trim().toLowerCase();
+  return (KEEPER_POOL[team]||[]).find(r=>r.name.toLowerCase()===k)||null;
+}
+// most likely keep: biggest surplus, and where two are level the CHEAPER one - identical
+// surplus for less money is strictly better, since the difference stays in the budget
+function likeliestKeeper(team){
+  // A player already applied as a keeper is STILL a candidate. Applying replaces the whole
+  // keeper set, so treating him as "taken" would make re-running the auto-fill skip the very
+  // man it just picked and hand back the runner-up instead.
+  const keptIds=new Set(keeperPicks().map(l=>l.id));
+  const rows=(KEEPER_POOL[team]||[]).map(r=>{
+    const p=playerByName(r.name);
+    return p&&(p.drafted===null||keptIds.has(p.id))?{...r,worth:p.worth,surplus:p.worth-r.cost}:null;
+  }).filter(Boolean);
+  rows.sort((a,b)=>(b.surplus-a.surplus)||(a.cost-b.cost));
+  return rows[0]||null;
+}
+function autofillKeepers(){
+  let n=0;
+  $("#keeper-rows").querySelectorAll(".krow").forEach(row=>{
+    const best=likeliestKeeper(row.dataset.team);
+    if(!best)return;
+    row.querySelector(".kname").value=best.name;
+    row.querySelector(".kprice").value=best.cost;
+    updateKeeperRow(row);n++;
+  });
+  const note=$("#keeper-note");note.className="modal-note";
+  note.textContent=n?("Filled "+n+" likeliest keeper"+(n===1?"":"s")+" — biggest surplus, cheaper wins a tie. Edit any row, then Apply.")
+    :"No prior-season rosters in this build — enter keepers by hand.";
+}
 function playerByName(n){
   const k=String(n||"").trim().toLowerCase();
   return k?(players.find(p=>p.name.toLowerCase()===k)||null):null;
@@ -1633,21 +1697,34 @@ function setPhase(ph){
   document.body.classList.toggle("phase-rfa",PHASE==="rfa");   // reveals the "nominated by" field
   renderAll();
 }
+let _kpoolSeq=0;
 function renderKeeperRows(){
   const box=$("#keeper-rows");box.innerHTML="";
   const cur={};keeperPicks().forEach(l=>{cur[l.team]={name:players[l.id].name,price:l.price};});
   Object.values(teams).forEach(t=>{
     const c=cur[t.name]||{name:"",price:""};
     const row=document.createElement("div");row.className="krow";row.dataset.team=t.name;
+    // Only THIS manager's prior roster is keepable, so each row gets its own list rather than
+    // the whole league — offering 216 names when 15 are legal invites an impossible keeper.
+    // No pool (never scraped, or a manager who wasn't in the league) falls back to everyone.
+    const pool=KEEPER_POOL[t.name]||[];
+    const listId="kpool-"+(++_kpoolSeq);
+    const opts=pool.slice().sort((a,b)=>b.cost-a.cost)
+      .map(r=>`<option value="${escAttr(r.name)}">${r.pos} · ${money(r.cost)}</option>`).join("");
     row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}</div>
-      <input class="kname" list="player-names" autocomplete="off" placeholder="player — blank for none" value="${escAttr(c.name)}">
+      <input class="kname" list="${pool.length?listId:"player-names"}" autocomplete="off"
+             placeholder="${pool.length?"keeper from last season's roster":"player — blank for none"}" value="${escAttr(c.name)}">
       <input class="kprice mono" inputmode="numeric" placeholder="$" value="${c.price===""?"":c.price}">
-      <div class="ksurplus"></div>`;
+      <div class="ksurplus"></div>${pool.length?`<datalist id="${listId}">${opts}</datalist>`:""}`;
     box.appendChild(row);
-    const upd=()=>updateKeeperRow(row);
-    row.querySelector(".kname").addEventListener("input",upd);
-    row.querySelector(".kprice").addEventListener("input",upd);
-    upd();
+    // choosing a player prices him from the rule; editing the price by hand then sticks
+    row.querySelector(".kname").addEventListener("input",()=>{
+      const e=keeperEntry(t.name,row.querySelector(".kname").value);
+      if(e)row.querySelector(".kprice").value=e.cost;
+      updateKeeperRow(row);
+    });
+    row.querySelector(".kprice").addEventListener("input",()=>updateKeeperRow(row));
+    updateKeeperRow(row);
   });
 }
 // live surplus readout: what the keeper is worth this season against what he costs
@@ -1657,7 +1734,16 @@ function updateKeeperRow(row){
   if(!nm){out.textContent="—";return;}
   const p=playerByName(nm);
   if(!p){out.textContent="not in pool";out.classList.add("bad");return;}
+  if((KEEPER_POOL[row.dataset.team]||[]).length && !keeperEntry(row.dataset.team,nm)){
+    out.textContent="not on their roster";out.classList.add("bad");return;
+  }
   const price=parseInt(row.querySelector(".kprice").value);
+  const e=keeperEntry(row.dataset.team,nm);
+  const pf=row.querySelector(".kprice");
+  if(e)pf.setAttribute("data-tip",e.acq==="ADD"?("waiver pickup — priced off the waiver value")
+    :(e.acq==="TRADE"?"acquired by trade — carries the original draft price":"drafted last season")
+    +", so the rule makes him "+money(e.cost));
+  else pf.removeAttribute("data-tip");
   if(!(price>=0)){out.textContent="worth "+money(p.worth);return;}
   const surplus=Math.round(p.worth-price);
   out.textContent=(surplus>=0?"+":"")+surplus+" vs "+money(p.worth);
@@ -1671,6 +1757,9 @@ function applyKeepers(){
     if(!nm)continue;
     const p=playerByName(nm);
     if(!p){bad.push(nm+" — not in the pool");continue;}
+    if((KEEPER_POOL[row.dataset.team]||[]).length && !keeperEntry(row.dataset.team,nm)){
+      bad.push(p.name+" — not on " + shortName(row.dataset.team) + "'s prior roster");continue;
+    }
     if(seen[p.id]){bad.push(p.name+" — listed twice");continue;}
     seen[p.id]=1;
     want.push({p,price:Math.max(0,parseInt(row.querySelector(".kprice").value)||0),team:row.dataset.team});
@@ -1706,6 +1795,7 @@ function closeKeepers(){$("#keeper-modal").hidden=true;}
 $("#keepers-btn").onclick=openKeepers;
 $("#keeper-close").onclick=closeKeepers;
 $("#keeper-apply").onclick=applyKeepers;
+$("#keeper-auto").onclick=autofillKeepers;
 $("#keeper-clear").onclick=()=>{
   $("#keeper-rows").querySelectorAll(".krow").forEach(r=>{
     r.querySelector(".kname").value="";r.querySelector(".kprice").value="";updateKeeperRow(r);});

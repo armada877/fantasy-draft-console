@@ -9,16 +9,24 @@ That matters more than it sounds. A player with a large keeper surplus never rea
 auction at all, so the console's "best available" overstates the real board — and the
 money a manager sinks into an expensive keeper is gone before the first nomination.
 
-    keeper cost = keeperValueFuture + keeper_bump      [ESPN records last season's price
-                                                        in keeperValueFuture]
+    keeper cost = keeper_bump + (draft price if drafted or traded else keeper_waiver_value)
     surplus     = projected worth - keeper cost
+
+ESPN records last season's price in playerPoolEntry.keeperValueFuture and how the roster
+spot was acquired in acquisitionType. For DRAFT and TRADE those agree with what was paid --
+a trade passes the original drafter's value to the new team -- and on the 2025 scrape all
+73 DRAFT entries match the recorded auction cost exactly. For a waiver ADD, keeperValueFuture
+is an ESPN-computed number unrelated to any bid ($8 for a player nobody paid for), so the
+house waiver value replaces it before the bump is added. Charging keeperValueFuture there
+overprices free pickups badly enough to change which player a manager keeps.
 
 With one keeper per team, the SECOND-best surplus is the natural RFA nomination: a player
 the manager would have kept but cannot, and may retain only at market price.
 
 Config (config/league.json):
-    keepers_per_team   default 1
-    keeper_bump        default 5   (dollars added to last season's price)
+    keepers_per_team     default 1
+    keeper_bump          default 5   (dollars added to last season's value)
+    keeper_waiver_value  default 1   (what a waiver pickup counts as, before the bump)
 
 Run:  PYTHONPATH=analysis python3 analysis/keeper_outlook.py [--markdown]
 Reads the built draft_sheets/tool_data.json for this season's worth, so run `pipeline.py
@@ -85,6 +93,7 @@ def console_names():
 def build(prior_season):
     worth, budget = load_worth()
     bump = int(_cfg("keeper_bump", 5) or 0)
+    waiver_value = int(_cfg("keeper_waiver_value", 1) or 0)
     per_team = int(_cfg("keepers_per_team", 1) or 1)
     c2c = console_names()
     d = lib.load(prior_season)
@@ -102,7 +111,8 @@ def build(prior_season):
             w = worth.get(norm(pl.get("fullName") or ""))
             if kvf is None or not w:
                 continue        # not rostered with a price, or not in this year's pool
-            cost = kvf + bump
+            acq = e.get("acquisitionType") or "DRAFT"
+            cost = (waiver_value if acq == "ADD" else kvf) + bump
             rows.append({"name": pl.get("fullName"), "pos": w["pos"], "cost": cost,
                          "worth": w["worth"], "surplus": w["worth"] - cost})
         rows.sort(key=lambda r: -r["surplus"])
@@ -121,8 +131,10 @@ def main():
     args = ap.parse_args()
 
     teams, budget, bump, per_team = build(args.prior_season)
+    waiver_value = int(_cfg("keeper_waiver_value", 1) or 0)
     print(f"Keeper outlook from {args.prior_season} ending rosters — "
-          f"{per_team} keeper(s)/team, cost = prior price + ${bump}\n")
+          f"{per_team} keeper(s)/team, cost = ${bump} + prior value "
+          f"(waiver pickups valued at ${waiver_value})\n")
     if args.markdown:
         print("| Manager | Likely keeper | Cost | Surplus | Budget left | Likely RFA |")
         print("|---|---|---|---|---|---|")

@@ -40,7 +40,10 @@ tool_data.json SCHEMA (what the console template consumes)
   ],
   "managers": [                         # every team + its bidding tendencies
     {"name":"Your Name","mult":{"QB":1,"RB":1,"WR":1,"TE":1},"conc":50,"maxbuy":200}
-  ]
+  ],
+  "keeper_pool": {                      # prior-season rosters priced by the keeper rule
+    "Your Name": [{"name":"Bucky Irving","pos":"RB","cost":12,"acq":"TRADE"}]
+  }
 }
 
 Player fields: worth = projected auction $, vbd = value over replacement (VORP),
@@ -68,6 +71,7 @@ POSITIONS = ["QB", "RB", "WR", "TE"]  # skill positions the console drafts
 # ESPN lineup-slot ids -> our positions (skill only; K/DST/IR ignored)
 ESPN_SLOT = {"0": "QB", "2": "RB", "4": "WR", "6": "TE"}
 ESPN_FLEX_SLOTS = {"23"}   # RB/WR/TE flex
+ESPN_POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST"}   # defaultPositionId
 ESPN_BENCH_SLOT = "20"
 
 # ESPN scoring statId -> the stat keys we read off the raw projection sheets
@@ -294,6 +298,7 @@ def read_scraped_league(season):
 
     members = {m.get("id"): m for m in (data.get("members") or [])}
     names = []
+    owners = {}          # ESPN member GUID -> the console name for that manager
     for t in (data.get("teams") or []):
         m = members.get(t.get("primaryOwner"))
         if m and (m.get("firstName") or m.get("lastName")):
@@ -302,7 +307,10 @@ def read_scraped_league(season):
             name = m["displayName"]
         else:
             name = " ".join((t.get("name") or f"{t.get('location','')} {t.get('nickname','')}").split())
-        names.append(name or f"Team {t.get('id')}")
+        name = name or f"Team {t.get('id')}"
+        names.append(name)
+        if t.get("primaryOwner"):
+            owners[t["primaryOwner"]] = name
 
     return {
         "starters": starters,
@@ -310,9 +318,95 @@ def read_scraped_league(season):
         "bench": bench or 6,
         "budget": int(draft.get("auctionBudget") or 200),
         "managers": names,
+        "owners": owners,
         "league_name": settings.get("name"),
         "scoring": read_scoring(settings),
     }
+
+
+def load_manager_canon():
+    """config/manager_canon.json: owner id -> canonical manager name, or {} if absent."""
+    path = os.path.join(ROOT, "config", "manager_canon.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            return {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+    except (OSError, ValueError):
+        return {}
+
+
+def read_keeper_pool(prior_season, owners, bump, waiver_value, canon=None):
+    """Prior-season ending rosters, priced by the league's keeper rule.
+
+    The rule is bump + what the player was worth last season, where "worth last season" is
+    the auction price for a drafted player and a flat waiver value for a free pickup:
+
+        keeper cost = bump + (draft price if drafted/traded else waiver value)
+
+    Two different ESPN fields carry that, and conflating them is the trap:
+
+      playerPoolEntry.keeperValueFuture  what the player cost last season
+      acquisitionType                    DRAFT | TRADE | ADD
+
+    For DRAFT and TRADE, keeperValueFuture IS the auction price -- a trade passes the
+    original drafter's value to the new team, which is exactly what ESPN records. Verified
+    on the 2025 scrape: all 73 DRAFT entries equal the recorded auction cost exactly. For a
+    waiver ADD it is an ESPN-computed number unrelated to any bid ($8 for a player nobody
+    paid for), so the house waiver value replaces it before the bump is added.
+
+    Returns {console manager name: [{name, pos, cost, acq}]}. Owners are matched by id
+    first, then bridged through config/manager_canon.json, because ESPN's member id format
+    is NOT stable across seasons -- this league's 2025 ids are brace-wrapped UUIDs while its
+    2026 ids are numeric, so an id-only join silently matches nobody. Empty when the prior
+    season was never scraped: the console must still build for a brand-new league.
+    """
+    path = os.path.join(ROOT, "scraping", "raw", str(prior_season), "league_full.json")
+    if not os.path.exists(path) or not owners:
+        return {}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    canon = canon or {}
+    # canonical name -> the console name this season, so a prior owner id that no longer
+    # appears verbatim can still find its manager
+    by_canon = {}
+    for guid, nm in owners.items():
+        c = canon.get(guid)
+        if c:
+            by_canon[c] = nm
+
+    def console_name(guid):
+        if guid in owners:
+            return owners[guid]
+        c = canon.get(guid)
+        return by_canon.get(c) if c else None
+
+    pool = {}
+    for t in (data.get("teams") or []):
+        name = console_name(t.get("primaryOwner"))
+        if not name:
+            continue                      # a manager who has since left the league
+        rows = []
+        for e in ((t.get("roster") or {}).get("entries") or []):
+            pe = e.get("playerPoolEntry") or {}
+            pl = pe.get("player") or {}
+            prior = pe.get("keeperValueFuture")
+            if prior is None or not pl.get("fullName"):
+                continue
+            acq = e.get("acquisitionType") or "DRAFT"
+            base = waiver_value if acq == "ADD" else int(prior)
+            cost = base + bump
+            rows.append({"name": pl["fullName"],
+                         "pos": ESPN_POS.get(pl.get("defaultPositionId"), "?"),
+                         "cost": max(0, int(cost)), "acq": acq})
+        if rows:
+            pool[name] = rows
+    return pool
 
 
 def main():
@@ -382,6 +476,24 @@ def main():
             "maxbuy": t.get("maxbuy", budget),
         })
 
+    # keeper costs, so the console can price a keeper instead of asking you to
+    keeper_bump = int(cfg.get("keeper_bump", 5) or 0)
+    keeper_waiver = int(cfg.get("keeper_waiver_value", 1) or 0)
+    keeper_pool = read_keeper_pool(season - 1, league.get("owners") or {},
+                                   keeper_bump, keeper_waiver, load_manager_canon())
+    if keeper_pool:
+        n_add = sum(1 for rows in keeper_pool.values() for r in rows if r["acq"] == "ADD")
+        print(f"  Keeper costs from {season - 1} rosters: {len(keeper_pool)} managers, "
+              f"${keeper_bump} + prior value; {n_add} waiver adds valued at "
+              f"${keeper_waiver} (so ${keeper_waiver + keeper_bump} to keep).")
+    elif os.path.exists(os.path.join(ROOT, "scraping", "raw", str(season - 1),
+                                     "league_full.json")):
+        # the prior season IS scraped, so an empty pool means the owner join failed --
+        # say so rather than shipping a console that just never offers a keeper price
+        print(f"  ! {season - 1} is scraped but no keeper costs matched a current manager. "
+              "ESPN member ids change format between seasons; add the missing ids to "
+              "config/manager_canon.json to bridge them.")
+
     plan = load_plan()
     if plan:
         print(f"  Budget plan from config/plan.json (bid ceilings): "
@@ -399,6 +511,7 @@ def main():
         "plan": plan,          # per-slot bid ceilings (backtest-supported plan); None => neutral frame
         "players": players,
         "managers": managers,
+        "keeper_pool": keeper_pool,
     }
     path = os.path.join(HERE, "tool_data.json")
     with open(path, "w") as f:
