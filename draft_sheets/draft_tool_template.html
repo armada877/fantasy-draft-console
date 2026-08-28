@@ -259,6 +259,8 @@ input::placeholder{color:var(--faint)}
 .hidepick{display:inline-flex;gap:6px;align-items:center;font-size:11px;text-transform:uppercase;
   letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none}
 .hidepick input{width:14px;height:14px;padding:0;accent-color:var(--go)}
+.hidepick[hidden]{display:none}
+#rfa-only-who{color:var(--ink)}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -582,6 +584,7 @@ body.phase-rfa .rfa-only{display:inline-block}
           <span id="pos-filters"></span>
           <span class="rgroup">
             <label class="hidepick"><input type="checkbox" id="hide-picked" checked> hide picked</label>
+            <label class="hidepick rfaonly" id="rfa-only-wrap" hidden><input type="checkbox" id="rfa-only" checked> only <b id="rfa-only-who">nominator</b>'s roster</label>
             <span id="board-modes"></span>
           </span>
         </div>
@@ -1045,6 +1048,18 @@ function renderBoard(){
   renderTierFilters();
   // base pool: hide picked or keep them (faded + struck)
   let base = hidePicked ? avail() : players.slice();
+  // In the RFA round a nomination must come from the NOMINATOR's own prior roster, so the
+  // other ~360 players on the board are noise. Narrow to the ~15 he could actually put up.
+  const rfaWrap=$("#rfa-only-wrap"), nomNow=ORDER.length?onTheClock():null;
+  const rfaPool=(PHASE==="rfa"&&nomNow)?(KEEPER_POOL[nomNow]||[]):[];
+  if(rfaWrap){
+    rfaWrap.hidden=!(PHASE==="rfa"&&rfaPool.length);
+    if(!rfaWrap.hidden)$("#rfa-only-who").textContent=shortName(nomNow);
+  }
+  if(!rfaWrap.hidden && $("#rfa-only").checked){
+    const legal=new Set(rfaPool.map(r=>r.name.toLowerCase()));
+    base=base.filter(p=>legal.has(p.name.toLowerCase()));
+  }
   if(!overall) base=base.filter(p=>p.pos===filterPos);
   if(boardMode==="proj" && filterTier!=="ALL") base=base.filter(p=>p.tier===filterTier);
   if(filterTag!=="ALL") base=base.filter(p=>(TAGS[p.name]||"none")===filterTag);  // flag filter (both views)
@@ -1052,7 +1067,9 @@ function renderBoard(){
   if(boardMode==="proj"){
     // RAW projection data + tiers, live (reflects who's already gone)
     const tierName = filterTier==="ALL"?"by tier":filterTier;
-    $("#board-title").textContent=overall?"Projections — overall by VORP":"Projections — "+filterPos+" "+tierName;
+    $("#board-title").textContent=(!rfaWrap.hidden&&$("#rfa-only").checked)
+      ? "RFA candidates — "+shortName(nomNow)+"'s roster"
+      : (overall?"Projections — overall by VORP":"Projections — "+filterPos+" "+tierName);
     let list=base.slice().sort((a,b)=>b.vbd-a.vbd);
     const maxVbd=Math.max(1,list.length?list[0].vbd:1);   // scale for the VORP magnitude bar
     const span=overall?8:7;
@@ -1096,7 +1113,9 @@ function renderBoard(){
   }
 
   // VALUE mode — Harry-centric best available
-  $("#board-title").textContent="Value board — best available";
+  $("#board-title").textContent=(!rfaWrap.hidden&&$("#rfa-only").checked)
+    ? "RFA candidates — "+shortName(nomNow)+"'s roster"
+    : "Value board — best available";
   head.innerHTML=`<tr>`+
     `<th class="tagcol" data-tip="Your prep flags. Click a row's marker to set ◎ target · ☾ sleeper · ⊘ avoid. Filter by flag above. Saved per league.">◎</th>`+
     `<th class="l">Player</th>`+
@@ -1516,6 +1535,7 @@ function initModes(){
   });
 }
 $("#hide-picked").onchange=e=>{hidePicked=e.target.checked;renderBoard();};
+$("#rfa-only").onchange=()=>renderBoard();   // let me see the whole board again when I want it
 // take the current player off the block WITHOUT logging a sale
 function clearBlock(){
   selected=null;
