@@ -261,6 +261,8 @@ input::placeholder{color:var(--faint)}
 .hidepick input{width:14px;height:14px;padding:0;accent-color:var(--go)}
 .hidepick[hidden]{display:none}
 #rfa-only-who{color:var(--ink)}
+.saidchip{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+  color:var(--go-ink);border:1px solid var(--go-line);border-radius:4px;padding:0 4px}
 .tierrow{padding-top:0}
 .tbl-scroll{flex:1;min-height:300px;overflow:auto;padding-bottom:4px}
 table{width:100%;border-collapse:collapse;color:var(--ink)}
@@ -1721,8 +1723,20 @@ function keeperEntry(team,name){
   const k=String(name||"").trim().toLowerCase();
   return (KEEPER_POOL[team]||[]).find(r=>r.name.toLowerCase()===k)||null;
 }
+/* What each manager has actually DECLARED. A real announcement beats a surplus projection
+   every time, so these override the model rather than competing with it — the model only
+   fills the managers who have not said anything yet. */
+const ANNOUNCED=DATA.announced_keepers||{};
 // most likely keep: biggest surplus, and where two are level the CHEAPER one - identical
 // surplus for less money is strictly better, since the difference stays in the budget
+/* Most likely keep = the biggest saving against the MARKET, not against worth.
+   The counterfactual for not keeping someone is buying him back at auction, and this room
+   pays well above worth (about 1.3x at RB, 1.5x at WR), so worth-minus-cost systematically
+   undervalues a cheap keeper at an inflated position. It got Al's call wrong: on surplus,
+   Gibbs (+43) beat Chase (+41) — but Gibbs costs $65 against a $108 market (saves $43) while
+   Chase costs $28 against a $99 market (saves $71), and Chase is what he actually kept. The
+   same logic pushes the whole room toward cheap keepers: the expensive man is not lost, he
+   can be put up in the RFA round and retained at market. */
 function likeliestKeeper(team){
   // A player already applied as a keeper is STILL a candidate. Applying replaces the whole
   // keeper set, so treating him as "taken" would make re-running the auto-fill skip the very
@@ -1730,9 +1744,21 @@ function likeliestKeeper(team){
   const keptIds=new Set(keeperPicks().map(l=>l.id));
   const rows=(KEEPER_POOL[team]||[]).map(r=>{
     const p=playerByName(r.name);
-    return p&&(p.drafted===null||keptIds.has(p.id))?{...r,worth:p.worth,surplus:p.worth-r.cost}:null;
+    if(!p||!(p.drafted===null||keptIds.has(p.id)))return null;
+    // You only save what you would actually have spent. A rival pays market, so market is his
+    // counterfactual — but YOURS is your own max bid, and pretending otherwise credits you for
+    // "saving" $47 on a receiver you would never have bid past $24 for. Without this cap the
+    // inflated positions win your own row every time, purely because the room overpays there.
+    const mkt=predictPrice(p);
+    const ceiling=(team===ME)?Math.min(mkt,harryMaxBid(p)):mkt;
+    return {...r,worth:p.worth,surplus:p.worth-r.cost,mkt,saving:ceiling-r.cost};
   }).filter(Boolean);
-  rows.sort((a,b)=>(b.surplus-a.surplus)||(a.cost-b.cost));
+  const said=ANNOUNCED[team];
+  if(said){
+    const hit=rows.find(r=>r.name.toLowerCase()===said.toLowerCase());
+    if(hit)return {...hit,announced:true};
+  }
+  rows.sort((a,b)=>(b.saving-a.saving)||(a.cost-b.cost));
   return rows[0]||null;
 }
 function autofillKeepers(){
@@ -1745,7 +1771,9 @@ function autofillKeepers(){
     updateKeeperRow(row);n++;
   });
   const note=$("#keeper-note");note.className="modal-note";
-  note.textContent=n?("Filled "+n+" likeliest keeper"+(n===1?"":"s")+" — biggest surplus, cheaper wins a tie. Edit any row, then Apply.")
+  const said=Object.keys(ANNOUNCED).filter(t=>t in teams).length;
+  note.textContent=n
+    ?("Filled "+n+" — "+said+" announced, "+(n-said)+" projected from surplus. Edit any row, then Apply.")
     :"No prior-season rosters in this build — enter keepers by hand.";
 }
 function playerByName(n){
@@ -1780,7 +1808,7 @@ function renderKeeperRows(){
     const namefield=pool.length
       ? `<select class="kname"><option value="">— no keeper —</option>${opts}</select>`
       : `<input class="kname" list="player-names" autocomplete="off" placeholder="player — blank for none" value="${escAttr(chosen)}">`;
-    row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}</div>
+    row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}${ANNOUNCED[t.name]?' <span class="saidchip" data-tip="This manager has announced their keeper — not a projection.">said</span>':''}</div>
       ${namefield}
       <input class="kprice mono" inputmode="numeric" placeholder="$" value="${c.price===""?"":c.price}">
       <div class="ksurplus"></div>`;
@@ -1817,9 +1845,11 @@ function updateKeeperRow(row){
     +", so the rule makes him "+money(e.cost));
   else pf.removeAttribute("data-tip");
   if(!(price>=0)){out.textContent="worth "+money(p.worth);return;}
-  const surplus=Math.round(p.worth-price);
-  out.textContent=(surplus>=0?"+":"")+surplus+" vs "+money(p.worth);
-  out.classList.add(surplus>=0?"good":"bad");
+  // what keeping him saves against buying him back at this room's price
+  const mkt=Math.round(predictPrice(p)), saving=mkt-price;
+  out.textContent=(saving>=0?"saves ":"loses ")+money(Math.abs(saving))+" · mkt "+money(mkt);
+  out.title="worth "+money(p.worth)+" · goes for about "+money(mkt)+" · keeper cost "+money(price);
+  out.classList.add(saving>=0?"good":"bad");
 }
 function applyKeepers(){
   const note=$("#keeper-note");note.className="modal-note";

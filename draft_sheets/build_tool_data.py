@@ -592,6 +592,24 @@ def main():
         print(f"  Nomination order: {' -> '.join(draft_order)}"
               + (f"  (! not listed: {missing})" if missing else ""))
 
+    # Keepers a manager has actually declared. Checked against that manager's own prior
+    # roster, because an announcement the console cannot find is worse than no announcement:
+    # it would silently fall back to the projection and look like it had been honoured.
+    announced = {}
+    for mgr, player in (cfg.get("announced_keepers") or {}).items():
+        if mgr not in manager_names:
+            print(f"  ! announced_keepers: no manager named {mgr!r} — ignored")
+            continue
+        roster = keeper_pool.get(mgr) or []
+        hit = next((r for r in roster if r["name"].lower() == str(player).strip().lower()), None)
+        if not hit:
+            print(f"  ! announced_keepers: {player!r} is not on {mgr}'s prior roster — ignored")
+            continue
+        announced[mgr] = hit["name"]
+    if announced:
+        print(f"  Announced keepers ({len(announced)}): "
+              + ", ".join(f"{m} -> {p}" for m, p in announced.items()))
+
     plan = load_plan()
     if plan:
         print(f"  Budget plan from config/plan.json (bid ceilings): "
@@ -611,6 +629,7 @@ def main():
         "managers": managers,
         "keeper_pool": keeper_pool,
         "draft_order": draft_order,
+        "announced_keepers": announced,
     }
     path = os.path.join(HERE, "tool_data.json")
     with open(path, "w") as f:
