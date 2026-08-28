@@ -278,6 +278,11 @@ input::placeholder{color:var(--faint)}
 .rwp b{color:var(--ink);font-weight:650}
 .rwp.reach{border-color:var(--go-line);color:var(--go-ink)}
 .rwp.reach b{color:var(--go-ink)}
+.risk{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  border-radius:4px;padding:0 4px;margin-left:6px;white-space:nowrap;border:1px solid}
+.risk.r-out{color:var(--stop-ink);border-color:var(--stop);background:var(--stop-bg)}
+.risk.r-unsigned{color:var(--stop-ink);border-color:var(--stop);background:var(--stop-bg)}
+.risk.r-watch{color:var(--warn-ink);border-color:var(--warn);background:var(--warn-bg)}
 .c-why{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
 .ceiling.s-stop .c-why{color:var(--stop-ink)}
 .ceiling.s-go .c-why{color:var(--go-ink)}
@@ -1022,7 +1027,7 @@ function showEval(p){
   const infl=inflation();
   const pred=predictPrice(p), mb=harryMaxBid(p);
   // identity
-  $("#ev-name").textContent=p.name;
+  $("#ev-name").innerHTML=escAttr(p.name)+riskChip(p,true);
   $("#ev-tier").textContent=p.tier;
   $("#ev-pos").textContent=p.pos;
   $("#ev-pos").className="posdot p-"+p.pos;
@@ -1149,7 +1154,7 @@ function renderBoard(){
       const sc=gone?null:scarcity(p), hot=sc&&sc.cliff>=15;
       const tr=document.createElement("tr");tr.className="prow"+(gone?" gone":"")+((band%2)?" bandalt":"")+(tag!=="none"?" tag-"+tag:"");
       tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
-        <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+        <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${riskChip(p)}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
         ${overall?`<td class="num tier">${p.pos}</td>`:''}
         <td class="num tier">${p.tier}</td>
         <td class="num">${Math.round(p.fpts)}</td>
@@ -1196,7 +1201,7 @@ function renderBoard(){
     const need=slotFor(teams[ME],p.pos)!==null;
     const pocket=!gone&&edge>=5&&need;
     tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
-      <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
+      <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${riskChip(p)}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
       <td class="num tier">${p.tier}</td>
       <td class="num">${money(p.worth)}</td>
       <td class="num">${gone?'—':money(pred)}</td>
@@ -1288,6 +1293,21 @@ function renderRecs(){
 
 // surname is the useful half of a player's name — except for a defence, where the last word
 // is always "D/ST" and the nickname in front of it is the only part that identifies anyone
+/* Availability flag. Deliberately three states and no more: OUT covers the designations that
+   mean he may not play at all (IR/PUP/NFI) plus an inactive roster status, FA means no NFL
+   team, and WATCH is the weekly injury report. Nothing here predicts a TRADE — the feed
+   carries no such signal, so the console does not pretend to. */
+function riskChip(p,big){
+  const r=p.risk;
+  if(!r)return "";
+  const word=r.kind==="out"?(r.label||"OUT"):r.kind==="unsigned"?"FA":(r.label||"Q");
+  const tip=(r.kind==="unsigned"?"Not on an NFL roster":
+            (r.label||"listed on the injury report")+(r.body?" — "+r.body:""))
+    +(r.news_days!=null?" · reported "+(r.news_days===0?"today":r.news_days+"d ago"):"")
+    +(r.kind==="watch"?". A weekly designation, not a ruling — but you draft before it clears."
+                      :". He may not be available when the season starts.");
+  return `<span class="risk r-${r.kind}"${big?"":""} data-tip="${escAttr(tip)}">${escAttr(word)}</span>`;
+}
 function shortPlayer(p){
   const parts=p.name.split(" ");
   return /D\/ST$/.test(p.name)?parts[0]:parts[parts.length-1];

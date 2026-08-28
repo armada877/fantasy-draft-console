@@ -384,6 +384,23 @@ def read_scraped_league(season):
     }
 
 
+def load_player_status():
+    """config/player_status.json: {player name: {kind,label,body,news_days}} or {}.
+
+    Written by scraping/scrape_sleeper_status.py. Absent simply means no risk flags — the
+    console must build for a league that has never run it.
+    """
+    path = os.path.join(ROOT, "config", "player_status.json")
+    if not os.path.exists(path):
+        return {}, None
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        return d.get("players") or {}, d.get("pulled")
+    except (OSError, ValueError):
+        return {}, None
+
+
 def load_manager_canon():
     """config/manager_canon.json: owner id -> canonical manager name, or {} if absent."""
     path = os.path.join(ROOT, "config", "manager_canon.json")
@@ -610,6 +627,16 @@ def main():
         print(f"  Announced keepers ({len(announced)}): "
               + ", ".join(f"{m} -> {p}" for m, p in announced.items()))
 
+    status, status_at = load_player_status()
+    if status:
+        hit = 0
+        for p in players:
+            r = status.get(p["name"])
+            if r:
+                p["risk"] = r
+                hit += 1
+        print(f"  Availability flags on {hit} players (pulled {status_at}).")
+
     plan = load_plan()
     if plan:
         print(f"  Budget plan from config/plan.json (bid ceilings): "
@@ -630,6 +657,7 @@ def main():
         "keeper_pool": keeper_pool,
         "draft_order": draft_order,
         "announced_keepers": announced,
+        "status_pulled": status_at,
         "announced_source": cfg.get("announced_keepers_source") or None,
         "announced_pulled": cfg.get("announced_keepers_pulled") or None,
         # lets the console follow the live Sleeper draft; None simply disables that panel
