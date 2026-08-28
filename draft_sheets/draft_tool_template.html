@@ -261,6 +261,8 @@ input::placeholder{color:var(--faint)}
 .hidepick input{width:14px;height:14px;padding:0;accent-color:var(--go)}
 .hidepick[hidden]{display:none}
 #rfa-only-who{color:var(--ink)}
+.sync-on{background:var(--go);color:#04160f;border-color:var(--go)}
+#sync-state.bad{color:var(--stop-ink);border-color:var(--stop)}
 .saidchip{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
   color:var(--go-ink);border:1px solid var(--go-line);border-radius:4px;padding:0 4px}
 .tierrow{padding-top:0}
@@ -531,6 +533,8 @@ body.phase-rfa .rfa-only{display:inline-block}
             <button data-phase="auction" data-tip="Open auction — everything after the RFA round">Auction</button>
           </span>
           <button class="btn ghost" id="keepers-btn">Set keepers&hellip;</button>
+          <button class="btn ghost" id="sync-btn" hidden>&#8635; Sleeper sync</button>
+          <span class="pill" id="sync-state" hidden></span>
         </div>
       </div>
       <div class="eval" id="eval">
@@ -786,10 +790,19 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")hideTagMenu();});
 window.addEventListener("scroll",hideTagMenu,true);
 // draft history: persist the pick log (by player NAME so it survives id reordering) and replay it
 function saveDraft(){lsSet("log",log.map(l=>({name:players[l.id].name,price:l.price,team:l.team,
-  kind:kindOf(l),by:l.by||null})));}
+  kind:kindOf(l),by:l.by||null,pos:players[l.id].offBoard?players[l.id].pos:undefined})));}
 function restoreDraft(){
   const saved=lsGet("log",[])||[];
   const byName={};players.forEach(p=>{byName[p.name]=p.id;});
+  // picks synthesised from Sleeper for players outside the trimmed board: recreate them on
+  // replay, otherwise a reload would quietly hand those dollars back
+  saved.forEach(x=>{
+    if(byName[x.name]===undefined&&x.pos&&(x.pos in STARTERS||FLEX_POS.includes(x.pos))){
+      const p={name:x.name,pos:x.pos,tier:x.pos+"·",worth:1,vbd:0,fpts:0,
+               id:players.length,drafted:null,price:0,offBoard:true};
+      players.push(p);byName[p.name]=p.id;
+    }
+  });
   log=[];
   saved.forEach(s=>{
     const id=byName[s.name];
@@ -1955,6 +1968,119 @@ $("#keeper-clear").onclick=()=>{
 $("#keeper-modal").addEventListener("click",e=>{if(e.target.id==="keeper-modal")closeKeepers();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#keeper-modal").hidden)closeKeepers();});
 document.querySelectorAll("#phase-seg button").forEach(b=>b.onclick=()=>setPhase(b.dataset.phase));
+
+/* ---------- live Sleeper draft sync ----------
+   Sleeper's read API is public and sends permissive CORS headers, so the page polls it
+   directly; no server proxy and no credentials. Picks are only ever ADDED — a player already
+   logged is skipped — so syncing can never undo work you did by hand, and pulling the same
+   pick twice is a no-op.
+
+   Sleeper records who WON each pick but not who nominated it, so the nominator is taken from
+   the rotation the league announced: the Nth auctioned player is nominated by
+   draft_order[N % 12]. That same index decides the phase — the first pass through the order
+   is the RFA round, everything after is the open auction — and picks flagged is_keeper are
+   tagged keeper and never counted in that sequence. */
+const SLEEPER_LEAGUE=DATA.sleeper_league_id||null;
+const SYNC={on:false,timer:null,draftId:null,byRoster:{},unmatched:[],lastErr:null};
+const SUFFIX_RE=/\b(jr|sr|ii|iii|iv|v)\b/g;
+function normPlayer(n){
+  return String(n||"").toLowerCase().replace(/[.'`]/g,"").replace(/[-\/]/g," ")
+    .replace(SUFFIX_RE,"").replace(/\s+/g," ").trim();
+}
+const _byNorm={};players.forEach(p=>{_byNorm[normPlayer(p.name)]=p;});
+// a Sleeper DEF pick is named for the franchise ("Houston Texans"); the board calls it
+// "Texans D/ST", so collapse to the nickname both forms share
+function sleeperPlayer(md){
+  if((md.position||"")==="DEF"){
+    const nick=String(md.last_name||md.first_name||"").trim().split(" ").pop();
+    return _byNorm[normPlayer(nick+" D/ST")]||null;
+  }
+  return _byNorm[normPlayer((md.first_name||"")+" "+(md.last_name||""))]||null;
+}
+/* A draft can rostered anyone, but the board is a TRIMMED pool — the deep end of every
+   position is cut after valuation. Skipping a pick we cannot find would silently drop that
+   manager's spend, and budgets drive every prediction on the page, so an unknown player is
+   admitted at $1 of worth instead. He is drafted the instant he is created, so he never
+   appears on the board; all he does is carry the money and the roster slot. */
+function ensurePlayer(md){
+  const hit=sleeperPlayer(md);
+  if(hit)return hit;
+  const pos=(md.position||"").toUpperCase()==="DEF"?"DST":(md.position||"").toUpperCase();
+  if(!(pos in STARTERS)&&!FLEX_POS.includes(pos))return null;   // IDP etc — not our game
+  const name=pos==="DST"
+    ? String(md.last_name||md.first_name||"").trim().split(" ").pop()+" D/ST"
+    : ((md.first_name||"")+" "+(md.last_name||"")).trim();
+  if(!name)return null;
+  const p={name,pos,tier:pos+"·",worth:1,vbd:0,fpts:0,id:players.length,drafted:null,price:0,
+           offBoard:true};
+  players.push(p);_byNorm[normPlayer(name)]=p;
+  return p;
+}
+async function sj(url){const r=await fetch(url);if(!r.ok)throw new Error(url+" -> "+r.status);return r.json();}
+async function sleeperResolve(){
+  const drafts=await sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/drafts");
+  const auction=drafts.filter(d=>d.type==="auction").sort((a,b)=>(b.created||0)-(a.created||0));
+  if(!auction.length)throw new Error("no auction draft on this Sleeper league");
+  SYNC.draftId=auction[0].draft_id;
+  const [rosters,users]=await Promise.all([
+    sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/rosters"),
+    sj("https://api.sleeper.app/v1/league/"+SLEEPER_LEAGUE+"/users")]);
+  const nameOf={};users.forEach(u=>{nameOf[u.user_id]=(u.display_name||"").trim();});
+  SYNC.byRoster={};
+  rosters.forEach(r=>{const n=nameOf[r.owner_id];if(n&&n in teams)SYNC.byRoster[r.roster_id]=n;});
+}
+async function sleeperPoll(){
+  const picks=await sj("https://api.sleeper.app/v1/draft/"+SYNC.draftId+"/picks");
+  picks.sort((a,b)=>(a.pick_no||0)-(b.pick_no||0));
+  const unmatched=[];let added=0,seq=0;
+  for(const pk of picks){
+    const md=pk.metadata||{};
+    const isKeeper=!!pk.is_keeper;
+    const idx=isKeeper?null:seq++;                 // keepers sit outside the nomination order
+    const p=ensurePlayer(md);
+    const team=SYNC.byRoster[pk.roster_id];
+    if(!p||!team){unmatched.push(((md.first_name||"")+" "+(md.last_name||"")).trim()||("roster "+pk.roster_id));continue;}
+    if(p.drafted!==null)continue;                  // already on the board — never re-log
+    const price=Math.max(0,parseInt(md.amount)||0);
+    const kind=isKeeper?"keeper":(ORDER.length&&idx<ORDER.length?"rfa":"auction");
+    const by=(kind==="rfa"&&ORDER.length)?nominatorAt(idx):null;
+    logPick(p.id,price,team,kind,by);
+    added++;
+  }
+  SYNC.unmatched=unmatched;
+  return {total:picks.length,added,unmatched:unmatched.length};
+}
+function syncPaint(txt,bad){
+  const el=$("#sync-state");el.hidden=false;el.textContent=txt;el.classList.toggle("bad",!!bad);
+  $("#sync-btn").classList.toggle("sync-on",SYNC.on);
+}
+async function syncTick(){
+  try{
+    const r=await sleeperPoll();
+    SYNC.lastErr=null;
+    syncPaint(r.total+" picks"+(r.added?" · +"+r.added:"")+(r.unmatched?" · "+r.unmatched+" unmatched":"")
+      +" · "+new Date().toLocaleTimeString());
+  }catch(e){SYNC.lastErr=String(e);syncPaint("sync error — retrying",true);}
+}
+async function syncStart(){
+  try{
+    syncPaint("connecting…");
+    if(!SYNC.draftId)await sleeperResolve();
+    const missing=Object.keys(teams).filter(n=>!Object.values(SYNC.byRoster).includes(n));
+    if(missing.length)console.warn("Sleeper roster not matched for:",missing);
+    SYNC.on=true;await syncTick();
+    SYNC.timer=setInterval(syncTick,5000);
+    $("#sync-btn").classList.add("sync-on");
+  }catch(e){SYNC.on=false;syncPaint("cannot reach Sleeper",true);console.error(e);}
+}
+function syncStop(){
+  SYNC.on=false;if(SYNC.timer)clearInterval(SYNC.timer);SYNC.timer=null;
+  $("#sync-btn").classList.remove("sync-on");syncPaint("sync off");
+}
+if(SLEEPER_LEAGUE){
+  $("#sync-btn").hidden=false;
+  $("#sync-btn").onclick=()=>SYNC.on?syncStop():syncStart();
+}
 
 restoreDraft();   // replay any saved picks for this league so history survives reloads
 initTeamSelect();initFilters();initFlagFilters();initModes();

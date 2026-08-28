@@ -630,6 +630,8 @@ def main():
         "keeper_pool": keeper_pool,
         "draft_order": draft_order,
         "announced_keepers": announced,
+        # lets the console follow the live Sleeper draft; None simply disables that panel
+        "sleeper_league_id": str(cfg.get("sleeper_league_id") or "") or None,
     }
     path = os.path.join(HERE, "tool_data.json")
     with open(path, "w") as f:
