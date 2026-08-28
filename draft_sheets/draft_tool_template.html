@@ -1314,6 +1314,15 @@ function buildTarget(){
 // the player will actually AUCTION FOR (predictPrice / "will go"), NOT worth. Picks the best
 // available player of the slot's position(s) whose will-go price fits the target, else the
 // cheapest available. Moves as the board clears.
+// The most a slot could ever need: what the priciest player still eligible for it will go
+// for. Funding a slot past this is money that cannot convert — there is nobody left to spend
+// it on — so it is the natural ceiling when overflow is poured back in.
+function slotCeiling(s){
+  const poss=s.flex?FLEX_POS:[s.pos];
+  let top=1;
+  avail().forEach(p=>{if(poss.includes(p.pos)){const g=predictPrice(p);if(g>top)top=g;}});
+  return Math.ceil(top);
+}
 function slotHint(s,t){
   const poss=s.flex?FLEX_POS:[s.pos];
   const cands=avail().filter(p=>poss.includes(p.pos))
@@ -1348,8 +1357,12 @@ function renderBuild(){
   const benchPlayers=me.players.map(id=>players[id]).filter(p=>!used.has(p.id));
   const benchFilled=benchPlayers.length, benchSpent=benchPlayers.reduce((a,p)=>a+p.price,0);
   const _slotSum=slots.reduce((a,s)=>a+targetOf(s),0);
+  // Bench absorbs the remainder so the plan sums to budget, but never below $1 per empty
+  // spot — a $3 reserve against 5 open bench slots is not a plan, it is two players you
+  // cannot afford, and it silently over-funds the starters by the difference.
+  const benchFloor=Math.max(0,BENCH-benchFilled);
   const benchTarget=("BN" in BUDGET_OVR)?BUDGET_OVR.BN
-    :Math.max(0,DATA.budget-_slotSum);   // bench absorbs the remainder so the plan sums to budget
+    :Math.max(benchFloor,DATA.budget-_slotSum);
   // PACE: remaining budget vs what the ENTRY plan says the still-open slots should cost.
   // Deliberately measured against the entry plan, not the redistributed targets below —
   // those always fit by construction, so they could never tell you that you are behind.
@@ -1364,11 +1377,28 @@ function renderBuild(){
   // A target you typed yourself is treated as pinned and is never re-spread.
   const pinned=openStart.filter(s=>s.key in BUDGET_OVR);
   const flexible=openStart.filter(s=>!(s.key in BUDGET_OVR));
-  const forFlexible=Math.max(0,left-benchRemaining-pinned.reduce((a,s)=>a+targetOf(s),0));
-  const wsum=flexible.reduce((a,s)=>a+Math.max(1,targetOf(s)),0)||1;
+  const pot=Math.max(0,left-benchRemaining-pinned.reduce((a,s)=>a+targetOf(s),0));
   const LIVE=new Map();
   slots.forEach(s=>LIVE.set(s,targetOf(s)));
-  flexible.forEach(s=>LIVE.set(s,Math.max(1,Math.round(Math.max(1,targetOf(s))/wsum*forFlexible))));
+  const baseSum=flexible.reduce((a,s)=>a+Math.max(1,targetOf(s)),0)||1;
+  if(pot<=baseSum){
+    // behind the plan: everything shrinks together, since no one slot is at fault
+    flexible.forEach(s=>LIVE.set(s,Math.max(1,Math.round(Math.max(1,targetOf(s))/baseSum*pot))));
+  }else{
+    // ahead of it: hold every slot at its planned figure, then pour the surplus into the
+    // BIGGEST slots first rather than dusting it evenly over all of them. A cheap keeper
+    // should turn into a better RB1, not four dollars spread across a kicker and two
+    // receivers you were never going to win. Each slot caps at what the best player still
+    // available for it costs; whatever survives that falls through to the bench.
+    flexible.forEach(s=>LIVE.set(s,Math.max(1,targetOf(s))));
+    let surplus=pot-baseSum;
+    flexible.slice().sort((a,b)=>targetOf(b)-targetOf(a)).forEach(s=>{
+      if(surplus<=0)return;
+      const room=Math.max(0,slotCeiling(s)-LIVE.get(s));
+      const add=Math.min(surplus,room);
+      LIVE.set(s,LIVE.get(s)+add); surplus-=add;
+    });
+  }
   const liveOf=s=>LIVE.get(s);
   // delta chip — signed $, colored (over = red, under = green). No "saved" wording.
   const del=v=>`<span class="bdelta ${v>2?'over':v<-2?'under':'ok'}">${v>=0?'+$':'−$'}${Math.abs(v)}</span>`;
@@ -1376,11 +1406,12 @@ function renderBuild(){
   // ── pacing headline (the actionable verdict) ──
   const pace=document.createElement("div");pace.className="budpace "+(diff>=0?"good":"bad");
   const paceMain=diff>0?`$${diff} cushion`:diff<0?`Make up $${-diff}`:"On budget";
-  const allocCls=(flexible.length&&forFlexible<=0)?"warn":"ok";
+  const allocCls=(flexible.length&&pot<=0)?"warn":"ok";
   const allocMsg=!openStart.length?`Every startable slot filled`
     :!flexible.length?`All ${openStart.length} open slot${openStart.length===1?"":"s"} pinned to your own targets`
-    :forFlexible<=0?`Nothing left to spread — pinned targets and bench already use your $${left}`
-    :`$${forFlexible} re-spread across ${flexible.length} open slot${flexible.length===1?"":"s"}`;
+    :pot<=0?`Nothing left to spread — pinned targets and bench already use your $${left}`
+    :pot<=baseSum?`$${pot} across ${flexible.length} open slot${flexible.length===1?"":"s"} — trimmed to fit`
+    :`$${pot-baseSum} surplus poured into your top slots first`;
   pace.innerHTML=`<div class="bp-top"><div class="bp-main">${paceMain}</div>`+
     `<div class="bp-sub">$${left} left · entry plan wanted ≈<b>$${remainingPlan}</b> more</div></div>`+
     `<div class="bp-alloc ${allocCls}"><span>${allocMsg}</span><button class="linkbtn" id="bud-reset" title="Reset targets to the suggested plan">reset plan</button></div>`;
