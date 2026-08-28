@@ -467,6 +467,10 @@ td.edge-cell{position:relative}
 .rfa-only{display:none}
 body.phase-rfa .rfa-only{display:inline-block}
 .kept{color:var(--faint);font-size:11px;margin-left:6px;white-space:nowrap}
+#s-nom{font-size:15px;font-weight:650}
+#s-nom.me{color:var(--go-ink)}
+.team.onclock{outline:1px solid var(--go-line)}
+.team .clockchip{font-size:10px;color:var(--go-ink);margin-left:5px}
 .lkind{font-size:9px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);
   border-radius:4px;padding:1px 4px;margin-right:6px;color:var(--faint);font-weight:700}
 .lkind.k-keeper{color:var(--muted);border-color:var(--line2)}
@@ -507,6 +511,7 @@ body.phase-rfa .rfa-only{display:inline-block}
       <div class="vital"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="note">reserves $1 / open slot</div></div>
       <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
       <div class="vital"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="note" id="s-phase">pre-draft</div></div>
+      <div class="vital" id="v-nom" hidden><div class="k">Nominating</div><div class="v" id="s-nom">—</div><div class="note" id="s-nom-next"></div></div>
       <button class="themebtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
     </div>
 
@@ -697,6 +702,12 @@ DATA.managers.forEach(m=>{
     need:{...STARTERS}, flex:FLEX, bench:BENCH};
 });
 const harryMult=DATA.my_mult||{QB:1,RB:1,WR:1,TE:1}; // your positional value tilt (config.my_mult; 1 = neutral)
+/* Nomination order — defined after `teams` exists, since it validates against it. An auction
+   rotates: the manager nominating the Nth auctioned player is ORDER[N % 12]. Keepers are
+   excluded from that count because they are locked before anyone nominates; counting them
+   would put the wrong team on the clock from the very first pick. */
+const ORDER=(DATA.draft_order||[]).filter(n=>n in teams);
+const nominatorAt=i=>ORDER.length?ORDER[((i%ORDER.length)+ORDER.length)%ORDER.length]:null;
 let log=[];
 /* ---------- draft phases ----------
    Three rounds that price on completely different terms, so every log entry carries its kind:
@@ -713,6 +724,8 @@ const phaseKind=()=>PHASE==="keepers"?"keeper":PHASE==="rfa"?"rfa":"auction";
 const keeperPicks=()=>log.filter(l=>kindOf(l)==="keeper");
 const rfaPicks=()=>log.filter(l=>kindOf(l)==="rfa");
 const rfaNominators=()=>new Set(rfaPicks().map(l=>l.by).filter(Boolean));
+const nominationsMade=()=>log.filter(l=>kindOf(l)!=="keeper").length;
+const onTheClock=()=>nominatorAt(nominationsMade());
 
 /* ---------- persistence (per league + season) ---------- */
 const LKEY="dc:"+String(DATA.league_name||"lg").replace(/\s+/g,"_")+":"+(DATA.season||"");
@@ -944,6 +957,18 @@ function renderStatus(){
       +" · "+picks+"/"+tot;
   }
   $("#s-phase").textContent=phase;
+  // who nominates next — in the RFA round the nominator IS the incumbent who may match,
+  // so the "nominated by" field follows the clock instead of being retyped every time
+  const vnom=$("#v-nom");
+  if(ORDER.length){
+    vnom.hidden=false;
+    const now=onTheClock(), nxt=nominatorAt(nominationsMade()+1);
+    const el=$("#s-nom");
+    el.textContent=shortName(now); el.classList.toggle("me",now===ME);
+    $("#s-nom-next").textContent="next: "+shortName(nxt)+
+      (PHASE==="rfa"?" · "+Math.max(0,ORDER.length-nominationsMade())+" left in round":"");
+    const by=$("#log-by"); if(by&&PHASE==="rfa"&&!by.dataset.touched) by.value=now;
+  }else vnom.hidden=true;
 }
 
 function showEval(p){
@@ -1125,12 +1150,13 @@ function renderTeams(){
     // threat = big budget + still needs starters + strong bidder
     const strongPos=POS_ALL.reduce((a,p)=>(t.mult[p]||0)>(t.mult[a]||0)?p:a,"RB");
     const threat=t.name!==ME && t.budget>60 && needArr.length>2;
+    const clock=ORDER.length&&onTheClock()===t.name;
     const div=document.createElement("div");
-    div.className="team"+(t.name===ME?" me":threat?" threat":"");
+    div.className="team"+(t.name===ME?" me":threat?" threat":"")+(clock?" onclock":"");
     const maxb=money(t.budget-(open-1));
     div.innerHTML=`<div class="team-top"><div class="nm">${shortName(t.name)}${t.name===ME?' <span class="tag">you</span>':''}
         <span class="maxbid">max ${maxb} · loves ${strongPos}</span></div>
-      <div class="bud">${money(t.budget)}</div></div>
+      <div class="bud">${money(t.budget)}${clock?'<span class="clockchip">on the clock</span>':''}</div></div>
       <div class="bar"><i style="width:${Math.max(2,t.budget/DATA.budget*100)}%"></i></div>
       <div class="needs">${POS_ALL.map(pos=>{
         const openp=t.need[pos]>0; const n=t.need[pos];
@@ -1499,11 +1525,14 @@ function clearBlock(){
   $("#block-sug").style.display="none";
   $("#block-hint").textContent="type a player";
 }
+// once you override the nominator by hand, stop steering it from the clock
+$("#log-by").addEventListener("change",e=>{e.target.dataset.touched="1";});
 $("#log-btn").onclick=()=>{
   if(!selected){return;}
   const price=Math.max(1,parseInt($("#log-price").value)||1);
   const team=$("#log-team").value;
   logPick(selected.id,price,team,phaseKind(),PHASE==="rfa"?$("#log-by").value:null);
+  delete $("#log-by").dataset.touched;    // next nomination follows the clock again
 };
 $("#undo-btn").onclick=clearBlock;   // "Clear" — cancel the nomination on the block
 $("#undo-last").onclick=undo;        // "Undo last" — reverse the last logged pick
@@ -1532,6 +1561,9 @@ function draftStateForAdvisor(){
   const nominated=rfaNominators();
   return {me:ME, my_budget:teams[ME].budget, inflation:+inflation().toFixed(2),
     phase:PHASE,
+    nomination:ORDER.length?{on_the_clock:onTheClock(),
+      next_up:[1,2,3].map(k=>nominatorAt(nominationsMade()+k)),
+      order:ORDER, picks_nominated:nominationsMade()}:null,
     keepers:kept,
     rfa_round:{sold:rfa, spent:rfa.reduce((a,b)=>a+b.price,0),
       nominations_used:nominated.size,

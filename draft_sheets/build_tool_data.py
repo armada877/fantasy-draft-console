@@ -580,6 +580,18 @@ def main():
               "ESPN member ids change format between seasons; add the missing ids to "
               "config/manager_canon.json to bridge them.")
 
+    # nomination order, if the league has announced one. Validated against the scraped
+    # managers: a name that matches nobody would silently put the wrong team on the clock.
+    draft_order = [str(n) for n in (cfg.get("draft_order") or [])]
+    unknown = [n for n in draft_order if n not in manager_names]
+    if unknown:
+        print(f"  ! draft_order names not among the league's managers, dropped: {unknown}")
+        draft_order = [n for n in draft_order if n in manager_names]
+    if draft_order:
+        missing = [n for n in manager_names if n not in draft_order]
+        print(f"  Nomination order: {' -> '.join(draft_order)}"
+              + (f"  (! not listed: {missing})" if missing else ""))
+
     plan = load_plan()
     if plan:
         print(f"  Budget plan from config/plan.json (bid ceilings): "
@@ -598,6 +610,7 @@ def main():
         "players": players,
         "managers": managers,
         "keeper_pool": keeper_pool,
+        "draft_order": draft_order,
     }
     path = os.path.join(HERE, "tool_data.json")
     with open(path, "w") as f:
