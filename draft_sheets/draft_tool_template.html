@@ -340,6 +340,8 @@ td.edge-cell{position:relative}
   vertical-align:middle}
 .p-RB{background:var(--rb-bg);color:var(--rb)} .p-WR{background:var(--wr-bg);color:var(--wr)}
 .p-TE{background:var(--te-bg);color:var(--te)} .p-QB{background:var(--qb-bg);color:var(--qb)}
+/* K and D/ST are $1 roster filler — deliberately colourless so they never pull the eye */
+.p-K,.p-DST{background:var(--raise);color:var(--muted)}
 .who .posdot{height:22px;min-width:34px;font-size:12px}
 
 /* the room — condensed (its tab pane handles scrolling) */
@@ -486,9 +488,10 @@ body.phase-rfa .rfa-only{display:inline-block}
   gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .krow:last-child{border-bottom:0}
 .kteam{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.krow input{background:var(--ground);border:1px solid var(--line);border-radius:7px;color:var(--ink);
-  font:inherit;font-size:12px;padding:6px 8px;min-width:0}
-.krow input:focus{outline:0;border-color:var(--line2)}
+.krow input,.krow select{background:var(--ground);border:1px solid var(--line);border-radius:7px;
+  color:var(--ink);font:inherit;font-size:12px;padding:6px 8px;min-width:0}
+.krow input:focus,.krow select:focus{outline:0;border-color:var(--line2)}
+.krow select{cursor:pointer}
 .ksurplus{font-size:11px;color:var(--faint);text-align:right;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .ksurplus.good{color:var(--go-ink)}
@@ -678,7 +681,14 @@ const DATA = /*DATA*/;
 /* ---------- state ---------- */
 const ME = DATA.me;   // which team is you — set in config/league.json, injected via tool_data.json
 const STARTERS = DATA.starters, FLEX = DATA.flex, BENCH = DATA.bench;
-const SPEND_SLOTS = Object.values(STARTERS).reduce((a,b)=>a+b,0)+FLEX; // 8 startable
+const SPEND_SLOTS = Object.values(STARTERS).reduce((a,b)=>a+b,0)+FLEX; // startable slots
+// Every position this league actually starts, in board order — a league with a kicker and a
+// defence must not have them silently dropped from filters, needs, plans or the advisor.
+// FLEX is separate: it only ever holds RB/WR/TE, whatever else the league rosters.
+const POS_ORDER=["RB","WR","TE","QB","K","DST"];
+const POS_ALL=POS_ORDER.filter(p=>p in STARTERS)
+  .concat(Object.keys(STARTERS).filter(p=>!POS_ORDER.includes(p)));
+const FLEX_POS=["RB","WR","TE"];
 const ROSTER_SLOTS = SPEND_SLOTS + BENCH;
 const players = DATA.players.map((p,i)=>({...p,id:i,drafted:null,price:0}));
 const teams = {};
@@ -836,7 +846,7 @@ function harryMaxBid(p){
   // scarcity here = the POSITION getting thin relative to what you still need (not the local gap between two
   // studs — that would over-reward the guy before a cliff and invert two elites). Local cliff stays an info signal.
   const sc=scarcity(p);
-  const stillNeed=(t.need[p.pos]||0)+(["RB","WR","TE"].includes(p.pos)?t.flex:0);
+  const stillNeed=(t.need[p.pos]||0)+(FLEX_POS.includes(p.pos)?t.flex:0);
   let scar=1;
   if(sc.tierLeft===0)scar+=0.10;                                       // last of its tier → pay up
   if(stillNeed>0&&sc.posLeft<=stillNeed+2)scar+=0.18;                  // barely enough startable bodies left for your slots
@@ -855,7 +865,7 @@ function maxRationale(p){
   const t=teams[ME];
   if(slotFor(t,p.pos)===null) return "roster full at "+p.pos+" — no open slot";
   const sc=scarcity(p), infl=inflation();
-  const stillNeed=(t.need[p.pos]||0)+(["RB","WR","TE"].includes(p.pos)?t.flex:0);
+  const stillNeed=(t.need[p.pos]||0)+(FLEX_POS.includes(p.pos)?t.flex:0);
   const affordable=t.budget-(openSlots(t)-1), mb=harryMaxBid(p);
   const elite=p.worth>=35;
   const bits=[];
@@ -1113,7 +1123,7 @@ function renderTeams(){
     Object.entries(t.need).forEach(([k,v])=>{for(let i=0;i<v;i++)needArr.push(k);});
     for(let i=0;i<t.flex;i++)needArr.push("FLX");
     // threat = big budget + still needs starters + strong bidder
-    const strongPos=["RB","WR","TE","QB"].reduce((a,p)=>(t.mult[p]||0)>(t.mult[a]||0)?p:a,"RB");
+    const strongPos=POS_ALL.reduce((a,p)=>(t.mult[p]||0)>(t.mult[a]||0)?p:a,"RB");
     const threat=t.name!==ME && t.budget>60 && needArr.length>2;
     const div=document.createElement("div");
     div.className="team"+(t.name===ME?" me":threat?" threat":"");
@@ -1122,7 +1132,7 @@ function renderTeams(){
         <span class="maxbid">max ${maxb} · loves ${strongPos}</span></div>
       <div class="bud">${money(t.budget)}</div></div>
       <div class="bar"><i style="width:${Math.max(2,t.budget/DATA.budget*100)}%"></i></div>
-      <div class="needs">${["QB","RB","WR","TE"].map(pos=>{
+      <div class="needs">${POS_ALL.map(pos=>{
         const openp=t.need[pos]>0; const n=t.need[pos];
         return n>0?`<span class="need open">${pos}×${n}</span>`:'';
       }).join("")}${t.flex>0?`<span class="need open">FLX×${t.flex}</span>`:''}${open===0?'<span class="need">FULL</span>':''}</div>`
@@ -1139,7 +1149,7 @@ function renderRecs(){
   Object.values(teams).forEach(t=>{
     if(t.name===ME)return;
     const need=Object.entries(t.need).filter(([k,v])=>v>0).map(([k])=>k);
-    const wantFlex=t.flex>0?["RB","WR","TE"]:[];
+    const wantFlex=t.flex>0?FLEX_POS:[];
     const wants=[...new Set([...need,...wantFlex])];
     wants.forEach(pos=>{
       const score=t.budget*(t.mult[pos]||1);
@@ -1172,7 +1182,7 @@ function renderRunway(){
   const box=$("#runway");box.innerHTML="";
   const me=teams[ME];
   const thresh={RB:20,WR:20,TE:8,QB:10}; // "startable" worth floor
-  ["RB","WR","TE","QB"].forEach(pos=>{
+  POS_ALL.forEach(pos=>{
     const left=avail().filter(p=>p.pos===pos&&p.worth>=thresh[pos]).length;
     const needing=Object.values(teams).filter(t=>slotFor(t,pos)!==null).length;
     const meNeed=slotFor(me,pos)!==null;
@@ -1241,10 +1251,10 @@ function buildTarget(){
   });
   const plan=DATA.plan||null;
   // neutral fallback reference (only used when no backtest plan is configured)
-  const pool={};["QB","RB","WR","TE"].forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
+  const pool={};POS_ALL.forEach(p=>pool[p]=players.filter(x=>x.pos===p).sort((a,b)=>b.worth-a.worth));
   const idx={QB:0,RB:0,WR:0,TE:0};
   slots.filter(s=>!s.flex).forEach(s=>{s.ref=pool[s.pos][idx[s.pos]++]||null;});
-  slots.filter(s=>s.flex).forEach(s=>{let b=null,bp=null;["RB","WR","TE"].forEach(p=>{const c=pool[p][idx[p]];if(c&&(!b||c.worth>b.worth)){b=c;bp=p;}});if(b){idx[bp]++;s.ref=b;}});
+  slots.filter(s=>s.flex).forEach(s=>{let b=null,bp=null;FLEX_POS.forEach(p=>{const c=pool[p][idx[p]];if(c&&(!b||c.worth>b.worth)){b=c;bp=p;}});if(b){idx[bp]++;s.ref=b;}});
   const sumRef=slots.reduce((a,s)=>a+Math.max(1,s.ref?s.ref.worth:1),0)||1;
   const spendable=Math.max(1,DATA.budget-BENCH);
   slots.forEach(s=>{
@@ -1258,7 +1268,7 @@ function buildTarget(){
 // available player of the slot's position(s) whose will-go price fits the target, else the
 // cheapest available. Moves as the board clears.
 function slotHint(s,t){
-  const poss=s.flex?["RB","WR","TE"]:[s.pos];
+  const poss=s.flex?FLEX_POS:[s.pos];
   const cands=avail().filter(p=>poss.includes(p.pos))
                      .map(p=>({p,go:predictPrice(p)})).sort((a,b)=>b.go-a.go);
   if(!cands.length)return null;
@@ -1282,7 +1292,7 @@ function renderBuild(){
   slots.forEach(s=>fill.set(s,null));
   const mine=me.players.map(id=>players[id]).sort((a,b)=>b.worth-a.worth);
   mine.forEach(p=>{
-    const open=slots.filter(s=>!fill.get(s)&&(s.flex?["RB","WR","TE"].includes(p.pos):s.pos===p.pos));
+    const open=slots.filter(s=>!fill.get(s)&&(s.flex?FLEX_POS.includes(p.pos):s.pos===p.pos));
     if(!open.length)return;                       // no startable slot left — he is a bench body
     open.sort((a,b)=>(Math.abs(targetOf(a)-p.worth)-Math.abs(targetOf(b)-p.worth))
                      ||(targetOf(a)-targetOf(b)));
@@ -1360,16 +1370,16 @@ function renderBuild(){
   box.querySelectorAll(".tgtedit").forEach(inp=>{inp.onchange=()=>setSlotTarget(inp.dataset.key,inp.value);});
   const _rb=$("#bud-reset"); if(_rb) _rb.onclick=resetBudget;
   // ── per-group budget bars: QB/RB/WR/TE + FLEX + Bench, spent vs target ──
-  const groups={RB:{t:0,s:0},WR:{t:0,s:0},TE:{t:0,s:0},QB:{t:0,s:0},FLX:{t:0,s:0}};
+  const groups={};POS_ALL.forEach(p=>groups[p]={t:0,s:0});groups.FLX={t:0,s:0};
   slots.forEach(s=>{const g=s.flex?"FLX":s.pos;const got=fill.get(s);
     groups[g].t+=got?got.price:liveOf(s);   // a filled slot's "target" is what it actually cost
     if(got)groups[g].s+=got.price;});
   groups.BN={t:benchTarget,s:benchSpent};
-  const LBL={RB:"RB",WR:"WR",TE:"TE",QB:"QB",FLX:"FLEX",BN:"Bench"};
-  $("#build-budget").innerHTML=["RB","WR","TE","QB","FLX","BN"].map(g=>{
+  const LBL={FLX:"FLEX",BN:"Bench",DST:"D/ST"};
+  $("#build-budget").innerHTML=POS_ALL.concat(["FLX","BN"]).map(g=>{
     const t=groups[g].t, s=groups[g].s, tt=Math.max(1,t), pct=Math.min(100,100*s/tt);
     const note = s>t ? `<span class="bdelta over">$${s-t} over</span>` : (s>0?`<span class="bdelta ok">$${t-s} left</span>`:"");
-    return `<div class="bbudrow"><span>${LBL[g]}</span><span class="mono">$${s} / $${t} ${note}</span>`+
+    return `<div class="bbudrow"><span>${LBL[g]||g}</span><span class="mono">$${s} / $${t} ${note}</span>`+
       `<div class="bbar"><i style="width:${pct}%;background:${s>t?'var(--stop)':'var(--go)'}"></i></div></div>`;
   }).join("");
 }
@@ -1454,7 +1464,7 @@ function initTeamSelect(){
 }
 function initFilters(){
   const box=$("#pos-filters");
-  ["ALL","RB","WR","TE","QB"].forEach(p=>{
+  ["ALL"].concat(POS_ALL).forEach(p=>{
     const b=document.createElement("button");b.className="chip"+(p==="ALL"?" on":"");b.textContent=p;
     b.onclick=()=>{filterPos=p;filterTier="ALL";box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.textContent===p));renderBoard();};
     box.appendChild(b);
@@ -1510,7 +1520,7 @@ function draftStateForAdvisor(){
       roster:t.players.map(id=>({name:players[id].name,pos:players[id].pos,price:players[id].price}))};
   });
   const topAvail={};
-  ["RB","WR","TE","QB"].forEach(pos=>{
+  POS_ALL.forEach(pos=>{
     topAvail[pos]=avail().filter(p=>p.pos===pos).sort((a,b)=>b.worth-a.worth).slice(0,8)
       .map(p=>({name:p.name,tier:p.tier,worth:p.worth,est_price:predictPrice(p)}));
   });
@@ -1707,22 +1717,32 @@ function renderKeeperRows(){
     // Only THIS manager's prior roster is keepable, so each row gets its own list rather than
     // the whole league — offering 216 names when 15 are legal invites an impossible keeper.
     // No pool (never scraped, or a manager who wasn't in the league) falls back to everyone.
+    // A <select>, not an <input list=…>: a datalist FILTERS itself against whatever is already
+    // typed, so once a keeper is chosen the dropdown collapses to that one name and the other
+    // legal keepers become invisible. The roster is a closed set of ~15, so offer it outright.
     const pool=KEEPER_POOL[t.name]||[];
-    const listId="kpool-"+(++_kpoolSeq);
-    const opts=pool.slice().sort((a,b)=>b.cost-a.cost)
-      .map(r=>`<option value="${escAttr(r.name)}">${r.pos} · ${money(r.cost)}</option>`).join("");
+    const chosen=c.name;
+    const opts=pool.slice().sort((a,b)=>b.cost-a.cost).map(r=>
+      `<option value="${escAttr(r.name)}"${r.name===chosen?" selected":""}>`+
+      `${escAttr(r.name)} — ${r.pos} ${money(r.cost)}</option>`).join("");
+    const namefield=pool.length
+      ? `<select class="kname"><option value="">— no keeper —</option>${opts}</select>`
+      : `<input class="kname" list="player-names" autocomplete="off" placeholder="player — blank for none" value="${escAttr(chosen)}">`;
     row.innerHTML=`<div class="kteam">${escAttr(shortName(t.name))}${t.name===ME?' <span class="tag">you</span>':''}</div>
-      <input class="kname" list="${pool.length?listId:"player-names"}" autocomplete="off"
-             placeholder="${pool.length?"keeper from last season's roster":"player — blank for none"}" value="${escAttr(c.name)}">
+      ${namefield}
       <input class="kprice mono" inputmode="numeric" placeholder="$" value="${c.price===""?"":c.price}">
-      <div class="ksurplus"></div>${pool.length?`<datalist id="${listId}">${opts}</datalist>`:""}`;
+      <div class="ksurplus"></div>`;
     box.appendChild(row);
     // choosing a player prices him from the rule; editing the price by hand then sticks
-    row.querySelector(".kname").addEventListener("input",()=>{
-      const e=keeperEntry(t.name,row.querySelector(".kname").value);
+    const onName=()=>{
+      const v=row.querySelector(".kname").value;
+      const e=keeperEntry(t.name,v);
       if(e)row.querySelector(".kprice").value=e.cost;
+      else if(!v.trim())row.querySelector(".kprice").value="";   // "no keeper" clears the price
       updateKeeperRow(row);
-    });
+    };
+    row.querySelector(".kname").addEventListener("input",onName);
+    row.querySelector(".kname").addEventListener("change",onName);   // <select> fires change
     row.querySelector(".kprice").addEventListener("input",()=>updateKeeperRow(row));
     updateKeeperRow(row);
   });

@@ -69,7 +69,9 @@ ROOT = os.path.dirname(HERE)
 POSITIONS = ["QB", "RB", "WR", "TE"]  # skill positions the console drafts
 
 # ESPN lineup-slot ids -> our positions (skill only; K/DST/IR ignored)
-ESPN_SLOT = {"0": "QB", "2": "RB", "4": "WR", "6": "TE"}
+ESPN_SLOT = {"0": "QB", "2": "RB", "4": "WR", "6": "TE", "16": "DST", "17": "K"}
+FLEX_POS = ("RB", "WR", "TE")          # what a FLEX slot may hold — never K or DST
+KDST_SHEET = {"K": "K", "DST": "DEF"}  # console position -> workbook sheet name
 ESPN_FLEX_SLOTS = {"23"}   # RB/WR/TE flex
 ESPN_POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST"}   # defaultPositionId
 ESPN_BENCH_SLOT = "20"
@@ -169,6 +171,40 @@ def read_raw_projections(wb):
     return out or None
 
 
+def read_kdst(wb, teams):
+    """Kickers and defences from the workbook's K / DEF sheets: {name, pos, tier, fpts}.
+
+    Both sheets are a flat ranked table -- Rank, name, Pos, ..., fpts -- rather than the
+    two-row stat layout the skill positions use, so they get their own reader. Defence names
+    are normalised to ESPN's "Falcons D/ST" form so a defence kept from last season still
+    matches the scraped roster. Returns [] when the sheets are absent.
+    """
+    out = []
+    for pos, sheet in KDST_SHEET.items():
+        if sheet not in wb.sheetnames:
+            continue
+        ws = wb[sheet]
+        headers = [str(ws.cell(row=1, column=c).value or "").strip().lower()
+                   for c in range(1, ws.max_column + 1)]
+        try:
+            fcol = headers.index("fpts") + 1
+        except ValueError:
+            continue
+        rank = 0
+        for r in range(2, ws.max_row + 1):
+            name = ws.cell(row=r, column=2).value        # col 1 is Rank, col 2 the name
+            fpts = _num(ws.cell(row=r, column=fcol).value)
+            if not name or fpts is None:
+                continue
+            name = str(name).strip()
+            if pos == "DST":
+                name = name.split()[-1] + " D/ST"        # "Houston Texans" -> "Texans D/ST"
+            rank += 1
+            out.append({"name": name, "pos": pos, "fpts": float(fpts),
+                        "tier": "%s%d" % (pos, (rank - 1) // max(1, teams) + 1)})
+    return out
+
+
 def read_scoring(settings):
     """ESPN statId->points mapped to our stat keys; None if unavailable."""
     items = (settings.get("scoringSettings") or {}).get("scoringItems") or []
@@ -185,27 +221,46 @@ def compute_fpts(stats, scoring):
 
 
 def compute_values(players, starters, flex, bench, teams, budget):
-    """Set vbd and worth on each player from the league's roster/teams/budget."""
+    """Set vbd and worth on each player from the league's roster/teams/budget.
+
+    Works over whatever positions are actually present, so a league that starts a kicker and
+    a defence values them on the same footing as the skill positions. Only RB/WR/TE are ever
+    promoted through FLEX. Note K and DST points come from the workbook's own projections
+    rather than being re-scored through the league's rules -- ESPN's scoring payload carries
+    the kicking and defensive stat items separately, and a season that has not been configured
+    yet omits them -- so their VBD is directionally right rather than exact. It barely matters:
+    with one slot each their replacement level is so close to the starter that they price at
+    about a dollar, which is what they actually sell for.
+    """
+    poss = sorted({x["pos"] for x in players})
     by = {p: sorted([x for x in players if x["pos"] == p], key=lambda x: -x["fpts"])
-          for p in POSITIONS}
-    taken = {p: min(teams * int(starters.get(p, 0)), len(by[p])) for p in POSITIONS}
+          for p in poss}
+    taken = {p: min(teams * int(starters.get(p, 0)), len(by[p])) for p in poss}
     # FLEX: pool the best remaining RB/WR/TE and promote them to starters
-    pool = sorted([x for p in ("RB", "WR", "TE") for x in by[p][taken[p]:]],
+    pool = sorted([x for p in FLEX_POS if p in by for x in by[p][taken[p]:]],
                   key=lambda x: -x["fpts"])
     for x in pool[:teams * int(flex)]:
         taken[x["pos"]] += 1
     baseline = {}                       # replacement = best NON-starter at the position
-    for p in POSITIONS:
+    for p in poss:
         rest = by[p][taken[p]:]
         baseline[p] = rest[0]["fpts"] if rest else (by[p][-1]["fpts"] if by[p] else 0.0)
     for x in players:
         x["vbd"] = x["fpts"] - baseline[x["pos"]]
-    # auction $: reserve $1 for every roster slot league-wide, split the rest by VBD
+    # auction $: reserve $1 for every roster slot league-wide, split the rest by VBD -- but
+    # only across the positions the room actually BIDS on. K and DST carry real VBD in points
+    # and none of it in dollars: across 2022 and 2025 every kicker in this league sold for
+    # exactly $1 (mean $1.05, max $2) and defences averaged $1.3 with a $3 ceiling. Letting
+    # their VBD draw from the pool priced the top kicker at $15, which would have read as a
+    # standing bargain against a $1 market and pulled money away from the positions that
+    # decide the season. They still consume a $1 roster reservation each, which is the whole
+    # of their real budget claim.
     roster_slots = sum(int(v) for v in starters.values()) + int(flex) + int(bench)
     discretionary = max(1.0, teams * budget - teams * roster_slots)
-    total_vbd = sum(x["vbd"] for x in players if x["vbd"] > 0) or 1.0
+    priced = lambda x: x["vbd"] > 0 and x["pos"] in POSITIONS
+    total_vbd = sum(x["vbd"] for x in players if priced(x)) or 1.0
     for x in players:
-        share = x["vbd"] / total_vbd * discretionary if x["vbd"] > 0 else 0.0
+        share = x["vbd"] / total_vbd * discretionary if priced(x) else 0.0
         x["worth"] = 1.0 + share
     return baseline
 
@@ -284,7 +339,7 @@ def read_scraped_league(season):
     roster = (settings.get("rosterSettings") or {}).get("lineupSlotCounts") or {}
     draft = settings.get("draftSettings") or {}
 
-    starters = {p: 0 for p in POSITIONS}
+    starters = {p: 0 for p in sorted(set(ESPN_SLOT.values()))}
     flex = bench = 0
     for slot, cnt in roster.items():
         cnt = int(cnt or 0)
@@ -319,6 +374,11 @@ def read_scraped_league(season):
         "budget": int(draft.get("auctionBudget") or 200),
         "managers": names,
         "owners": owners,
+        # ESPN serves a stub for a season the commissioner has not rolled over yet: no draft
+        # type, and only the handful of scoring items that carry over. Roster slots are missing
+        # from it too, so the caller has to know not to trust the shape.
+        "configured": bool(draft.get("type")) and len(
+            (settings.get("scoringSettings") or {}).get("scoringItems") or []) >= 20,
         "league_name": settings.get("name"),
         "scoring": read_scoring(settings),
     }
@@ -431,6 +491,23 @@ def main():
               f"Using workbook defaults: {n} teams, ${league['budget']} budget, generic opponents.")
         print("  Run scraping/scrape_league.py to pull your real league + managers.")
 
+    # A season ESPN has not been configured for yet reports a partial roster (no K, no D/ST)
+    # and a partial scoring table. Say so, and let config state the truth in the meantime.
+    if league.get("configured") is False:
+        print(f"  ! The {season} league on ESPN looks unconfigured (no draft type, partial "
+              "scoring). Roster slots from this scrape are NOT trustworthy — re-scrape once "
+              'the season is set up, or set "roster" in config/league.json.')
+    roster_cfg = cfg.get("roster") or {}
+    if roster_cfg.get("starters"):
+        league["starters"] = {k: int(v) for k, v in roster_cfg["starters"].items() if int(v) > 0}
+    if roster_cfg.get("flex") is not None:
+        league["flex"] = int(roster_cfg["flex"])
+    if roster_cfg.get("bench") is not None:
+        league["bench"] = int(roster_cfg["bench"])
+    if roster_cfg:
+        print(f"  Roster shape from config/league.json: {league['starters']} "
+              f"+{league['flex']}FLX +{league['bench']}BN.")
+
     teams = len(manager_names)
     budget = league["budget"]
 
@@ -442,13 +519,22 @@ def main():
                else "workbook default scoring (no scrape)")
         for x in raw:
             x["fpts"] = compute_fpts(x["stats"], scoring)
+        # kickers and defences, but only if this league actually starts them
+        kdst = [x for x in read_kdst(wb, teams)
+                if int(league["starters"].get(x["pos"], 0)) > 0]
+        raw = raw + kdst
         compute_values(raw, league["starters"], league["flex"], league["bench"], teams, budget)
         # trim the full stat sheets (deep waiver fodder) to a sane draftable pool per
         # position — starters + flex + ~2 bench rounds — AFTER valuation so the
         # replacement baseline still sees the whole pool.
-        cap = {p: teams * (int(league["starters"].get(p, 0)) + int(league["flex"]) + 2)
-               for p in POSITIONS}
-        raw = [x for p in POSITIONS
+        board_pos = [p for p in POSITIONS] + [p for p in KDST_SHEET
+                                              if int(league["starters"].get(p, 0)) > 0]
+        # K and DST take no FLEX and are never stashed on a bench, so a couple past the
+        # starters is the whole realistic pool for them
+        cap = {p: teams * (int(league["starters"].get(p, 0))
+                           + (int(league["flex"]) + 2 if p in POSITIONS else 0) + 2)
+               for p in board_pos}
+        raw = [x for p in board_pos
                for x in sorted([y for y in raw if y["pos"] == p], key=lambda y: -y["fpts"])[:cap[p]]]
         players = [{"name": x["name"], "pos": x["pos"], "tier": x["tier"],
                     "worth": max(0, round(x["worth"])), "vbd": round(x["vbd"]),
@@ -507,7 +593,7 @@ def main():
         "starters": league["starters"],
         "flex": league["flex"],
         "bench": league["bench"],
-        "my_mult": {p: float(my_mult.get(p, 1.0)) for p in POSITIONS},
+        "my_mult": {p: float(my_mult.get(p, 1.0)) for p in league["starters"]},
         "plan": plan,          # per-slot bid ceilings (backtest-supported plan); None => neutral frame
         "players": players,
         "managers": managers,
