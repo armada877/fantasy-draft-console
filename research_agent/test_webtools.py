@@ -40,6 +40,19 @@ def local_league_checks() -> None:
               f"{v['rows'][0]['name']} {v['rows'][0]['vor']:+.1f})")
         wl = leaguetools.weekly_lineup(ctx.key)
         assert "Optimal WEEK" in wl and "bench:" in wl
+        # consistency: Lineup and tier-board (league proj) read the SAME series
+        lu = leaguetools.weekly_lineup_data(ctx.key)
+        payload = leaguetools._payload(ctx)
+        by_name = {v["name"]: v for v in payload["players"].values()}
+        for r in lu["slots"]:
+            raw = by_name.get(r["name"])
+            if raw is None:
+                continue
+            wk_raw = leaguetools._this_week(payload, raw)
+            assert wk_raw is not None and abs(r["wk_pts"] - wk_raw) < 0.051, (
+                f"{ctx.key}/{r['name']}: lineup {r['wk_pts']} != payload {wk_raw}")
+            assert abs(r["ros_ppg"] - leaguetools._n(raw.get("ros_ppg"))) < 0.051
+        print(f"ok   {ctx.key}: lineup/tier projection consistency")
         w = leaguetools.console_boards(ctx.key, "waivers", limit=3)
         b = leaguetools.console_boards(ctx.key, "trades", limit=3)
         print(f"ok   {ctx.key}: league_details/team_details/tendencies/boards "
