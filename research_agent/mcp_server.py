@@ -210,6 +210,18 @@ def weekly_lineup(league: str | None = None, team: str | None = None) -> str:
     return leaguetools.weekly_lineup(league, team)
 
 
+@server.tool(name="evaluate_trade",
+             description="Evaluate a specific trade with the league engine: "
+             "both sides' lineup delta over remaining weeks, playoff-weeks "
+             "delta, accept odds from the partner's calibrated tendencies, "
+             "veto risk, and a counter-offer search. send/receive take player "
+             "names or ids (send = from the user's roster).")
+@_clean_errors
+def evaluate_trade(partner: str, send: list[str], receive: list[str],
+                   league: str | None = None) -> str:
+    return leaguetools.trade_eval_text(league, partner, send, receive)
+
+
 @server.tool(name="console_boards",
              description="The in-season console's precomputed recommendations: "
              "board = waivers (bid targets with suggested $ and contest odds), "

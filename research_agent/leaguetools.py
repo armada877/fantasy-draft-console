@@ -406,3 +406,207 @@ def weekly_lineup(league: str | None = None, team: str | None = None) -> str:
                  "week's projection. Close calls (within ~2 pts) deserve a "
                  "matchup/news/weather check before lock.")
     return "\n".join(lines)
+
+
+# ── waiver board + trade center (structured, for the UI tabs) ─────────────────
+def _player_brief(payload: dict, pid) -> dict | None:
+    p = (payload.get("players") or {}).get(str(pid))
+    if not p:
+        return None
+    return {"id": p.get("id"), "name": p.get("name"), "pos": p.get("pos"),
+            "team": p.get("team") or "", "ros_ppg": round(_n(p.get("ros_ppg")), 1),
+            "wk_pts": round(_n(_this_week(payload, p) or 0), 1),
+            "injury": (p.get("injury") or "").replace("ACTIVE", "")}
+
+
+IR_STATUSES = ("INJURY_RESERVE", "IR")
+
+
+def _drop_warning(payload: dict, pid) -> str | None:
+    """The engine has no IR-slot concept and trusts the vendor projection.
+    Both bite on IR drop candidates: flag them instead of hiding it."""
+    p = (payload.get("players") or {}).get(str(pid)) or {}
+    if (p.get("injury") or "").upper() not in IR_STATUSES:
+        return None
+    ir = int((payload.get("league") or {}).get("ir") or 0)
+    w = (f"{p.get('name')} is IR-eligible — "
+         + (f"this league has {ir} IR slots: move him there instead of "
+            "dropping (frees the bench spot for free)" if ir
+            else "no IR slots here, but"))
+    if _n(p.get("ros_points")) <= 0:
+        w += ("; his 0.0 rest-of-season projection means the vendor has NOT "
+              "priced a return — it is not evidence he has no value")
+    return w
+
+
+def waiver_board_data(league: str | None = None, limit: int = 12) -> dict:
+    """The console's waiver board, names resolved — bid targets with FAAB
+    sizing (already priced against opponent tendencies), drops, and act-by."""
+    ctx = _resolve(league)
+    payload = _payload(ctx)
+    me = _find_team(payload, None)
+    acq = (payload.get("league", {}).get("acquisition") or {})
+    rows = []
+    for r in (payload.get("waivers") or [])[: max(1, int(limit))]:
+        rows.append({
+            "player": _player_brief(payload, r.get("player_id")),
+            "drop": _player_brief(payload, r.get("drop_player_id"))
+                    if r.get("drop_player_id") else None,
+            "drop_warning": _drop_warning(payload, r.get("drop_player_id"))
+                            if r.get("drop_player_id") else None,
+            "bid": r.get("bid"),
+            "marginal_now": r.get("marginal_now"),
+            "marginal_reg": r.get("marginal_reg"),
+            "marginal_post": r.get("marginal_post"),
+            "act_by": r.get("act_by"), "deferrable": r.get("deferrable"),
+            "why": r.get("why") or [],
+        })
+    return {"league": ctx.key, "week": payload.get("week"),
+            "freshness": _freshness(payload),
+            "model": acq.get("model"),
+            "faab_left": me.get("faab_left"),
+            "waiver_priority": me.get("waiver_priority"),
+            "rows": rows}
+
+
+def trade_center_data(league: str | None = None) -> dict:
+    """Partner list + the console's precomputed finder/buy-low/sell-high,
+    names resolved — the data behind the Trades tab."""
+    ctx = _resolve(league)
+    payload = _payload(ctx)
+    my_id = payload["me"]["team_id"]
+    teams = []
+    for t in payload["teams"]:
+        if t["team_id"] == my_id:
+            continue
+        tr = (t.get("tendencies") or {}).get("trade") or {}
+        teams.append({"team_id": t["team_id"], "name": t.get("name"),
+                      "manager": t.get("manager"),
+                      "record": _fmt_record(t),
+                      "playoff_odds": _n(t.get("playoff_odds")),
+                      "trade_rate": _n(tr.get("rate_per_season")),
+                      "accept_rate": _n(tr.get("accept_rate")),
+                      "responds": bool(tr.get("responds"))})
+    finder = []
+    for r in (payload.get("trades", {}).get("finder") or []):
+        finder.append({
+            "partner_team_id": r.get("partner_team_id"),
+            "send": [_player_brief(payload, x) for x in r.get("send") or []],
+            "receive": [_player_brief(payload, x) for x in r.get("receive") or []],
+            "my_delta": r.get("my_delta"), "their_delta": r.get("their_delta"),
+            "accept_odds": r.get("accept_odds"), "veto_risk": r.get("veto_risk"),
+            "why": r.get("why") or []})
+
+    def _form(rows):
+        return [{"player": _player_brief(payload, r.get("player_id")),
+                 "owner_team_id": r.get("owner_team_id"),
+                 "why": r.get("why") or []} for r in rows or []]
+
+    return {"league": ctx.key, "week": payload.get("week"),
+            "freshness": _freshness(payload), "me_team_id": my_id,
+            "teams": teams, "finder": finder,
+            "buy_low": _form(payload.get("trades", {}).get("buy_low")),
+            "sell_high": _form(payload.get("trades", {}).get("sell_high"))}
+
+
+def roster_pair_data(league: str | None = None, partner: str | None = None) -> dict:
+    """My roster + a partner's, as pick lists for the trade comparator."""
+    ctx = _resolve(league)
+    payload = _payload(ctx)
+    mine = _find_team(payload, None)
+    other = _find_team(payload, partner) if partner else None
+
+    def side(t):
+        rows = [_player_brief(payload, pid) for pid in t.get("roster") or []]
+        rows = [r for r in rows if r]
+        rows.sort(key=lambda r: (r["pos"], -r["ros_ppg"]))
+        return {"team_id": t["team_id"], "name": t.get("name"),
+                "manager": t.get("manager"), "players": rows}
+
+    return {"league": ctx.key, "mine": side(mine),
+            "partner": side(other) if other else None}
+
+
+def trade_eval(league: str | None = None, partner: str | None = None,
+               send=None, receive=None) -> dict:
+    """Evaluate a specific trade with the engine's evaluate_offer — both
+    sides' lineup deltas over remaining weeks, playoff-week delta, calibrated
+    accept odds, veto risk, and a counter search. send/receive take player
+    ids or names (resolved on the right roster)."""
+    from engine.state import SeasonState
+
+    from engine.trades import evaluate_offer
+
+    ctx = _resolve(league)
+    payload = _payload(ctx)
+    profile = ctx.profile()
+    other = _find_team(payload, partner)
+    if other["team_id"] == payload["me"]["team_id"]:
+        raise ValueError("partner is your own team — pick an opponent")
+    state = SeasonState.from_season_data(payload, profile=profile)
+
+    def resolve_ids(items, team_raw):
+        roster = [(pid, _norm_name((payload["players"].get(str(pid)) or {}).get("name")))
+                  for pid in team_raw.get("roster") or []]
+        out = []
+        for it in items or []:
+            s = str(it).strip()
+            if s.lstrip("-").isdigit():
+                out.append(int(s))
+                continue
+            q = _norm_name(s)
+            hit = next((pid for pid, nm in roster if nm == q), None) or \
+                  next((pid for pid, nm in roster if q and q in nm), None)
+            if hit is None:
+                raise ValueError(f"{s!r} is not on {team_raw.get('name')}'s roster")
+            out.append(hit)
+        return out
+
+    mine = _find_team(payload, None)
+    send_ids = resolve_ids(send, mine)
+    recv_ids = resolve_ids(receive, other)
+    if not send_ids or not recv_ids:
+        raise ValueError("give at least one player on each side")
+    res = evaluate_offer(state, other["team_id"], send_ids, recv_ids)
+
+    def names(ids):
+        return [_player_brief(payload, i) for i in ids or []]
+
+    res["send"], res["receive"] = names(res.get("send")), names(res.get("receive"))
+    if res.get("counter"):
+        res["counter"]["send"] = names(res["counter"].get("send"))
+        res["counter"]["receive"] = names(res["counter"].get("receive"))
+    res["partner"] = {"team_id": other["team_id"], "name": other.get("name"),
+                      "manager": other.get("manager")}
+    res["league"] = ctx.key
+    res["freshness"] = _freshness(payload)
+    return res
+
+
+def _norm_name(name) -> str:
+    import re as _re
+    s = _re.sub(r"[^a-z0-9 ]", "", str(name or "").lower())
+    return " ".join(t for t in s.split() if t not in ("jr", "sr", "ii", "iii", "iv"))
+
+
+def trade_eval_text(league: str | None = None, partner: str | None = None,
+                    send=None, receive=None) -> str:
+    d = trade_eval(league, partner, send, receive)
+    fmt = lambda ps: " + ".join(f"{p['name']} ({p['pos']}, ros {p['ros_ppg']})"
+                                for p in ps)
+    lines = [f"Trade evaluation — {d['league']}, vs {d['partner']['name']} "
+             f"({d['partner']['manager']}), {d['freshness']}",
+             f"  send:    {fmt(d['send'])}",
+             f"  receive: {fmt(d['receive'])}",
+             f"  VERDICT: {d['verdict'].upper()}  |  my starters "
+             f"{d['my_delta']:+.1f} pts (playoff wks {d['my_delta_post']:+.1f}), "
+             f"their starters {d['their_delta']:+.1f}",
+             f"  P(accept) {d['accept_odds']:.0%}, veto risk {d['veto_risk']:.0%}"]
+    for w in d.get("why") or []:
+        lines.append(f"    · {w}")
+    c = d.get("counter")
+    if c:
+        lines.append(f"  better counter: send {fmt(c['send'])} for "
+                     f"{fmt(c['receive'])} — me {c['my_delta']:+.1f}, them "
+                     f"{c['their_delta']:+.1f}, P(accept) {c['accept_odds']:.0%}")
+    return "\n".join(lines)

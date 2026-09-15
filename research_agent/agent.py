@@ -69,6 +69,11 @@ How to work:
 - The public directory dates from ~2019: entries marked defunct cannot be
   fetched, and even live pages may have moved content. Say so when a source
   comes back thin instead of guessing.
+- Waiver-board drop suggestions have two known blind spots: the engine has
+  no IR-slot concept (an IR-eligible player should move to an open IR slot,
+  not be dropped), and a 0.0 ros projection on an IR player means the vendor
+  has not priced a return — cross-check player_news before endorsing such a
+  drop. Say so when a recommendation trips either.
 - League payloads carry a generated timestamp — if a tool flags them STALE,
   say so and treat the numbers as of that date.
 - Cite which source each claim came from; where sources disagree, say that —
@@ -396,6 +401,35 @@ async def opponent_tendencies(args):
 
 
 @tool(
+    "evaluate_trade",
+    "Evaluate a SPECIFIC trade with the league engine: both sides' optimal-"
+    "lineup delta over the remaining weeks, the playoff-weeks delta, accept "
+    "odds from the partner's calibrated tendencies, veto risk, and a counter-"
+    "offer search. send/receive take player names (or ids) — send = players "
+    "leaving the user's roster, receive = players from the partner's. Use for "
+    "any 'should I take/offer this trade' question; use fp_league_value(ros) "
+    "as the independent second opinion.",
+    {
+        "type": "object",
+        "properties": {
+            "league": {"type": "string"},
+            "partner": {"type": "string",
+                        "description": "Partner team/manager name or id."},
+            "send": {"type": "array", "items": {"type": "string"}},
+            "receive": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["partner", "send", "receive"],
+    },
+)
+async def evaluate_trade(args):
+    try:
+        return _ok(leaguetools.trade_eval_text(
+            args.get("league"), args["partner"], args["send"], args["receive"]))
+    except Exception as e:
+        return _err(e)
+
+
+@tool(
     "console_boards",
     "The in-season console's precomputed recommendations from the latest "
     "pipeline run: board='waivers' (add targets with suggested bids and "
@@ -473,7 +507,7 @@ WEB_TOOLS = [list_resources, fetch_resource, fetch_url, boris_chen_tiers,
              twitter_handles, player_news,
              reporter_feed]
 LEAGUE_TOOLS = [list_leagues, league_details, team_details, opponent_tendencies,
-                console_boards, weekly_lineup]
+                console_boards, weekly_lineup, evaluate_trade]
 
 server = create_sdk_mcp_server(name="ffresearch", version="1.0.0", tools=WEB_TOOLS)
 league_server = create_sdk_mcp_server(name="myleague", version="1.0.0",
@@ -502,6 +536,7 @@ def build_options(model: str = DEFAULT_MODEL, max_turns: int = 30) -> ClaudeAgen
             "mcp__myleague__opponent_tendencies",
             "mcp__myleague__console_boards",
             "mcp__myleague__weekly_lineup",
+            "mcp__myleague__evaluate_trade",
         ],
         # WebSearch/WebFetch are ON (user request): breaking news and pages
         # beyond the directory. Filesystem/shell stay off.

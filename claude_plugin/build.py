@@ -51,6 +51,9 @@ The `ff-research` MCP server (tools `mcp__ff-research__*`) gives you:
   contested-claim win rate, max bid, trade rate/accept/position flow, drop
   latency; auction multipliers where the league auctions. Consult before
   sizing a bid or pitching a trade.
+- `evaluate_trade` — evaluate a specific trade with the league engine:
+  both sides' lineup deltas, accept odds from calibrated tendencies,
+  veto risk, and a counter search. Use for any trade question.
 - `weekly_lineup` — the optimal THIS-WEEK lineup (rosters lock Tue-Tue;
   use this for start/sit, ros numbers for value decisions).
 - `console_boards` — the in-season console's precomputed waivers / trades /
@@ -114,7 +117,7 @@ def main() -> None:
         json.dump({
             "name": "ff-research",
             "displayName": "Fantasy Football Research",
-            "version": "1.6.0",
+            "version": "1.7.0",
             "description": "Your ESPN leagues (rosters, standings, opponent "
                            "tendency model, console boards) + the public "
                            "fantasy resource directory, as MCP tools.",

@@ -137,6 +137,41 @@
     text-transform:uppercase;margin:14px 0 4px}
   .total b{color:var(--gold)}
 
+  /* ── waivers ───────────────────────────────────────────────────────── */
+  .wv-card{background:var(--panel);border:1px solid var(--line);border-radius:5px;
+    padding:12px 14px;margin-bottom:10px}
+  .wv-card .head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+  .wv-card .who{font-family:var(--disp);font-weight:700;font-size:18px;letter-spacing:.04em}
+  .wv-card .bid{font-family:var(--mono);font-size:12px;color:var(--gold)}
+  .wv-card .sub{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .wv-card ul{margin:8px 0 0 1.2em;font-size:13.5px;color:var(--dim)}
+  .wv-card .urgent{color:var(--danger)}
+
+  /* ── trades ────────────────────────────────────────────────────────── */
+  .tr-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:6px 0 12px}
+  @media (max-width:640px){.tr-cols{grid-template-columns:1fr}}
+  .tr-side{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+  .tr-side h4{font-family:var(--disp);font-size:14px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  .tr-side h4 b{color:var(--chalk)}
+  .tr-side .list{display:flex;flex-wrap:wrap;gap:6px}
+  .tr-p{font-size:13.5px;background:var(--field);border:1px solid var(--line);
+    border-radius:3px;padding:3px 9px;cursor:pointer;color:var(--chalk);
+    font-family:var(--body)}
+  .tr-p .tm{color:var(--dim);font-size:11.5px;font-family:var(--mono)}
+  .tr-p.sel{border-color:var(--gold);background:#2a2410}
+  .tr-eval{margin:4px 0 16px;display:flex;gap:10px;align-items:center}
+  .verdict{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.1em;
+    text-transform:uppercase}
+  .verdict.accept{color:var(--gold)} .verdict.counter{color:var(--sky)}
+  .verdict.decline{color:var(--danger)}
+  .tr-res{background:var(--panel);border:1px solid var(--line);border-radius:5px;
+    padding:12px 14px;margin-bottom:16px}
+  .tr-res .nums{font-family:var(--mono);font-size:12.5px;margin:6px 0}
+  .tr-res ul{margin:6px 0 0 1.2em;font-size:13.5px;color:var(--dim)}
+  .tr-sec{font-family:var(--disp);font-size:16px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--gold);margin:18px 0 8px}
+
   /* ── wire ──────────────────────────────────────────────────────────── */
   .wire-item{background:var(--panel);border:1px solid var(--line);
     border-radius:5px;padding:12px 14px;margin-bottom:10px}
@@ -230,6 +265,8 @@
   <nav id="nav">
     <button data-app="desk">Desk</button>
     <button data-app="lineup">Lineup</button>
+    <button data-app="waivers">Waivers</button>
+    <button data-app="trades">Trades</button>
     <button data-app="tiers">Tier board</button>
     <button data-app="value">Value board</button>
     <button data-app="wire">The wire</button>
@@ -249,8 +286,8 @@
   <div class="view col" id="view-home">
     <div class="home-head">
       <h2>What are we <em>looking at</em>?</h2>
-      <p>One desk, four tools — your leagues' data, the public sheet, and an
-         agent that reads both.</p>
+      <p>One desk — your leagues' data, the public sheet, and an agent that
+         reads both.</p>
     </div>
     <div class="apps">
       <button class="app" data-app="desk">
@@ -264,6 +301,19 @@
         <p>The optimal Tue–Tue lineup for any of your teams, from this week's
            projections. Engine-solved, 2QB-safe. Bench shown for the close calls.</p>
         <div class="k">no model · league engine</div>
+      </button>
+      <button class="app" data-app="waivers">
+        <h3><span>Waivers</span> · targets &amp; bids</h3>
+        <p>The console's waiver board: what each add is worth to your starters,
+           the suggested FAAB bid, who's likely to contest it, and what to drop.</p>
+        <div class="k">no model · priced vs opponent tendencies</div>
+      </button>
+      <button class="app" data-app="trades">
+        <h3><span>Trades</span> · compare &amp; evaluate</h3>
+        <p>Pick any package between your roster and a partner's and get both
+           sides' lineup delta, accept odds, veto risk, and a counter — plus the
+           finder's suggestions and buy-low/sell-high.</p>
+        <div class="k">no model · engine evaluate_offer</div>
       </button>
       <button class="app" data-app="tiers">
         <h3><span>Tier board</span> · Chen's method</h3>
@@ -309,6 +359,26 @@
       <button class="ctl" id="lu-go">Refresh</button>
     </div>
     <div id="lu-out"></div>
+  </div>
+
+  <!-- waivers -->
+  <div class="view col" id="view-waivers">
+    <div class="toolbar">
+      <label for="wv-league">league</label><select id="wv-league"></select>
+      <button class="ctl" id="wv-go">Refresh</button>
+    </div>
+    <div id="wv-out"></div>
+  </div>
+
+  <!-- trades -->
+  <div class="view col" id="view-trades">
+    <div class="toolbar">
+      <label for="tr-league">league</label><select id="tr-league"></select>
+      <label for="tr-partner">partner</label><select id="tr-partner"></select>
+    </div>
+    <div id="tr-picker"></div>
+    <div id="tr-result"></div>
+    <div id="tr-boards"></div>
   </div>
 
   <!-- tiers -->
@@ -375,14 +445,14 @@
   }).catch(() => $('status').textContent = 'server unreachable');
   const leaguesReady = fetch('/api/leagues').then(r => r.json()).then(ls => {
     LEAGUES = ls;
-    for (const sel of [$('lu-league'), $('tb-league'), $('vb-league')]) {
+    for (const sel of [$('lu-league'), $('tb-league'), $('vb-league'), $('wv-league'), $('tr-league')]) {
       sel.innerHTML = ls.map(l =>
         `<option value="${esc(l.key)}">${esc(l.key)} — ${esc(l.team)}</option>`).join('');
     }
   }).catch(() => {});
 
   // ── router ────────────────────────────────────────────────────────────
-  const APPS = ['home', 'desk', 'lineup', 'tiers', 'value', 'wire'];
+  const APPS = ['home', 'desk', 'lineup', 'waivers', 'trades', 'tiers', 'value', 'wire'];
   function show(app){
     if (!APPS.includes(app)) app = 'home';
     for (const a of APPS){
@@ -393,6 +463,8 @@
     $('deskbar').classList.toggle('on', app === 'desk');
     $('deskctl').style.display = app === 'desk' ? '' : 'none';
     if (app === 'lineup') loadLineup();
+    if (app === 'waivers') loadWaivers();
+    if (app === 'trades') loadTrades();
     if (app === 'tiers') loadTiers();
     if (app === 'value') loadValue();
     if (app === 'wire' && !$('w-out').childElementCount) loadWire();
@@ -441,6 +513,157 @@
   }
   $('lu-go').addEventListener('click', loadLineup);
   $('lu-league').addEventListener('change', loadLineup);
+
+  // ── waivers app ───────────────────────────────────────────────────────
+  async function loadWaivers(){
+    await leaguesReady;
+    const box = $('wv-out'); loading(box);
+    try {
+      const r = await fetch('/api/waivers?league=' + encodeURIComponent($('wv-league').value));
+      if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+      const d = await r.json();
+      const budget = d.faab_left != null ? `FAAB left: $${d.faab_left}`
+                   : `waiver priority: ${d.waiver_priority ?? '—'}`;
+      box.innerHTML = `<div class="meta-line">week ${d.week} · ${esc(budget)}
+          · ${esc(d.freshness)} · bids already priced against opponent tendencies</div>`
+        + (d.rows.length ? d.rows.map(r => {
+          const p = r.player || {};
+          const bid = r.bid ? ` <span class="bid">bid $${r.bid.suggested}
+              (p80 $${r.bid.p80}, contested ${Math.round((r.bid.p_contested || 0) * 100)}%)</span>` : '';
+          const urgent = r.act_by != null && !r.deferrable;
+          return `<div class="wv-card">
+            <div class="head"><span class="who">ADD ${esc(p.name || '?')}</span>
+              <span class="sub">${esc(p.pos || '')} ${esc(p.team || '')}
+                · wk ${p.wk_pts ?? '—'} / ros ${p.ros_ppg ?? '—'} ppg</span>${bid}</div>
+            <div class="sub" style="margin-top:4px">
+              ${r.drop ? 'drop ' + esc(r.drop.name) + ' (' + esc(r.drop.pos) + ', ros '
+                + r.drop.ros_ppg + ')' : 'roster spot open'}
+              · +${r.marginal_reg ?? '?'} pts to your starters rest-of-season
+              ${r.act_by != null ? ` · <span class="${urgent ? 'urgent' : ''}">act by wk ${r.act_by}${r.deferrable ? ' (deferrable)' : ''}</span>` : ''}</div>
+            ${r.drop_warning ? '<div class="sub urgent" style="margin-top:6px">⚠ '
+              + esc(r.drop_warning) + '</div>' : ''}
+            <ul>${(r.why || []).map(w => '<li>' + esc(w) + '</li>').join('')}</ul>
+          </div>`;
+        }).join('') : '<div class="meta-line">The board is empty in the current payload.</div>')
+        + `<div class="meta-line" style="margin-top:10px">Marginal points are
+          optimal-lineup math over remaining weeks (a second DST scores as
+          best-of-two weekly) — projection-level edges, not certainties. IR
+          warnings mean the engine's drop pick has a better alternative it
+          can't see.</div>`;
+    } catch (e){ fail(box, e); }
+  }
+  $('wv-go').addEventListener('click', loadWaivers);
+  $('wv-league').addEventListener('change', loadWaivers);
+
+  // ── trades app ────────────────────────────────────────────────────────
+  let trData = null, trSel = {send: new Set(), receive: new Set()};
+  const trPlayerBtn = (p, side) =>
+    `<button class="tr-p${trSel[side].has(p.id) ? ' sel' : ''}" data-side="${side}"
+       data-id="${p.id}">${esc(p.name)} <span class="tm">${esc(p.pos)}
+       · ros ${p.ros_ppg}</span></button>`;
+
+  async function loadTrades(){
+    await leaguesReady;
+    const box = $('tr-boards'); loading(box); $('tr-picker').innerHTML = '';
+    $('tr-result').innerHTML = '';
+    trSel = {send: new Set(), receive: new Set()};
+    try {
+      const r = await fetch('/api/trades?league=' + encodeURIComponent($('tr-league').value));
+      if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+      trData = await r.json();
+      $('tr-partner').innerHTML = trData.teams.map(t =>
+        `<option value="${t.team_id}">${esc(t.name)} — ${esc(t.manager)}</option>`).join('');
+      await loadPicker();
+      renderBoards();
+    } catch (e){ fail(box, e); }
+  }
+
+  async function loadPicker(){
+    const pid = $('tr-partner').value;
+    const t = (trData.teams || []).find(x => String(x.team_id) === pid) || {};
+    const r = await fetch(`/api/rosters?league=${encodeURIComponent($('tr-league').value)}&partner=${pid}`);
+    if (!r.ok){ fail($('tr-picker'), (await r.json()).detail); return; }
+    const d = await r.json();
+    $('tr-picker').innerHTML = `
+      <div class="meta-line">${esc(t.manager || '')}: trades ${t.trade_rate ?? '?'}/season,
+        accepts ${Math.round((t.accept_rate || 0) * 100)}% of offers,
+        ${t.responds ? 'responds to offers' : 'often ignores offers'}
+        · playoff odds ${Math.round((t.playoff_odds || 0) * 100)}%</div>
+      <div class="tr-cols">
+        <div class="tr-side"><h4>I send — <b>${esc(d.mine.name)}</b></h4>
+          <div class="list">${d.mine.players.map(p => trPlayerBtn(p, 'send')).join('')}</div></div>
+        <div class="tr-side"><h4>I receive — <b>${esc(d.partner.name)}</b></h4>
+          <div class="list">${d.partner.players.map(p => trPlayerBtn(p, 'receive')).join('')}</div></div>
+      </div>
+      <div class="tr-eval">
+        <button class="ctl" id="tr-eval-go">Evaluate trade</button>
+        <span class="sub" id="tr-eval-hint" style="font-family:var(--mono);font-size:11px;color:var(--dim)">
+          pick at least one player on each side</span>
+      </div>`;
+    $('tr-picker').querySelectorAll('.tr-p').forEach(b => b.addEventListener('click', () => {
+      const set = trSel[b.dataset.side], id = Number(b.dataset.id);
+      set.has(id) ? set.delete(id) : set.add(id);
+      b.classList.toggle('sel');
+    }));
+    $('tr-eval-go').addEventListener('click', evalTrade);
+  }
+
+  async function evalTrade(){
+    const out = $('tr-result');
+    if (!trSel.send.size || !trSel.receive.size){
+      out.innerHTML = '<div class="err">Pick at least one player on each side.</div>'; return;
+    }
+    loading(out);
+    try {
+      const r = await fetch('/api/trade_eval', {method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({league: $('tr-league').value, partner: $('tr-partner').value,
+          send: [...trSel.send].map(String), receive: [...trSel.receive].map(String)})});
+      if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+      const d = await r.json();
+      const fmt = ps => ps.map(p => `${esc(p.name)} (${esc(p.pos)}, ros ${p.ros_ppg})`).join(' + ');
+      out.innerHTML = `<div class="tr-res">
+        <span class="verdict ${esc(d.verdict)}">${esc(d.verdict)}</span>
+        <div class="nums">my starters ${d.my_delta >= 0 ? '+' : ''}${d.my_delta} pts
+          (playoff wks ${d.my_delta_post >= 0 ? '+' : ''}${d.my_delta_post})
+          · their starters ${d.their_delta >= 0 ? '+' : ''}${d.their_delta}
+          · P(accept) ${Math.round(d.accept_odds * 100)}%
+          · veto ${Math.round(d.veto_risk * 100)}%</div>
+        <div class="sub" style="font-size:13px">send ${fmt(d.send)} → receive ${fmt(d.receive)}</div>
+        <ul>${(d.why || []).map(w => '<li>' + esc(w) + '</li>').join('')}</ul>
+        ${d.counter ? `<div class="nums" style="color:var(--sky)">counter idea: send
+          ${fmt(d.counter.send)} for ${fmt(d.counter.receive)} — me
+          +${d.counter.my_delta}, them +${d.counter.their_delta},
+          P(accept) ${Math.round(d.counter.accept_odds * 100)}%</div>` : ''}
+      </div>`;
+    } catch (e){ fail(out, e); }
+  }
+
+  function renderBoards(){
+    const box = $('tr-boards');
+    const fmtSide = ps => (ps || []).map(p => `${esc(p.name)} (${esc(p.pos)})`).join(' + ');
+    const form = (rows, label) => rows.length ? `<div class="tr-sec">${label}</div>`
+      + rows.map(r => `<div class="wv-card"><div class="head">
+          <span class="who">${esc(r.player?.name || '?')}</span>
+          <span class="sub">${esc(r.player?.pos || '')} · ros ${r.player?.ros_ppg}</span></div>
+        <ul>${(r.why || []).map(w => '<li>' + esc(w) + '</li>').join('')}</ul></div>`).join('') : '';
+    box.innerHTML =
+      (trData.finder.length ? `<div class="tr-sec">Finder — mutually positive packages</div>`
+        + trData.finder.map(f => {
+          const t = trData.teams.find(x => x.team_id === f.partner_team_id) || {};
+          return `<div class="wv-card"><div class="head">
+            <span class="who">${esc(t.manager || '?')}</span>
+            <span class="sub">send ${fmtSide(f.send)} → get ${fmtSide(f.receive)}
+              · me +${f.my_delta} / them +${f.their_delta}
+              · P(accept) ${Math.round((f.accept_odds || 0) * 100)}%</span></div>
+            <ul>${(f.why || []).map(w => '<li>' + esc(w) + '</li>').join('')}</ul></div>`;
+        }).join('') : '<div class="meta-line">Finder found no mutually-positive packages in the current payload.</div>')
+      + form(trData.buy_low, 'Buy low')
+      + form(trData.sell_high, 'Sell high');
+  }
+  $('tr-league').addEventListener('change', loadTrades);
+  $('tr-partner').addEventListener('change', () => { trSel = {send: new Set(), receive: new Set()};
+    $('tr-result').innerHTML = ''; loadPicker(); });
 
   // ── tier board app ────────────────────────────────────────────────────
   const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DST'];

@@ -53,6 +53,18 @@ def local_league_checks() -> None:
                 f"{ctx.key}/{r['name']}: lineup {r['wk_pts']} != payload {wk_raw}")
             assert abs(r["ros_ppg"] - leaguetools._n(raw.get("ros_ppg"))) < 0.051
         print(f"ok   {ctx.key}: lineup/tier projection consistency")
+        wb = leaguetools.waiver_board_data(ctx.key, 3)
+        assert "rows" in wb and wb["model"]
+        tc = leaguetools.trade_center_data(ctx.key)
+        assert tc["teams"] and isinstance(tc["finder"], list)
+        rp = leaguetools.roster_pair_data(ctx.key, str(tc["teams"][0]["team_id"]))
+        assert rp["mine"]["players"] and rp["partner"]["players"]
+        te = leaguetools.trade_eval(
+            ctx.key, str(tc["teams"][0]["team_id"]),
+            [rp["mine"]["players"][0]["id"]], [rp["partner"]["players"][0]["id"]])
+        assert te["verdict"] in ("accept", "counter", "decline") and "my_delta" in te
+        print(f"ok   {ctx.key}: waiver_board/trade_center/trade_eval "
+              f"(verdict {te['verdict']}, me {te['my_delta']:+.1f})")
         w = leaguetools.console_boards(ctx.key, "waivers", limit=3)
         b = leaguetools.console_boards(ctx.key, "trades", limit=3)
         print(f"ok   {ctx.key}: league_details/team_details/tendencies/boards "

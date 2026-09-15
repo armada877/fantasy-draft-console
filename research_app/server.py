@@ -218,6 +218,53 @@ def api_fpvalue(league: str, limit: int = 60, horizon: str = "week"):
         raise HTTPException(502, f"{type(e).__name__}: {e}")
 
 
+@app.get("/api/waivers")
+def api_waivers(league: str, limit: int = 12):
+    try:
+        return leaguetools.waiver_board_data(league, limit)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+
+
+@app.get("/api/trades")
+def api_trades(league: str):
+    try:
+        return leaguetools.trade_center_data(league)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+
+
+@app.get("/api/rosters")
+def api_rosters(league: str, partner: str | None = None):
+    try:
+        return leaguetools.roster_pair_data(league, partner)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+
+
+class TradeIn(BaseModel):
+    league: str
+    partner: str
+    send: list[str]
+    receive: list[str]
+
+
+@app.post("/api/trade_eval")
+def api_trade_eval(inp: TradeIn):
+    try:
+        return leaguetools.trade_eval(inp.league, inp.partner, inp.send, inp.receive)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+
+
 @app.get("/api/news")
 def api_news(query: str | None = None, limit: int = 25):
     try:
