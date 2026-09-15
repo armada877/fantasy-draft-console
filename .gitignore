@@ -84,3 +84,4 @@ draft_sheets/out/
 #                  names), and they are build-time scaffolding rather than a contract.
 docs/local/
 tests/fixtures/
+claude_plugin/local/
