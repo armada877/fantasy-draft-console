@@ -10,9 +10,10 @@
                             └ calibrate ─ config/tendencies.json  [local]
 
 Usage:
-    python3 pipeline.py all                 # local refresh: calibrate -> build -> inject
+    python3 pipeline.py all                 # local refresh: calibrate -> csg -> build -> inject
     python3 pipeline.py build inject        # rebuild the console from current data only
     python3 pipeline.py calibrate           # opponents -> config/tendencies.json
+    python3 pipeline.py csg                 # CSG sheet -> csg_consensus.json (market view)
     python3 pipeline.py simulate            # agent-auction strategy test (stdout)
     python3 pipeline.py scrape calibrate build inject   # full refresh from ESPN
 
@@ -33,7 +34,12 @@ import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
-STAGES = ("scrape", "calibrate", "simulate", "build", "inject", "all")
+DRAFT_STAGES = ("scrape", "calibrate", "csg", "simulate", "build", "inject", "all")
+# In-season stages. Each is league-scoped and runs for every league on the ESPN
+# account (leagues.all()) unless --league narrows it.
+SEASON_STAGES = ("season-scrape", "sources", "season-calibrate", "season-build",
+                 "season-inject", "data-console", "week")
+STAGES = DRAFT_STAGES + SEASON_STAGES
 
 TEMPLATE = os.path.join(ROOT, "draft_sheets", "draft_tool_template.html")
 TOOL_DATA = os.path.join(ROOT, "draft_sheets", "tool_data.json")
@@ -73,6 +79,18 @@ def calibrate(args):
     run(PY, os.path.join(ROOT, "analysis", "calibrate.py"))
 
 
+def csg(args):
+    """Complementary market view: the CSG sheet's consensus columns -> csg_consensus.json.
+
+    Self-skips when no CSG workbook is present, so `all` stays valid for anyone who
+    doesn't use the sheet. Advisory only — it never feeds the console's worth/vbd.
+    """
+    if not glob.glob(os.path.join(ROOT, "draft_sheets", "CSG*auction.xlsm")):
+        print("• csg: skipped — no draft_sheets/CSG*auction.xlsm (market view is optional).")
+        return
+    run(PY, os.path.join(ROOT, "draft_sheets", "extract_csg.py"))
+
+
 def simulate(args):
     if not have_calibration():
         sys.exit("simulate needs the local analysis/ pipeline and scraped history.")
@@ -104,12 +122,83 @@ def inject(args):
 
 def do_all(args):
     calibrate(args)   # self-skips for a fresh league
+    csg(args)         # self-skips when the CSG sheet isn't present
     build(args)
     inject(args)
 
 
-DISPATCH = {"scrape": scrape, "calibrate": calibrate, "simulate": simulate,
-            "build": build, "inject": inject, "all": do_all}
+# ──────────────────────────── in-season stages ────────────────────────────
+# The in-season tool is multi-league: `leagues.all()` is discovered from your ESPN
+# cookies, so these stages fan out over every team you manage. --league narrows them.
+
+def _league_args(args):
+    return ["--league", args.league] if getattr(args, "league", None) else []
+
+
+def season_scrape(args):
+    """ESPN -> rosters, free-agent pool, transactions, bye weeks, per-week projections.
+
+    Completed seasons and completed weeks are cached IMMUTABLE — fetched once, ever —
+    so a weekly refresh only pays for what can still change.
+    """
+    run(PY, os.path.join(ROOT, "scraping", "scrape_season.py"), *_league_args(args))
+    # Per-week projections. Without these every player collapses to one flat season
+    # rate and the lineup planner cannot tell week 3 from week 11.
+    run(PY, os.path.join(ROOT, "scraping", "scrape_weekly_proj.py"), *_league_args(args))
+
+
+def sources(args):
+    """External research adapters -> raw/{league}/{season}/sources/*.json."""
+    cmd = [PY, "-m", "scraping.sources", *_league_args(args)]
+    if getattr(args, "refresh", False):
+        cmd.append("--refresh")
+    run(*cmd)
+
+
+def season_calibrate(args):
+    """Transaction history -> season_tendencies.json + faab/priority curve."""
+    run(PY, os.path.join(ROOT, "analysis", "calibrate_season.py"), *_league_args(args))
+    run(PY, os.path.join(ROOT, "analysis", "faab_curve.py"), *_league_args(args))
+
+
+def season_build(args):
+    """Valuation + tendencies + sources -> out/{league}/season_data.json."""
+    # build_season_data requires an explicit --all rather than defaulting to every league
+    scope = _league_args(args) or ["--all"]
+    run(PY, os.path.join(ROOT, "draft_sheets", "build_season_data.py"), *scope)
+
+
+def season_inject(args):
+    """Templates + season_data -> static/home.html and static/l/{league}/season.html."""
+    run(PY, os.path.join(ROOT, "draft_sheets", "inject_season.py"), *_league_args(args))
+
+
+def data_console(args):
+    """Pipeline status + research coverage -> the data/research console."""
+    run(PY, os.path.join(ROOT, "analysis", "pipeline_status.py"), *_league_args(args))
+    run(PY, os.path.join(ROOT, "draft_sheets", "inject_data_console.py"), *_league_args(args))
+
+
+def week(args):
+    """The weekly refresh: everything needed before a waiver run.
+
+    Calibration is seasonal, not weekly, so it is skipped unless --calibrate is
+    passed — it reads years of transactions and does not change between Tuesdays.
+    """
+    season_scrape(args)
+    sources(args)
+    if getattr(args, "calibrate", False):
+        season_calibrate(args)
+    season_build(args)
+    season_inject(args)
+    data_console(args)
+
+
+DISPATCH = {"scrape": scrape, "calibrate": calibrate, "csg": csg, "simulate": simulate,
+            "build": build, "inject": inject, "all": do_all,
+            "season-scrape": season_scrape, "sources": sources,
+            "season-calibrate": season_calibrate, "season-build": season_build,
+            "season-inject": season_inject, "data-console": data_console, "week": week}
 
 
 def main():
@@ -121,6 +210,12 @@ def main():
                     help="one or more of: " + ", ".join(STAGES))
     ap.add_argument("--deep", action="store_true", help="with scrape: also pull full history")
     ap.add_argument("--stress", action="store_true", help="with simulate: also run a19 stress test")
+    ap.add_argument("--league", metavar="KEY",
+                    help="in-season stages: limit to one league (default: all discovered)")
+    ap.add_argument("--refresh", action="store_true",
+                    help="with sources: bypass the cache TTL and re-fetch")
+    ap.add_argument("--calibrate", action="store_true",
+                    help="with week: also re-run season-calibrate (seasonal, not weekly)")
     args = ap.parse_args()
 
     print(f"pipeline: {' -> '.join(args.stages)}")

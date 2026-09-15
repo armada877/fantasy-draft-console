@@ -30,6 +30,59 @@ AUCTION_SEASONS = list(range(2017, 2026))   # 2017..2025
 ALL_SEASONS = list(range(2013, 2026))
 KEEPER_INFLATION = 100
 
+# ── Cross-season price normalization (READ THIS BEFORE COMPARING ANY TWO SEASONS) ──
+#
+# The nominal auctionBudget is NOT spending power. 2020-2024 show $300, but that extra
+# $100 existed only to carry the keeper encoding (a keeper is recorded as a bid of
+# cost+$100, so the cap had to rise to fit it). Proof: total league spend is ~$2,400 in
+# EVERY season, $200-cap and $300-cap alike — ~$200 per team throughout.
+#
+# So the comparable denominator is the EFFECTIVE WALLET: non-keeper dollars actually spent
+# per team. ~$199 in full-supply seasons, ~$170-188 in keeper seasons.
+#
+# There is a SECOND, separate effect, and conflating it with the first is the trap:
+# keeper seasons removed 12 elite players from supply, which pushed top-of-board prices UP
+# and mid-board prices DOWN (measured: share-of-wallet ratio full-supply/keeper is
+# 0.77-0.86 at ranks 1-8 but 0.99-1.18 at ranks 11-15; whole-distribution 0.97). Therefore:
+#
+#   TOP-OF-BOARD quantities (max buy, the price curve, plan ceilings)
+#       -> use FULL_SUPPLY seasons only. Keeper-era top prices reflect a scarcity that
+#          will not exist in a full-supply season, so rescaling them is not enough.
+#   WHOLE-DISTRIBUTION behavioural traits (positional multipliers, concentration)
+#       -> may pool all seasons AFTER wallet-normalizing; the distortion is ~3%.
+KEEPER_SEASONS = (2020, 2021, 2022, 2023, 2024)
+FULL_SUPPLY_SEASONS = (2017, 2018, 2019, 2025)   # ~$200 wallet, no keepers; 2026 repeats
+
+
+def regime(season):
+    """'keeper' (12 elites kept, supply-constrained) or 'full-supply'."""
+    return "keeper" if int(season) in KEEPER_SEASONS else "full-supply"
+
+
+def effective_wallet(season):
+    """Non-keeper dollars actually spent per team — the only comparable denominator.
+
+    Prefer this over auction_budget() for anything that compares seasons. Falls back to
+    the nominal cap if a season has no auction data.
+    """
+    picks = draft_picks(season)
+    teams = len({p["teamId"] for p in picks})
+    if not teams:
+        return float(auction_budget(season) or 200)
+    spend = sum(p["cost"] for p in picks if not p["is_keeper"])
+    return (spend / teams) if spend else float(auction_budget(season) or 200)
+
+
+def norm_cost(season, cost, target_wallet=200.0):
+    """A season's raw dollars -> dollars at `target_wallet` of spending power.
+
+    Wallet-normalization ONLY. It does not correct for keeper-era supply scarcity, so do
+    not use it to project a keeper season's TOP prices onto a full-supply season — filter
+    to FULL_SUPPLY_SEASONS for that instead (see the note above).
+    """
+    w = effective_wallet(season) or target_wallet
+    return cost * (target_wallet / w)
+
 POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST",
        7: "OP", 9: "DL", 10: "LB", 11: "DB", 12: "DP", 13: "DT", 14: "DE"}
 

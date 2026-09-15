@@ -19,6 +19,10 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `draft_sheets/build_tool_data.py` | Console builder — projections + scrape → `tool_data.json` | yes |
 | `scraping/scrape_league.py` | Fresh-setup ESPN scraper (settings + managers, config-driven) | yes |
 | `draft_sheets/*_elboberto.xlsm` | Universal projection baseline (checked in) | yes |
+| `draft_sheets/CSG*auction.xlsm` | CSG sheet — **complementary market view** (third-party) | no (local) |
+| `draft_sheets/extract_csg.py` | CSG `Overall` tab → `csg_consensus.json` | yes |
+| `draft_sheets/check_csg_settings.py` | Diff CSG's league settings vs your scrape | yes |
+| `draft_sheets/csg_consensus.json` | Generated CSG consensus data, by season | no (generated) |
 | `config/league.json` | Your league: id, season, `me`, projections path, `my_mult` | no (local) |
 | `config/league.example.json` | League config template | yes |
 | `config/briefing.md` | Advisor system prompt (league-specific) | no (local) |
@@ -28,6 +32,10 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `draft_sheets/tool_data.json` | Generated console data (players + profiles) | no (generated) |
 | `scraping/scrape.py`, `scrape_playercards.py`, `extract_har.py` | Full historical scrapers | yes |
 | `analysis/calibrate.py` | Opponent history → `config/tendencies.json` (reuses `a18.build_agents`) | **no (local)** |
+| `analysis/lib.py` | **Canonical** `effective_wallet` / `regime` / `norm_cost` helpers | **no (local)** |
+| `analysis/price_curve.py` | Full-supply price + tier curve → `config/price_curve.json` | **no (local)** |
+| `analysis/plan_tiers.py` | Grades a budget plan → the tiers it actually buys | **no (local)** |
+| `config/price_curve.json` | What each board rank / tier really costs | no (local) |
 | `analysis/lib.py`, `a5`, `a18`, `a19` | Calibration + auction-sim engine (real manager names) | **no (local)** |
 | `analysis/research/a1..a17` | Archived one-off research that produced `reports/league_analysis.md` | **no (local)** |
 | `config/tendencies.json` | Calibrated opponent profiles (produced by `calibrate.py`) | no (local) |
@@ -66,10 +74,11 @@ The server has **no --reload**; restart it after editing `server.py` or `config/
 |-------|------|-------|
 | `scrape` | ESPN settings + managers → `raw/{season}/league_full.json` (`--deep` also pulls history) | `scraping/scrape_league.py` (+ `scrape.py`) |
 | `calibrate` | opponent auction history → `config/tendencies.json` | `extract_elboberto_master.py`, `analysis/calibrate.py` |
+| `csg` | CSG sheet → `csg_consensus.json` (market view; self-skips if absent) | `draft_sheets/extract_csg.py` |
 | `simulate` | agent-auction strategy test (stdout; `--stress` adds `a19`) | `analysis/a18_agent_auction.py` |
 | `build` | projections × league → `tool_data.json` | `draft_sheets/build_tool_data.py` |
 | `inject` | template + data → `static/index.html` + `data.json` | (the golden-rule step) |
-| `all` | local refresh: `calibrate` (if history present) → `build` → `inject` | — |
+| `all` | local refresh: `calibrate` (if history) → `csg` (if sheet) → `build` → `inject` | — |
 
 ```bash
 python3 pipeline.py all                # refresh console from already-scraped history
@@ -88,8 +97,14 @@ always runs. Schema is in build_tool_data's docstring.
 **Opponent calibration (local, gitignored `analysis/`):** `calibrate.py` reuses
 `a18_agent_auction.build_agents()` — per-manager positional aggression ($-weighted paid/proj),
 stars-and-scrubs concentration, and max-buy ceiling from 2017–2025 auction history — and writes
-`config/tendencies.json` (`{name: {mult, conc, maxbuy}}`). `build_tool_data.py` merges it per
-manager by name; unmatched managers stay neutral. `calibrate.py` keys tendencies by the current
+`config/tendencies.json` (`{name: {mult, conc, maxbuy}}` plus a reserved `_league_default`
+entry). `build_tool_data.py` merges it per manager by name; a manager with **no** auction
+history (a substitution, an expansion team) gets `_league_default` — the **league average**,
+not a flat `1.0`. This matters: `1.0` models a newcomer as paying full projected value at
+every position (~2.4× the league norm at QB here) with no max-buy, which inflates the
+console's predicted competition. `config/league.json` `manager_labels` optionally renames a
+manager on the board (ESPN reports the owner's real name; you may know a team by its team
+name) — tendencies merge on the **relabelled** name. `calibrate.py` keys tendencies by the current
 league's **scraped** manager names (bridging ESPN member GUIDs) so a returning manager whose
 scraped display name drifted from their calibration identity (e.g. "Jon" vs "Jonathan") still
 matches. The projection baseline
@@ -100,6 +115,94 @@ code reads); it feeds calibration/research **only**, never the console valuation
 For a brand-new league with no history, `all` skips `calibrate` and builds a neutral-opponent
 console. The archived `analysis/research/a1..a17` (the scripts behind `reports/league_analysis.md`)
 run with `PYTHONPATH=analysis python3 analysis/research/<script>.py`.
+
+## Cross-season price normalization (read before touching any historical $)
+
+**The nominal `auctionBudget` is not spending power.** 2020–2024 report $300, but that extra
+$100 existed only to carry the keeper encoding (a keeper is recorded as a bid of `cost+$100`,
+so the cap had to rise to fit it). Proof: total league spend is **~$2,400 in every season**,
+$200-cap and $300-cap alike. `lib.effective_wallet(season)` — non-keeper dollars actually
+spent per team — is the comparable denominator (~$199 full-supply, ~$170–188 keeper era).
+
+A **second, independent** effect must not be conflated with it: keeper seasons removed 12
+elite players from supply, pushing top-of-board prices **up** and mid-board **down**
+(measured full-supply/keeper share ratio: 0.77–0.86 at ranks 1–8, 0.99–1.18 at ranks 11–15,
+0.97 whole-distribution). So:
+
+| quantity | treatment |
+|---|---|
+| top-of-board (max-buy, price curve, plan ceilings) | **`lib.FULL_SUPPLY_SEASONS` only** — rescaling keeper-era top prices is not enough, they encode absent scarcity |
+| whole-distribution traits (positional `mult`, `conc`) | may pool all seasons **after** `lib.norm_cost` (~3% distortion) |
+
+Canonical helpers live in `analysis/lib.py`: `regime`, `effective_wallet`, `norm_cost`,
+`FULL_SUPPLY_SEASONS`, `KEEPER_SEASONS`. **Use them; do not re-derive.** Normalized:
+`a18.build_agents` (mult wallet-normalized, `conc` keeper-excluded, `maxbuy` full-supply-only
+and no longer +15%), `a5_draft_value`, `research/backtest_budget`, `research/strategy_search_v2`,
+`price_curve`, `plan_tiers`.
+
+**Two bugs this audit fixed, worth not reintroducing:** `build_agents`' `conc`/`maxbuy` loop
+counted keeper picks (its docstring claimed otherwise), and every shape-replay `lineup()`
+hardcoded a $200 wallet while shopping at raw prices.
+
+## What the league actually pays (`analysis/price_curve.py` → `config/price_curve.json`)
+
+Derived from `FULL_SUPPLY_SEASONS` (2017/18/19/25 — the regime 2026 repeats, `keeperCount=0`).
+Board-rank curve: **#1 $77 · #2 $73 · #3 $71 · #5 $69 · #10 $61**. Tier ladder: RB1 $72 /
+RB2 $60 / RB3 $59 ‖ RB4 $17 / RB5 $24 ‖ RB6 $6; WR1 $68 / WR2 $57 / WR3 $50 ‖ WR4 $26 /
+WR5 $10; TE1 $33; **QB1 $32** (QB has re-priced — top QB went $19 in 2019 → $39 in 2025, so
+the "elite QB is a steal" thesis is retired). Tiers 4–5 are the worst points-per-dollar on
+the board: spend up or down, never in between. `analysis/plan_tiers.py` grades a plan against
+this and flags trough money.
+
+**Still honest about the limit:** *which* budget shape wins is **not** validated
+out-of-sample — `research/strategy_search_v2.py` (regime-corrected) lands at **41%**, i.e.
+worse than the coin-flip gate and below v1's 45%. An earlier 56% "validated" reading was an
+artifact of normalizing by the nominal $300. No static shape is promoted; `config/plan.json`
+remains a disciplined default.
+
+## The CSG sheet: a complementary market view (never the valuation)
+
+`extract_csg.py` reads the CSG workbook's `Overall` tab (header row 11, players from row
+12; layout stable across v11–v14) into `csg_consensus.json`, keyed by season.
+`build_tool_data.py` merges the current season onto each player as `p["mkt"]`
+(`price`, `espn`, `ecr`, `boris`, `gold`, `advbd`, `bs`, `status`, plus a derived `edge` =
+our `worth` − market price). Joined on a punctuation/suffix-insensitive name key
+(`extract_csg.norm_name` — the single definition, imported by the builder; don't fork it).
+Currently 238/264 players = **99% of the $ pool**; every miss is a $1 player.
+
+**It is advisory and must stay that way.** `worth`/`vbd` remain recomputed from the scraped
+ESPN scoring — CSG's own VBD/price columns are computed for *its* settings, so treating them
+as valuation would silently regress league accuracy. The value is the *disagreement*: the
+console shows `market $X (±N us)` under Worth and a ▲/▼ on the board when divergence is
+material (≥$5 **and** ≥25%), and the advisor state carries `market_price`/`ecr` so it can
+reason about consensus. As of the 2026 build our model runs ~12% above market on the top 16.
+
+**Coverage is uneven per year — check `pipeline.py csg` output, never assume a column.**
+BeerSheets (`bs_val`/`beer_tier`) is **0/385 in the 2026 sheet** (needs a manual paste into
+the hidden `Beersheet Paste` tab) though populated for 2023–25; `PosScarcity` is empty in all
+four; `AdjVBD` exists only from v14.1; Gold Score is top-of-board only (~45); NFL ranks are
+empty in 2026.
+
+**Settings:** run `python3 draft_sheets/check_csg_settings.py` — it diffs the sheet's
+`League Info`/`Overall` settings against your scrape and prints the exact cells to change.
+**Do not write these workbooks with openpyxl:** it cannot recalculate formulas and drops
+this file's conditional-formatting and data-validation extensions, so the sheet would look
+updated while every downstream VBD/price stayed cached at the old settings. Edit in Excel,
+save, re-run the checker, then `python3 pipeline.py csg build inject`.
+
+## Deploying (Railway)
+
+`./deploy_railway.sh` (`--dry-run` to inspect first). The repo's GitHub remote is **public**
+and the console payload (`draft_app/static/*`) + `config/briefing.md` are gitignored, so a
+git-based deploy would ship an empty console with a generic advisor. The script instead
+stages just the runtime surface — `server.py`, `requirements.txt`, `Procfile`,
+`railway.json`, `static/`, `config/briefing.md` — into a temp dir and runs `railway up`
+from there, so ESPN cookies, raw scrapes, the `.xlsm` and `analysis/` never leave the box.
+It refuses to deploy if anything secret-shaped is staged.
+
+Service env vars: `ANTHROPIC_API_KEY`, `CONSOLE_PASSWORD` (HTTP Basic on everything but
+`/healthz`; **unset = the URL is public and `/api/advise` spends your credit**), and
+`STRATEGY_BRIEFING_PATH=/app/config/briefing.md`.
 
 ## Conventions & guardrails
 

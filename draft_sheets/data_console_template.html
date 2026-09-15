@@ -1,0 +1,1456 @@
+<script>document.documentElement.dataset.theme='light'</script><!-- light is the default; toggle switches to dark -->
+<meta charset="utf-8">
+<title>Data &amp; Research Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%94%8D%3C/text%3E%3C/svg%3E">
+<style>
+/* The `hidden` ATTRIBUTE must always win. A class that sets `display` (.banner, .sect,
+   .panel, .helpwrap, .nm) outranks the UA's [hidden]{display:none}, so `el.hidden=true`
+   silently does nothing — which is how the "players are synthetic" fixture banner ended
+   up showing on real data. One guard, highest specificity, no exceptions. */
+[hidden]{display:none !important}
+
+/* ── tokens: the SAME cockpit identity as the draft console (draft_tool_template.html).
+   Cool slate neutrals, decision colour used sparingly, position tints quiet. ── */
+:root{
+  --ground:#080B0F; --panel:#151C25; --panel2:#202A35; --raise:#2B3742;
+  --line:#3B4753; --line2:#516071;
+  --ink:#ECF0F5; --muted:#AEB8C6; --faint:#828D9B;
+  --bandalt:rgba(255,255,255,.06);
+  --go:#2FD39C; --go-bg:#0E2A22; --go-ink:#74E4BE; --go-line:#1F5D48;
+  --stop:#F26A54; --stop-bg:#2B1712; --stop-ink:#F8A491; --stop-line:#743126;
+  --warn:#E6B24A; --warn-ink:#F0C878; --warn-bg:#2A2313; --warn-line:#6B5520;
+  --rb:#E79A54; --wr:#5B98EA; --te:#B98CEC; --qb:#3AA6D0;
+  --shadow:0 10px 28px -10px rgba(0,0,0,.6);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --r:12px;
+}
+:root[data-theme="light"]{
+  --ground:#E4E9EE; --panel:#FFFFFF; --panel2:#EDF2F6; --raise:#E1E8EE;
+  --line:#D3DBE3; --line2:#B6C2CD;
+  --ink:#141C26; --muted:#586674; --faint:#8794A1;
+  --bandalt:rgba(20,40,70,.045);
+  --go:#0E8F63; --go-bg:#DEF2E9; --go-ink:#0A7A53; --go-line:#9AD2BC;
+  --stop:#C63F27; --stop-bg:#FAE6E0; --stop-ink:#A2321C; --stop-line:#E4AE9F;
+  --warn:#A9781A; --warn-ink:#835C10; --warn-bg:#F6EBD2; --warn-line:#D9BE86;
+  --rb:#B4661C; --wr:#2C61A6; --te:#6E3D9E; --qb:#176C8A;
+  --shadow:0 1px 2px rgba(20,30,45,.05), 0 10px 26px -12px rgba(20,35,60,.22);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;
+  line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance}
+button{font-family:inherit;cursor:pointer;color:inherit}
+a{color:var(--wr)}
+:focus-visible{outline:2px solid var(--go);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1580px;margin:0 auto;padding:12px 16px 40px}
+
+/* ── top dock: vitals that never reflow ── */
+.dock{position:sticky;top:0;z-index:30;background:var(--ground);padding-top:4px}
+.vitals{display:grid;grid-template-columns:minmax(210px,auto) repeat(4,minmax(0,1fr)) auto;
+  gap:10px;align-items:stretch;margin-bottom:10px}
+.brand{display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0}
+.brand .t{font-size:15px;font-weight:750;letter-spacing:.04em;white-space:nowrap}
+.brand .s{font-size:9.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--faint)}
+.vital{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 13px;
+  min-width:0;display:flex;flex-direction:column;justify-content:center}
+.vital .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+.vital .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600;
+  line-height:1.15;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vital .v small{font-size:12px;color:var(--muted);font-weight:400}
+.vital .note{font-size:10.5px;color:var(--faint);margin-top:1px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.vital.good .v{color:var(--go-ink)} .vital.good .note{color:var(--go-ink)}
+.vital.bad .v{color:var(--stop-ink)} .vital.bad .note{color:var(--stop-ink)}
+.vital.warn .v{color:var(--warn-ink)} .vital.warn .note{color:var(--warn-ink)}
+.dock-actions{display:flex;gap:6px;align-items:center}
+select,input,textarea{background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;max-width:100%}
+.btn{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:9px;
+  padding:7px 12px;font-size:12px;font-weight:650;letter-spacing:.02em}
+.btn:hover{color:var(--ink);border-color:var(--line2)}
+.btn.go{border-color:var(--go-line);color:var(--go-ink);background:var(--go-bg)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ── tab bar: two halves of one console ── */
+.tabs{display:flex;gap:4px;align-items:center;flex-wrap:nowrap;overflow-x:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px 7px;
+  box-shadow:var(--shadow);scrollbar-width:thin}
+.tabs .grp{font-size:9px;text-transform:uppercase;letter-spacing:.2em;color:var(--faint);
+  font-weight:700;padding:0 8px 0 4px;white-space:nowrap}
+.tabs .grp+.tab{margin-left:-4px}
+.tabs .sep{width:1px;align-self:stretch;background:var(--line);margin:2px 8px;flex:none}
+.tab{background:transparent;border:none;color:var(--muted);font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;font-weight:700;padding:7px 11px;border-radius:7px;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--raise);color:var(--ink)}
+.tab .badge{display:inline-block;margin-left:6px;font-size:9.5px;padding:1px 5px;border-radius:999px;
+  background:var(--stop);color:#fff;letter-spacing:.02em}
+.tab .badge.warn{background:var(--warn);color:#241c06}
+
+/* ── warnings strip: freshness is the product, so it sits above the fold ── */
+.warnbar{margin:10px 0 0;border:1px solid var(--warn-line);background:var(--warn-bg);
+  border-radius:11px;padding:9px 13px;font-size:12.5px;color:var(--warn-ink)}
+.warnbar.clean{border-color:var(--go-line);background:var(--go-bg);color:var(--go-ink)}
+.warnbar b{font-weight:750}
+.warnbar ul{margin:6px 0 0;padding-left:18px}
+.warnbar li{margin:2px 0}
+.warnbar summary{cursor:pointer;list-style:none}
+.warnbar summary::-webkit-details-marker{display:none}
+
+/* ── panels ── */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden;margin-top:14px}
+.phead{display:flex;align-items:baseline;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);
+  background:var(--panel2);flex-wrap:wrap}
+.phead h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink);font-weight:700;
+  display:flex;align-items:center;gap:8px}
+.phead h2::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--line2);
+  display:inline-block}
+.phead .lede{font-size:12px;color:var(--muted);flex:1;min-width:220px}
+.phead .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pbody{padding:12px 14px}
+.pbody.tight{padding:0}
+
+/* ── state chips: one vocabulary for the whole console ── */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;text-transform:uppercase;
+  letter-spacing:.11em;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--line);
+  color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--go-bg);border-color:var(--go-line);color:var(--go-ink)}
+.chip.stale{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+.chip.bad{background:var(--stop-bg);border-color:var(--stop-line);color:var(--stop-ink)}
+.chip.missing{background:transparent;border-style:dashed;color:var(--faint)}
+.chip.info{background:var(--raise);color:var(--ink);border-color:var(--line2)}
+.chip.pos{border-color:var(--line2)}
+.chip.qb{color:var(--qb)} .chip.rb{color:var(--rb)} .chip.wr{color:var(--wr)} .chip.te{color:var(--te)}
+.fchip{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;
+  padding:5px 12px;font-size:12px;font-weight:600}
+.fchip:hover{color:var(--ink);border-color:var(--line2)}
+.fchip.on{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+
+/* ── tables ── */
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;color:var(--ink);min-width:560px}
+th{position:sticky;top:0;background:var(--panel2);text-align:right;font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);padding:9px 10px;font-weight:650;z-index:1;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+th.l,td.l{text-align:left}
+th.sortable{cursor:pointer}
+th.sortable:hover{color:var(--ink)}
+th.sorted{color:var(--ink)}
+td{padding:7px 10px;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:top}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+tr.alt td{background:var(--bandalt)}
+tbody tr:hover td{background:var(--panel2)}
+.sub{font-size:10.5px;color:var(--faint);display:block;line-height:1.35}
+.path{font-family:var(--mono);font-size:10.5px;color:var(--faint);word-break:break-all}
+.dim{color:var(--faint)}
+.nowrap{white-space:nowrap}
+
+/* ── stage board ── */
+.stage{display:grid;grid-template-columns:22px minmax(170px,1.1fr) 112px 92px minmax(200px,2fr) auto;
+  gap:12px;align-items:start;padding:12px 14px;border-bottom:1px solid var(--line)}
+.stage:last-child{border-bottom:none}
+.stage.is-missing{background:repeating-linear-gradient(135deg,transparent 0 9px,var(--bandalt) 9px 18px)}
+.stage.is-stale{box-shadow:inset 3px 0 0 var(--warn)}
+.stage.is-error{box-shadow:inset 3px 0 0 var(--stop)}
+.stage.is-ok{box-shadow:inset 3px 0 0 var(--go)}
+.stage .n{font-family:var(--mono);color:var(--faint);font-size:12px;padding-top:2px}
+.stage .name{font-weight:700;font-size:13.5px}
+.stage .age{font-family:var(--mono);font-size:19px;font-weight:600;line-height:1.1}
+.stage .age.warn{color:var(--warn-ink)} .stage .age.bad{color:var(--stop-ink)}
+.agebar{height:4px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden}
+.agebar i{display:block;height:100%;background:var(--go);border-radius:3px}
+.agebar i.warn{background:var(--warn)} .agebar i.bad{background:var(--stop)}
+.stage details{margin-top:6px}
+.stage summary{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);
+  cursor:pointer;font-weight:650}
+.errbox{margin-top:7px;border:1px solid var(--stop-line);background:var(--stop-bg);color:var(--stop-ink);
+  border-radius:8px;padding:7px 10px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;
+  word-break:break-word}
+.note{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+/* ── run trigger ── */
+.runbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:11px 14px;
+  border-bottom:1px solid var(--line);background:var(--panel2)}
+.runbar .txt{font-size:12px;color:var(--muted);flex:1;min-width:240px}
+.joblog{margin:0;padding:11px 13px;background:var(--ground);border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11.5px;max-height:260px;overflow:auto;white-space:pre-wrap;
+  word-break:break-word;color:var(--muted)}
+.joblog b{color:var(--ink)}
+.joblog .bad{color:var(--stop-ink)}
+
+/* ── calibration ── */
+tr.borrowed td{background:repeating-linear-gradient(135deg,transparent 0 8px,var(--warn-bg) 8px 16px)}
+tr.borrowed:hover td{background:var(--warn-bg)}
+tr.borrowed td.l:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+tr.borrowed td.num{font-style:italic;color:var(--warn-ink)}
+tr.calibrated td.l:first-child{box-shadow:inset 3px 0 0 var(--go)}
+tr.nodata td{opacity:.72}
+tr.nodata td.l:first-child{box-shadow:inset 3px 0 0 var(--line2)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);
+  padding:10px 14px;border-bottom:1px solid var(--line)}
+.legend b{color:var(--ink)}
+.swatch{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;
+  vertical-align:-1px}
+.swatch.cal{background:var(--go)}
+.swatch.bor{background:repeating-linear-gradient(135deg,var(--warn-bg) 0 4px,var(--warn) 4px 8px)}
+.swatch.non{background:var(--line2)}
+.shrinkbar{display:inline-block;width:56px;height:6px;background:var(--line);border-radius:3px;
+  overflow:hidden;vertical-align:middle;margin-left:6px}
+.shrinkbar i{display:block;height:100%;background:var(--wr)}
+
+/* ── curve ── */
+.verdict{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:11px;
+  border:1px solid var(--line);background:var(--panel2);margin-bottom:12px}
+.verdict.good{border-color:var(--go-line);background:var(--go-bg)}
+.verdict.bad{border-color:var(--stop-line);background:var(--stop-bg)}
+.verdict.part{border-color:var(--warn-line);background:var(--warn-bg)}
+.verdict.part .big{color:var(--warn-ink)} .verdict.part .msg{color:var(--warn-ink)}
+.verdict .big{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.verdict.good .big{color:var(--go-ink)} .verdict.bad .big{color:var(--stop-ink)}
+.verdict .msg{flex:1;min-width:230px;font-size:12.5px;color:var(--muted)}
+.verdict.bad .msg{color:var(--stop-ink)}
+.maebars{display:flex;flex-direction:column;gap:6px;min-width:230px;flex:1}
+.maerow{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+.maerow .lab{width:66px;text-transform:uppercase;letter-spacing:.09em;font-size:9.5px;font-weight:700}
+.maerow .track{flex:1;height:11px;background:var(--line);border-radius:4px;overflow:hidden;min-width:70px}
+.maerow .track i{display:block;height:100%;border-radius:4px;background:var(--line2)}
+.maerow.model .track i{background:var(--go)}
+.maerow.bad.model .track i{background:var(--stop)}
+.unauth{opacity:.6}
+.unauth caption{caption-side:top;text-align:left;padding:8px 10px;color:var(--stop-ink);
+  font-size:11.5px;font-weight:650}
+
+/* ── source registry ── */
+.srcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px;padding:12px 14px}
+.src{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:var(--panel2)}
+.src.live{border-color:var(--go-line)}
+.src.failed{border-color:var(--stop-line);background:var(--stop-bg)}
+.src.missing{border-style:dashed;background:transparent}
+.src .top{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.src .nm{font-weight:750;font-size:13.5px;letter-spacing:.02em}
+.src .variant{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--raise);
+  border:1px solid var(--line);border-radius:7px;padding:3px 8px;display:inline-block;margin:2px 0 6px;
+  word-break:break-all}
+.src.failed .variant{background:transparent}
+.src .urls{font-family:var(--mono);font-size:10.5px;color:var(--faint);word-break:break-all;line-height:1.5}
+.covbar{height:7px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0 4px}
+.covbar i{display:block;height:100%;background:var(--go);border-radius:4px}
+.covbar i.warn{background:var(--warn)} .covbar i.bad{background:var(--stop)}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--muted);
+  padding:1px 0}
+.kv b{color:var(--ink);font-weight:600;font-family:var(--mono)}
+
+/* ── regime tags on divergence rows ── */
+.tag{display:inline-block;font-size:9.5px;text-transform:uppercase;letter-spacing:.09em;font-weight:750;
+  padding:2px 7px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
+.tag.opp{background:var(--go-bg);border-color:var(--go-line);color:var(--go-ink)}
+.tag.trade{background:transparent;border-color:var(--go-line);color:var(--go-ink)}
+.tag.weak{background:transparent;border-color:var(--line2);color:var(--muted)}
+.tag.warnt{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink)}
+tr.r-warn td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+tr.r-opp td:first-child{box-shadow:inset 3px 0 0 var(--go)}
+.banner{border:1px solid var(--line2);background:var(--panel2);border-radius:11px;padding:11px 13px;
+  font-size:12.5px;color:var(--muted);margin:12px 14px}
+.banner b{color:var(--ink)}
+.banner.limit{border-color:var(--warn-line);background:var(--warn-bg);color:var(--warn-ink)}
+.banner.limit b{color:var(--warn-ink)}
+.regimes{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;padding:0 14px 12px}
+.regime{border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--muted)}
+.regime .h{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:750;margin-bottom:3px}
+.regime.opp{border-color:var(--go-line)} .regime.opp .h{color:var(--go-ink)}
+.regime.warnt{border-color:var(--warn-line)} .regime.warnt .h{color:var(--warn-ink)}
+
+/* ── demand bars ── */
+.dbar{display:inline-block;width:62px;height:7px;background:var(--line);border-radius:4px;overflow:hidden;
+  vertical-align:middle;margin-right:6px}
+.dbar i{display:block;height:100%;background:var(--wr)}
+.dbar i.hot{background:var(--stop)}
+
+/* ── provenance card ── */
+.why{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:12px}
+.whybox{border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.whybox h3{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);
+  padding:8px 11px;background:var(--panel2);border-bottom:1px solid var(--line);font-weight:700}
+.whybox .rows{padding:6px 11px 9px}
+.wrow{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line);
+  font-size:12px}
+.wrow:last-child{border-bottom:none}
+.wrow .k{color:var(--muted)}
+.wrow .v{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.wrow .v.gap{color:var(--warn-ink)}
+.wrow .prov{font-size:9.5px;color:var(--faint);letter-spacing:.04em;display:block;
+  font-family:var(--mono)}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:13px}
+.empty .big{font-size:15px;color:var(--ink);font-weight:700;margin-bottom:6px}
+.empty .path{margin-top:8px}
+.hits{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px}
+.hit{display:flex;gap:10px;align-items:center;padding:7px 11px;border-bottom:1px solid var(--line);
+  cursor:pointer;font-size:12.5px}
+.hit:last-child{border-bottom:none}
+.hit:hover,.hit.on{background:var(--raise)}
+.hit .g{margin-left:auto;font-family:var(--mono);color:var(--muted);font-size:11.5px}
+
+@media(max-width:900px){
+  .wrap{padding:10px 10px 36px}
+  .vitals{grid-template-columns:1fr 1fr}
+  .brand{grid-column:1 / -1}
+  .dock-actions{grid-column:1 / -1;justify-content:flex-end}
+  .stage{grid-template-columns:1fr 1fr;gap:8px}
+  .stage .n{display:none}
+  .stage .name{grid-column:1 / -1}
+  .stage .sumcell{grid-column:1 / -1}
+  .stage .runcell{grid-column:1 / -1}
+  .why{grid-template-columns:1fr}
+  .verdict .big{font-size:22px}
+}
+</style>
+
+<div class="wrap">
+ <div class="dock">
+  <div class="vitals">
+    <div class="brand">
+      <div class="t">DATA &amp; RESEARCH</div>
+      <div class="s">show your work</div>
+      <select id="lgsel" aria-label="League"></select>
+    </div>
+    <div class="vital" id="v-fresh"></div>
+    <div class="vital" id="v-src"></div>
+    <div class="vital" id="v-cal"></div>
+    <div class="vital" id="v-curve"></div>
+    <div class="dock-actions">
+      <button class="btn" id="refresh" title="Re-collect status from disk (/api/pipeline/status)">↻</button>
+      <button class="btn" id="theme" title="Light / dark">◐</button>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+  <div id="warnbar"></div>
+ </div>
+ <main id="pane"></main>
+ <p class="path" id="foot" style="margin:16px 4px 0"></p>
+</div>
+
+<script>
+const DATA = /*DATA*/;
+
+/* ───────── helpers ───────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => (
+  {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (v,d=1) => (v===null||v===undefined||v==="")?"—":
+  (typeof v==="number"? (Math.abs(v)>=1000? v.toLocaleString(undefined,{maximumFractionDigits:0})
+   : v.toFixed(d).replace(/\.0+$/,"")) : esc(v));
+const pct = v => (v===null||v===undefined)?"—":(v*100).toFixed(0)+"%";
+const bytes = b => b==null?"—":(b<1024?b+"b":b<1048576?(b/1024).toFixed(0)+"kb":(b/1048576).toFixed(1)+"mb");
+function age(h){
+  if(h===null||h===undefined) return "—";
+  if(h<1) return Math.round(h*60)+"m";
+  if(h<48) return h.toFixed(1)+"h";
+  return (h/24).toFixed(h<240?1:0)+"d";
+}
+function when(iso){
+  if(!iso) return "never";
+  const d=new Date(iso); if(isNaN(d)) return esc(iso);
+  return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+const POSC = {QB:"qb",RB:"rb",WR:"wr",TE:"te"};
+
+/* ───────── state ───────── */
+let LG = (DATA.focus && DATA.leagues.find(l=>l.key===DATA.focus)) || DATA.leagues[0] || null;
+let TAB = "stages";
+let RUN_ENABLED = false;           // authoritative answer comes from the API
+const JOB = {id:null,next:0,timer:null};
+
+/* ───────── league switcher ───────── */
+const sel = $("#lgsel");
+sel.innerHTML = DATA.leagues.map((l,i)=>
+  `<option value="${i}"${l===LG?" selected":""}>${esc(l.name||l.key)} · ${esc(l.key)}</option>`).join("");
+sel.addEventListener("change",()=>{ LG = DATA.leagues[+sel.value]; render(); });
+
+/* ───────── tabs ───────── */
+const TABS = [
+  {half:"DATA", id:"stages",  label:"Stages"},
+  {half:"DATA", id:"calib",   label:"Calibration"},
+  {half:"DATA", id:"curve",   label:"Curve"},
+  {half:"DATA", id:"players", label:"Players"},
+  {half:"RESEARCH", id:"demand",   label:"Rival demand"},
+  {half:"RESEARCH", id:"sources",  label:"Sources"},
+  {half:"RESEARCH", id:"diverge",  label:"Divergence"},
+  {half:"RESEARCH", id:"coverage", label:"Coverage"},
+  {half:"RESEARCH", id:"tierb",    label:"Tier-B"},
+  {half:"RESEARCH", id:"trace",    label:"Trace"},
+];
+function badges(id){
+  if(!LG) return "";
+  const st = LG.status||{};
+  if(id==="stages"){
+    const n=(st.stages||[]).filter(s=>s.stale||s.state==="missing"||s.state==="error").length;
+    return n?`<span class="badge">${n}</span>`:"";
+  }
+  if(id==="sources"){
+    const n=(st.sources||[]).filter(s=>s.state==="failed").length;
+    return n?`<span class="badge">${n}</span>`:"";
+  }
+  if(id==="calib"){
+    const n=(st.calibration||{}).managers_borrowed||0;
+    return n?`<span class="badge warn">${n}</span>`:"";
+  }
+  if(id==="curve"){
+    const c=(st.calibration||{}).curve||{};
+    return c.beats_baseline===false?`<span class="badge">!</span>`:"";
+  }
+  return "";
+}
+function drawTabs(){
+  let html="", half="";
+  TABS.forEach(t=>{
+    if(t.half!==half){ html += (half?`<div class="sep"></div>`:"")+`<span class="grp">${t.half}</span>`; half=t.half; }
+    html += `<button class="tab${t.id===TAB?" on":""}" data-tab="${t.id}">${esc(t.label)}${badges(t.id)}</button>`;
+  });
+  $("#tabs").innerHTML = html;
+  $("#tabs").querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+    TAB=b.dataset.tab; drawTabs(); drawPane();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }));
+}
+
+/* ───────── vitals ───────── */
+function vital(el,k,v,note,cls){
+  el.className = "vital"+(cls?" "+cls:"");
+  el.innerHTML = `<div class="k">${k}</div><div class="v">${v}</div><div class="note">${note||""}</div>`;
+}
+function drawVitals(){
+  const st = LG.status||{}, stages = st.stages||[], srcs = st.sources||[], cal = st.calibration||{};
+  const bad = stages.filter(s=>s.state==="missing"||s.state==="error");
+  const stale = stages.filter(s=>s.stale && s.state!=="missing");
+  const live = stages.filter(s=>!s.stale && s.state!=="missing");
+  const newest = live.map(s=>s.age_hours).filter(v=>v!=null);
+  vital($("#v-fresh"),"Freshness",
+    bad.length? `${bad.length}<small> / ${stages.length} missing</small>`
+      : stale.length? `${stale.length}<small> stale</small>`
+      : age(Math.max(...newest,0)),
+    bad.length? "stages have never run" : stale.length? "past their declared max age" :
+      `oldest of ${stages.length} stages`,
+    bad.length?"bad":stale.length?"warn":"good");
+
+  const failed = srcs.filter(s=>s.state==="failed"), missing = srcs.filter(s=>s.state==="missing");
+  vital($("#v-src"),"Sources",
+    `${srcs.filter(s=>s.state==="live").length}<small> / ${srcs.length} live</small>`,
+    failed.length? `${failed.map(s=>s.name).join(", ")} FAILED`
+      : missing.length? `${missing.length} never fetched` : "all adapters reporting",
+    failed.length?"bad":missing.length?"warn":"good");
+
+  // prefer the board's own join (season_data teams) — the vital and the table must agree
+  const sum = (LG.calibration||{}).summary;
+  const tot = sum? sum.total : (cal.managers_total||0);
+  const bor = sum? (sum.borrowed + sum.no_profile) : (cal.managers_borrowed||0);
+  vital($("#v-cal"),"Calibration",
+    (cal.present||sum)? `${tot-bor}<small> / ${tot} calibrated</small>` : `0<small> / ${tot}</small>`,
+    (cal.present||sum)? (bor? `${bor} borrowed the league prior` : "every manager has history")
+               : "no season_tendencies.json",
+    (cal.present||sum)? (bor?"warn":"good") : "bad");
+
+  const c = cal.curve||{};
+  vital($("#v-curve"),(c.model||"waiver")+" curve",
+    !c.present? "—" : c.beats_baseline===true? "beats" : c.beats_baseline===false? "fails" : "unval.",
+    !c.present? "never calibrated" :
+      c.beats_baseline===true? (()=>{const p=(c.targets||[]).filter(t=>t.promoted).map(t=>t.name);
+        return p.length? `${p.join(", ")} promoted` : `MAE ${num(c.holdout_mae,3)} vs ${num(c.baseline_mae,3)}`;})()
+      : c.beats_baseline===false? "nothing promoted — baseline wins"
+      : (c.reason||"never validated"),
+    !c.present? "bad" : c.beats_baseline===true? "good" : "bad");
+}
+
+/* ───────── warnings ───────── */
+function drawWarn(){
+  const w = (LG.status||{}).warnings||[];
+  const el = $("#warnbar");
+  if(!w.length){
+    el.innerHTML = `<div class="warnbar clean"><b>✓ Nothing to flag.</b> Every stage is inside its
+      declared max age, every adapter reported, and no manager is running on a borrowed prior.</div>`;
+    return;
+  }
+  el.innerHTML = `<details class="warnbar" open>
+    <summary><b>${w.length} thing${w.length>1?"s":""} to know before you trust a number on this page</b>
+    <span class="dim"> — click to fold</span></summary>
+    <ul>${w.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>`;
+}
+
+/* ═════════ DATA HALF ═════════ */
+function paneStages(){
+  const st = LG.status||{}, stages = st.stages||[];
+  const rows = stages.map((s,i)=>{
+    const over = s.max_age_hours? (s.age_hours||0)/s.max_age_hours : 0;
+    const cls = s.state==="missing"?"is-missing":s.state==="error"?"is-error":s.stale?"is-stale":"is-ok";
+    const chip = s.state==="missing"? `<span class="chip missing">never run</span>`
+      : s.state==="error"? `<span class="chip bad">failed</span>`
+      : s.stale? `<span class="chip stale">stale</span>`
+      : s.state==="partial"? `<span class="chip stale">partial</span>`
+      : `<span class="chip ok">fresh</span>`;
+    const outs = (s.outputs||[]).map(o=>`<tr>
+        <td class="l"><span class="path">${esc(o.path)}</span>
+          ${o.label?`<span class="sub">${esc(o.label)}</span>`:""}</td>
+        <td class="num">${o.exists? (o.rows==null?"—":Number(o.rows).toLocaleString()) : ""}</td>
+        <td class="num">${o.exists? bytes(o.bytes) : `<span class="chip missing">absent</span>`}</td>
+        <td class="num">${o.exists? when(o.self_reported||o.mtime) : "—"}</td></tr>`).join("");
+    return `<div class="stage ${cls}">
+      <div class="n">${i+1}</div>
+      <div>
+        <div class="name">${esc(s.name)} ${chip}</div>
+        <div class="sub">${esc(s.doc||"")}</div>
+      </div>
+      <div>
+        <div class="age ${over>1?"bad":over>.75?"warn":""}">${age(s.age_hours)}</div>
+        <div class="agebar"><i class="${over>1?"bad":over>.75?"warn":""}"
+          style="width:${Math.min(over*100,100).toFixed(0)}%"></i></div>
+        <div class="sub">max ${s.max_age_hours==null?"—":age(s.max_age_hours)}</div>
+      </div>
+      <div>
+        <div class="mono">${s.duration_s==null?"—":num(s.duration_s,1)+"s"}</div>
+        <div class="sub">last run<br>${when(s.last_run)}</div>
+      </div>
+      <div class="sumcell">
+        <div>${s.summary? esc(s.summary) : `<span class="dim">no outputs on disk</span>`}</div>
+        ${s.stale_reason?`<div class="note">${esc(s.stale_reason)}</div>`:""}
+        ${s.error?`<div class="errbox">${esc(s.error)}</div>`:""}
+        ${outs?`<details><summary>${(s.outputs||[]).length} output${(s.outputs||[]).length>1?"s":""}</summary>
+          <div class="scrollx"><table style="min-width:420px"><thead><tr>
+            <th class="l">artifact</th><th>rows</th><th>size</th><th>written</th>
+          </tr></thead><tbody>${outs}</tbody></table></div></details>`:""}
+      </div>
+      <div class="runcell"><button class="btn run" data-stage="${esc(s.name)}">Run ▸</button></div>
+    </div>`;
+  }).join("");
+
+  return `<section class="panel">
+    <div class="phead"><h2>Stage board</h2>
+      <span class="lede">What has actually run for <b>${esc(LG.name)}</b>, how old it is, and what it
+      produced. Age is measured against a <em>declared</em> max age per stage — waiver data ages in
+      hours, calibration in months.</span></div>
+    <div class="runbar" id="runbar"></div>
+    <div class="pbody tight">${rows||`<div class="empty">no stages</div>`}</div>
+    <pre class="joblog" id="joblog" hidden></pre>
+  </section>` + paneStagesFoot();
+}
+function paneStagesFoot(){
+  const p = (LG.status||{}).profile;
+  if(!p) return `<section class="panel"><div class="pbody"><div class="empty">
+    <div class="big">No league profile</div>
+    <code class="path">${esc(LG.status.league||"")}</code>
+    league_full.json has not been scraped, so this league's rules (size, scoring, waiver model)
+    are unknown and everything downstream is guessing.</div></div></section>`;
+  return `<section class="panel">
+    <div class="phead"><h2>League rules in force</h2>
+      <span class="lede">Everything on this page is parameterised by these — never hardcoded.</span></div>
+    <div class="pbody"><pre class="mono" style="margin:0;font-size:12px;white-space:pre-wrap;color:var(--muted)">${esc(p.summary||"")}</pre></div>
+  </section>`;
+}
+
+function paneCalib(){
+  const c = LG.calibration||{}, rows = c.rows||[], st=(LG.status||{}).calibration||{};
+  const faab = ((LG.league||{}).acquisition||{}).model === "faab";
+  const head = `<tr>
+      <th class="l">manager</th><th class="l">source</th><th>seasons</th><th>shrink</th>
+      <th>adds/szn</th><th>aggression</th><th>${faab?"max bid":"contested win"}</th>
+      <th>trades/szn</th><th>accept</th><th>drop lag</th>
+      <th class="l">observed ${esc(c.observed_season||"")}</th></tr>`;
+  const body = rows.map((r,i)=>{
+    const w=r.waiver||{}, t=r.trade||{}, d=r.drop||{};
+    const cls = r.borrowed?"borrowed":r.has_profile?"calibrated":"nodata";
+    const src = r.borrowed? `<span class="chip stale">borrowed</span>`
+      : r.has_profile? `<span class="chip ok">calibrated</span>`
+      : `<span class="chip missing">not calibrated</span>`;
+    const o = r.observed;
+    const obs = o? `<span class="mono">${o.adds} adds · ${o.waiver_claims} claims · ${o.trades} trades`
+      + (faab && o.faab_spent? ` · $${o.faab_spent}`:"") + `</span>`
+      : `<span class="dim">no transactions parsed</span>`;
+    const shrink = r.shrink==null? "—" :
+      `${num(r.shrink,2)}<span class="shrinkbar"><i style="width:${Math.max(0,Math.min(1,r.shrink))*100}%"></i></span>`;
+    return `<tr class="${cls}${i%2?" alt":""}">
+      <td class="l"><b>${esc(r.manager||"(unknown)")}</b><span class="sub">${esc(r.team||"")}</span></td>
+      <td class="l">${src}</td>
+      <td class="num">${r.n_seasons==null?"—":r.n_seasons}</td>
+      <td class="num">${shrink}</td>
+      <td class="num">${num(w.adds_per_season,1)}</td>
+      <td class="num">${num(w.aggression,2)}</td>
+      <td class="num">${faab? num(w.max_bid,0) : pct(w.contested_win_rate)}</td>
+      <td class="num">${num(t.rate_per_season,1)}</td>
+      <td class="num">${t.accept_rate==null?"—":pct(t.accept_rate)}</td>
+      <td class="num">${num(d.latency_weeks,1)}</td>
+      <td class="l">${obs}</td></tr>`;
+  }).join("");
+
+  const missing = !c.tendencies_present ? `<div class="banner limit">
+      <b>No calibrated tendencies on disk.</b> <code class="path">${esc(c.tendencies_path)}</code>
+      does not exist, so every manager below is uncalibrated — the engine is modelling all of them
+      identically. Run <b>season-calibrate</b>. Numbers shown here come from whatever the season
+      build merged onto each team, if anything.</div>` : "";
+
+  return `<section class="panel">
+    <div class="phead"><h2>Calibration inspector</h2>
+      <span class="lede">Which opponent profiles are <b>measured</b> and which are <b>borrowed</b>.
+      A borrowed profile is an assumption, not a read — it is the league prior wearing a manager's
+      name, and it must never look like evidence.</span>
+      <span class="right">
+        <span class="chip info">method ${esc(st.method||c.method||"—")}</span>
+        <span class="chip info">seasons ${esc((st.seasons_used||[]).join("–")||"—")}</span>
+      </span></div>
+    ${missing}
+    ${(c.unmatched_managers||[]).length||(c.orphan_profiles||[]).length? `<div class="banner limit">
+      <b>Name join.</b> ${(c.unmatched_managers||[]).length} manager${
+        (c.unmatched_managers||[]).length===1?"":"s"} in the league ha${
+        (c.unmatched_managers||[]).length===1?"s":"ve"} no entry in the tendencies file
+      (${(c.unmatched_managers||[]).map(esc).join(", ")||"—"})${
+        (c.orphan_profiles||[]).length?`, and ${(c.orphan_profiles||[]).length} profile${
+        (c.orphan_profiles||[]).length===1?"":"s"} in the file match${
+        (c.orphan_profiles||[]).length===1?"es":""} nobody currently in it
+        (${(c.orphan_profiles||[]).slice(0,8).map(esc).join(", ")}${
+        (c.orphan_profiles||[]).length>8?" …":""})`:""}.
+      Some of that is real turnover; the rest is a display-name drift between ESPN and the
+      calibration identity. Either way it is why a manager is on the prior.
+      ${(c.near_matches||[]).length?`<div style="margin-top:8px"><b>${(c.near_matches||[]).length}
+        of these are a JOIN BUG, not missing history</b> — the profile exists under a name that
+        differs only by whitespace or case:
+        ${c.near_matches.map(n=>`<code class="mono">${esc(JSON.stringify(n.league_name))}</code> ≈
+          <code class="mono">${esc(JSON.stringify(n.file_name))}</code>`).join(" · ")}.
+        Those managers are being modelled as the league prior for no reason.</div>`:""}</div>`:""}
+    <div class="legend">
+      <span><span class="swatch cal"></span><b>Calibrated</b> — has own history; numbers are measured</span>
+      <span><span class="swatch bor"></span><b>Borrowed</b> — hatched + italic; this is the league prior</span>
+      <span><span class="swatch non"></span><b>Not calibrated</b> — no profile at all</span>
+      <span><b>shrink</b> — how far the estimate was pulled to the league mean (1.0 = entirely prior)</span>
+    </div>
+    <div class="scrollx"><table><thead>${head}</thead><tbody>${body||
+      `<tr><td colspan="11" class="l dim" style="padding:20px">no managers — scrape the league first</td></tr>`}</tbody></table></div>
+    ${Object.keys(st.excluded_seasons||{}).length? `<div class="banner">
+      <b>Excluded seasons:</b> ${Object.entries(st.excluded_seasons).map(([k,v])=>
+        `${esc(k)} (${esc(v)})`).join(" · ")} — never pool across an acquisition-regime switch.</div>`:""}
+  </section>`;
+}
+
+function paneCurve(){
+  const cv = LG.curve||{}, v = cv.validation||{};
+  const h = cv.holdout_mae!=null?cv.holdout_mae:v.holdout_mae;
+  const b = cv.baseline_mae!=null?cv.baseline_mae:v.baseline_mae;
+  const beats = cv.beats_baseline!=null?cv.beats_baseline:(h!=null&&b!=null? h<b : null);
+  const model = cv.model||((LG.league||{}).acquisition||{}).model||"waiver";
+  if(!cv.present){
+    return `<section class="panel"><div class="phead"><h2>${esc(model)} curve</h2>
+      <span class="lede">What a winning claim actually costs, and whether that model survives
+      out-of-sample.</span></div>
+      <div class="pbody"><div class="empty"><div class="big">No curve has been calibrated</div>
+        Run <b>season-calibrate</b> for this league. Until then the waiver engine has no empirical
+        price level to bid against.<div class="path">${esc(cv.path||"")}</div></div></div></section>`
+      + panePolicy();
+  }
+  const max = Math.max(h||0,b||0,1);
+  const maebars = (badcls)=>`<div class="maebars">
+      <div class="maerow model ${badcls}"><span class="lab">model</span>
+        <span class="track"><i style="width:${h?(h/max*100).toFixed(0):0}%"></i></span>
+        <span class="mono">${num(h,3)}</span></div>
+      <div class="maerow"><span class="lab">baseline</span>
+        <span class="track"><i style="width:${b?(b/max*100).toFixed(0):0}%"></i></span>
+        <span class="mono">${num(b,3)}</span></div></div>`;
+  // "beats" is not a single fact when several targets were validated: say how many,
+  // and never let one promoted target imply the whole curve is usable.
+  const tg = cv.targets||[];
+  const nprom = tg.filter(t=>t.promoted).length;
+  const part = tg.length>1 && nprom>0 && nprom<tg.length;
+  const verdict = beats===true? `<div class="verdict ${part?"part":"good"}">
+      <div class="big">${part? `${nprom} OF ${tg.length} PROMOTED` : "BEATS BASELINE"}</div>${maebars("")}
+      <div class="msg">${part?`<b>Only ${tg.filter(t=>t.promoted).map(t=>t.name).join(", ")} earned
+      its place.</b> Every other target below falls back to the pooled constant. `:""}${
+      esc(cv.verdict||`Holdout MAE ${num(h,3)} vs ${num(b,3)} baseline.`)}
+      ${v.n_holdout||cv.n_holdout?`<span class="dim">n=${cv.n_holdout||v.n_holdout} held out,
+      ${esc(cv.scheme||"holdout")}.</span>`:""}</div></div>`
+    : beats===false? `<div class="verdict bad">
+      <div class="big">DOES NOT BEAT BASELINE</div>${maebars("bad")}
+      <div class="msg"><b>This curve is not authoritative.</b>
+      ${esc(cv.verdict||`Out of sample it is no better than the pooled constant (MAE ${num(h,3)} vs ${num(b,3)}).`)}
+      <br>Use the baseline, not the curve. Same discipline as <code>price_curve.py</code> /
+      <code>strategy_search_v2.py</code>: an unvalidated rule is never promoted.</div></div>`
+    : `<div class="verdict bad"><div class="big">NOT VALIDATED</div>
+      <div class="msg"><b>Nothing below has been tested on data it did not fit.</b>
+      ${esc(cv.reason||cv.verdict||"No out-of-sample validation block in the curve file.")}
+      Treat every number here as a description of the past, not a price to bid.</div></div>`;
+
+  const targets = (cv.targets||[]).length? `<div class="scrollx"><table style="min-width:440px">
+      <thead><tr><th class="l">validated target</th><th>gain vs baseline</th><th>beats</th>
+        <th>promoted${cv.promote_threshold_pct?` (≥${num(cv.promote_threshold_pct,0)}%)`:""}</th></tr></thead>
+      <tbody>${cv.targets.map((t,i)=>`<tr class="${i%2?"alt":""}">
+        <td class="l mono">${esc(t.name)}</td>
+        <td class="num">${t.gain_pct==null?"—":(t.gain_pct>0?"+":"")+num(t.gain_pct,1)+"%"}</td>
+        <td class="num">${t.beats?`<span class="chip ok">yes</span>`:`<span class="chip bad">no</span>`}</td>
+        <td class="num">${t.promoted?`<span class="chip ok">promoted</span>`
+          :`<span class="chip missing">not promoted</span>`}</td></tr>`).join("")}</tbody></table></div>
+      <p class="note">Only a promoted target may be used as a price. Anything else falls back to the
+        pooled constant.</p>` : "";
+
+  const byq = cv.by_quality||[], byw = cv.by_week||[];
+  const faab = model==="faab";
+  const band = r => (r.pct_lo==null&&r.pct_hi==null&&r.pct==null)? "all claims"
+    : `${pct(r.pct_lo!=null?r.pct_lo:r.pct)}–${pct(r.pct_hi!=null?r.pct_hi:r.pct)}`;
+  const qhead = faab
+    ? `<tr><th class="l">player quality (pool pctile)</th><th>median win</th><th>p80</th><th>p95</th>
+       <th>p(contested)</th><th>n</th></tr>`
+    : `<tr><th class="l">player quality (pool pctile)</th><th>p(survives to FA)</th>
+       <th>p(contested)</th><th>n</th></tr>`;
+  const qbody = byq.map((r,i)=>faab
+    ? `<tr class="${i%2?"alt":""}${r.n?"":" nodata"}"><td class="l mono">${band(r)}</td>
+        <td class="num">$${num(r.median_win,0)}</td><td class="num">$${num(r.p80_win,0)}</td>
+        <td class="num">$${num(r.p95_win,0)}</td>
+        <td class="num">${pct(r.p_contested)}</td><td class="num">${num(r.n,0)}</td></tr>`
+    : `<tr class="${i%2?"alt":""}${r.n?"":" nodata"}"><td class="l mono">${band(r)}</td>
+        <td class="num">${pct(r.p_survives_to_free_agency)}</td>
+        <td class="num">${pct(r.p_contested)}</td><td class="num">${num(r.n,0)}</td></tr>`).join("");
+  const wbody = byw.map((r,i)=>`<tr class="${i%2?"alt":""}"><td class="l mono">week ${esc(r.week)}</td>
+      <td class="num">${faab?"$"+num(r.median_win,0):pct(r.p_survives_to_free_agency)}</td>
+      <td class="num">${pct(r.p_contested)}</td>
+      <td class="num">${r.share_of_budget_spent==null?"—":pct(r.share_of_budget_spent)}</td>
+      <td class="num">${num(r.n,0)}</td></tr>`).join("");
+
+  return `<section class="panel">
+    <div class="phead"><h2>${esc(model)} curve</h2>
+      <span class="lede">What a winning claim actually costs in <b>this</b> league, and whether the
+      model survives out-of-sample. The validation is shown before the numbers, deliberately.</span>
+      <span class="right">
+        <span class="chip info">${cv.n_claims?Number(cv.n_claims).toLocaleString()+" claims":"n/a"}</span>
+        <span class="chip info">seasons ${esc((cv.seasons||[]).join("–")||"—")}</span></span></div>
+    <div class="pbody">
+      ${verdict}
+      ${targets}
+      <div class="scrollx"><table class="${beats?"":"unauth"}" style="min-width:480px">
+        ${beats?(part?`<caption style="color:var(--warn-ink)">⚠ only ${
+          tg.filter(t=>t.promoted).map(t=>esc(t.name)).join(", ")} is promoted — the median and
+          contested columns below did not earn their place</caption>`:""):
+          `<caption>⚠ shown for inspection only — this curve failed its holdout test</caption>`}
+        <thead>${qhead}</thead><tbody>${qbody||
+          `<tr><td colspan="6" class="l dim">no by_quality rows in the curve file</td></tr>`}</tbody></table></div>
+      ${byw.length?`<h3 style="margin:16px 0 6px;font-size:10px;letter-spacing:.14em;
+        text-transform:uppercase;color:var(--muted)">By week</h3>
+        <div class="scrollx"><table class="${beats?"":"unauth"}" style="min-width:420px"><thead>
+        <tr><th class="l">week</th><th>${faab?"median winning bid":"p(survives)"}</th>
+        <th>p(contested)</th><th>budget spent</th><th>n</th></tr></thead>
+        <tbody>${wbody}</tbody></table></div>`:""}
+      <p class="note">Source: <span class="path">${esc(cv.path||"")}</span></p>
+    </div></section>` + panePolicy();
+}
+
+
+/* ── projection policy: the valuation's own "has this been earned?" ledger ── */
+function panePolicy(){
+  const po = DATA.policy||{};
+  if(!po.present) return `<section class="panel">
+    <div class="phead"><h2>Projection policy</h2></div>
+    <div class="pbody"><div class="empty">engine/projection_policy.py not importable
+      <div class="path">${esc(po.error||"")}</div></div></div></section>`;
+  const adj = po.adjustments||[];
+  const rows = adj.map((a,i)=>{
+    const v = a.validation;
+    const res = v? (v.results||[]).map(r=>`<tr class="${r.powered?"":"nodata"}">
+        <td class="l mono">${esc(r.league)}</td>
+        <td class="num">${num(r.n,0)}${r.powered?"":` <span class="chip missing">underpowered</span>`}</td>
+        <td class="num">${num(r.baseline_mae,3)}</td>
+        <td class="num">${num(r.model_mae,3)}</td>
+        <td class="num" style="color:${r.improvement>0?"var(--go-ink)":"var(--stop-ink)"}">${
+          (r.improvement>0?"+":"")+num(r.improvement*100,1)}%</td></tr>`).join("") : "";
+    return `<div class="src ${a.ships?"live":"failed"}" style="margin-bottom:10px">
+      <div class="top"><span class="nm">${esc(a.name)}</span>
+        ${a.ships?`<span class="chip ok">applied</span>`:`<span class="chip bad">refused</span>`}</div>
+      ${a.description?`<div class="note">${esc(a.description)}</div>`:""}
+      <div class="${a.ships?"note":"errbox"}">${esc(a.reason)}</div>
+      ${res?`<div class="scrollx"><table style="min-width:420px;margin-top:8px"><thead><tr>
+        <th class="l">league</th><th>held-out n</th><th>baseline MAE</th><th>model MAE</th><th>gain</th>
+        </tr></thead><tbody>${res}</tbody></table></div>
+        ${v.method?`<div class="note">${esc(v.method)}${v.notes?" · "+esc(v.notes):""}</div>`:""}`:""}
+    </div>`;
+  }).join("");
+  return `<section class="panel">
+    <div class="phead"><h2>Projection policy</h2>
+      <span class="lede">The same question as the curve, one level up: <b>has this deviation been
+      paid for out-of-sample?</b> A refused tuning is a finding, not a failure to hide.</span>
+      <span class="right">
+        <span class="chip info">bar: n≥${num((po.bar||{}).min_n,0)} in ≥${
+          num((po.bar||{}).min_powered_leagues,0)} leagues</span>
+        ${adj.length?`<span class="chip ${(po.refused||[]).length?"bad":"ok"}">${
+          (po.refused||[]).length} refused</span>`:""}</span></div>
+    <div class="pbody">
+      <div class="banner"><b>Baseline.</b> ${esc(po.baseline||"")}</div>
+      ${adj.length? rows : `<div class="verdict good"><div class="big">BASELINE, UNMODIFIED</div>
+        <div class="msg">No adjustment is registered, so nothing deviates from the vendor
+        projection. That is the intended default state — the system ships the baseline until a
+        tuning earns its way in, rather than shipping a tuning until it is caught.</div></div>`}
+      <pre class="mono" style="margin:12px 0 0;font-size:11.5px;white-space:pre-wrap;
+        color:var(--muted)">${esc(po.audit||"")}</pre>
+    </div></section>`;
+}
+
+/* ── player explorer / provenance ── */
+let PSEL = null;
+function paneMarket(p){ return p.mkt||{}; }
+function ourRank(){
+  if(!LG._ranked){
+    const arr = (LG.players||[]).filter(p=>p.ros_points!=null)
+      .sort((a,b)=>(b.ros_points||0)-(a.ros_points||0));
+    LG._ranked = {}; arr.forEach((p,i)=>LG._ranked[p.id]=i+1);
+  }
+  return LG._ranked;
+}
+function whyCard(p){
+  if(!p) return `<div class="empty">Pick a player to see every input behind his numbers.</div>`;
+  const m = paneMarket(p), rank = ourRank()[p.id];
+  const lg = LG.league||{}, teams = LG.teams||[];
+  const owner = teams.find(t=>t.team_id===p.owner_team_id);
+  // positional ranks on both sides — the same like-for-like comparison the
+  // divergence table uses. A "% vs rank 1" number would read -300% for a top-5 player.
+  const joined=(LG.players||[]).filter(x=>(x.mkt||{}).ros_ecr!=null && x.pos===p.pos);
+  const ourPos = joined.slice().sort((a,b)=>(b.ros_points||0)-(a.ros_points||0))
+    .findIndex(x=>x.id===p.id)+1;
+  const ecrPos = joined.slice().sort((a,b)=>((a.mkt||{}).ros_ecr||1e9)-((b.mkt||{}).ros_ecr||1e9))
+    .findIndex(x=>x.id===p.id)+1;
+  const gapRank = (ourPos&&ecrPos)? (ecrPos-ourPos) : null;
+  const wk = LG.week||0, reg = lg.regular_weeks||0;
+  const row=(k,v,src,cls)=>`<div class="wrow"><span class="k">${esc(k)}
+    <span class="prov">${esc(src||"")}</span></span>
+    <span class="v ${cls||""}">${v}</span></div>`;
+  const gaps = (LG.provenance_gaps||[]).map(g=>row(g.field,
+    `<span class="dim">not carried</span>`, g.note, "gap")).join("");
+  const nat = p.why||null;
+  return `<div class="why">
+    <div class="whybox"><h3>Value — recomputed from this league's scoring</h3><div class="rows">
+      ${row("ros_points", num(p.ros_points,1), "season_data.players[].ros_points")}
+      ${row("ros_ppg", num(p.ros_ppg,2), "season_data.players[].ros_ppg")}
+      ${row("actual_ppg", num(p.actual_ppg,2), "season to date")}
+      ${row("last3_ppg", num(p.last3_ppg,2), "recent form")}
+      ${row("marginal_reg", p.marginal_reg==null?`<span class="dim">not a waiver row</span>`:num(p.marginal_reg,1),
+            "engine/lineup.marginal_add — YOUR roster, weeks "+(wk||"?")+"–"+(reg||"?"))}
+      ${row("marginal_post", p.marginal_post==null?`<span class="dim">—</span>`:num(p.marginal_post,1),
+            "playoff weeks "+((reg||0)+1)+"–17")}
+    </div></div>
+    <div class="whybox"><h3>Inputs</h3><div class="rows">
+      ${row("bye", p.bye==null?"—":p.bye, "ESPN player")}
+      ${row("injury", esc(p.injury||"—"), "ESPN injuryStatus")}
+      ${row("owner", owner? esc(owner.name) : "free agent",
+            p.owner_team_id? "team "+p.owner_team_id : "unrostered")}
+      ${row("eligible_slots", (p.eligible_slots||[]).map(s=>
+              (lg.slot_names||{})[s] || (DATA.slot_names_all||{})[s] || ("slot"+s)).join(" "),
+            "authoritative for the lineup solver (bold = a slot this league starts)")}
+      ${nat? Object.entries(nat.inputs||{}).map(([k,v])=>row(k,num(v,1),"players[].why.inputs")).join("") : gaps}
+    </div></div>
+    <div class="whybox"><h3>Market — advisory, never the valuation</h3><div class="rows">
+      ${row("fantasypros ros_ecr", m.ros_ecr==null?`<span class="dim">no join</span>`:m.ros_ecr, "sources/fantasypros")}
+      ${row("borischen tier", m.tier==null?`<span class="dim">no join</span>`:m.tier, "sources/borischen")}
+      ${row("fantasycalc trade_value", m.trade_value==null?`<span class="dim">no join</span>`:num(m.trade_value,0), "sources/fantasycalc")}
+      ${row("sleeper trend_adds", m.trend_adds==null?`<span class="dim">no join</span>`:num(m.trend_adds,0), "sources/sleeper")}
+      ${row("espn pct_owned", p.pct_owned==null?"—":num(p.pct_owned,1)+"%", "ESPN ownership")}
+      ${row("espn pct_owned Δ", p.pct_owned_change==null?"—":num(p.pct_owned_change,2)+"%", "24h change")}
+      ${row("nflverse snap/target", `${m.snap_share==null?"—":pct(m.snap_share)} / ${m.target_share==null?"—":pct(m.target_share)}`, "usage")}
+    </div></div>
+    <div class="whybox"><h3>Disagreement</h3><div class="rows">
+      ${row("our rank", (ourPos?`${esc(p.pos)}${ourPos}`:"—")+(rank?` · #${rank} overall`:""),
+            "by ros_points, on this league's scoring")}
+      ${row("consensus rank", (ecrPos?`${esc(p.pos)}${ecrPos}`:"—")
+            +(m.ros_ecr?` · #${m.ros_ecr} overall`:""), "FantasyPros ROS ECR")}
+      ${row("Δ rank in position", gapRank==null?"—":(gapRank>0?"+":"")+gapRank,
+            "positive = we are higher on him than consensus", "gap")}
+      ${row("regime", regimeTag(p).html, regimeTag(p).why)}
+    </div></div>
+    <div class="whybox"><h3>League context</h3><div class="rows">
+      ${row("acquisition", esc((lg.acquisition||{}).model||"—")+
+            ((lg.acquisition||{}).budget?` $${(lg.acquisition||{}).budget}`:""), "profile.acquisition")}
+      ${row("suggested bid", p.bid? `$${p.bid.suggested} (p80 $${p.bid.p80})` : `<span class="dim">n/a</span>`,
+            "engine/waivers")}
+      ${row("p(contested)", p.bid&&p.bid.p_contested!=null? pct(p.bid.p_contested)
+            : p.claim&&p.claim.p_survives!=null? "p(survives) "+pct(p.claim.p_survives) : "—",
+            "the curve x rival demand")}
+      ${row("drop candidate", p.drop_player_id? esc((byId()[p.drop_player_id]||{}).name||p.drop_player_id) : "—",
+            "must_drop roster churn")}
+      ${(p.waiver_why||[]).length? row("engine why", esc(p.waiver_why.join(" · ")), "season_data.waivers[].why") : ""}
+    </div></div>
+  </div>`;
+}
+function byId(){
+  if(!LG._byid){ LG._byid={}; (LG.players||[]).forEach(p=>LG._byid[p.id]=p); }
+  return LG._byid;
+}
+function panePlayers(){
+  if(!(LG.players||[]).length) return emptyBuild("Player explorer");
+  return `<section class="panel">
+    <div class="phead"><h2>Player explorer</h2>
+      <span class="lede">Every input behind one player's numbers, and which artifact produced each
+      one. If a number here cannot be traced to a file, that is a bug in this console.</span></div>
+    <div class="pbody">
+      <input id="psearch" placeholder="Search any player…" style="width:100%;max-width:420px"
+        autocomplete="off">
+      <div class="hits" id="phits"></div>
+      <div id="pwhy" style="margin-top:14px">${whyCard(PSEL)}</div>
+    </div></section>`;
+}
+function wirePlayers(){
+  const inp=$("#psearch"); if(!inp) return;
+  const draw=()=>{
+    const q=(inp.value||"").trim().toLowerCase();
+    const hits=(LG.players||[]).filter(p=>!q||String(p.name||"").toLowerCase().includes(q)).slice(0,40);
+    $("#phits").innerHTML = hits.map(p=>`<div class="hit" data-id="${p.id}">
+        <span class="chip pos ${POSC[p.pos]||""}">${esc(p.pos||"")}</span>
+        <b>${esc(p.name)}</b><span class="dim">${esc(p.team||"")}</span>
+        <span class="g">${num(p.ros_ppg,1)} ppg</span></div>`).join("")
+      || `<div class="hit dim">no match</div>`;
+    $("#phits").querySelectorAll(".hit[data-id]").forEach(h=>h.addEventListener("click",()=>{
+      PSEL = byId()[h.dataset.id]; $("#pwhy").innerHTML = whyCard(PSEL);
+      $("#phits").querySelectorAll(".hit").forEach(x=>x.classList.toggle("on",x===h));
+    }));
+  };
+  inp.addEventListener("input",draw); draw();
+}
+function emptyBuild(what){
+  return `<section class="panel"><div class="phead"><h2>${esc(what)}</h2></div>
+    <div class="pbody"><div class="empty"><div class="big">No season payload yet</div>
+    This view reads <code class="path">${esc(LG.season_data_path||"season_data.json")}</code>,
+    which has not been built for ${esc(LG.name)}. Run <b>season-build</b> (it needs
+    <b>season-scrape</b> first).</div></div></section>`;
+}
+
+/* ═════════ RESEARCH HALF ═════════ */
+/* Which regime a divergence sits in — derived from the league's acquisition model and
+   who holds the player, never from a league name. (contracts.md, "Research console".) */
+function regimeTag(p){
+  const faab = ((LG.league||{}).acquisition||{}).model === "faab";
+  const mine = LG.me && p.owner_team_id === LG.me.team_id;
+  if(mine) return {cls:"warnt", key:"warn", label:"warning · start/sit",
+    html:`<span class="tag warnt">warning · start/sit</span>`,
+    why:"no market and no counterparty — divergence means CHECK YOUR INPUTS"};
+  if(p.owner_team_id) return {cls:"trade", key:"trade", label:"opportunity · trade",
+    html:`<span class="tag trade">opportunity · trade</span>`,
+    why:"a counterparty sets terms — prefer THAT manager's calibrated bias over consensus"};
+  if(faab) return {cls:"opp", key:"faab", label:"opportunity · FAAB",
+    html:`<span class="tag opp">opportunity · FAAB</span>`,
+    why:"blind-bid auction: value him above the room and you win him cheap"};
+  return {cls:"weak", key:"priority", label:"weak · priority",
+    html:`<span class="tag weak">weak · priority</span>`,
+    why:"no price, so no surplus — consensus informs timing only"};
+}
+/* Estimator of rival demand from the three sources that actually predict it. */
+function demandScore(p){
+  const m=p.mkt||{}, parts=[];
+  if(m.ros_ecr!=null){
+    const n=(LG.players||[]).length||1;
+    parts.push(Math.max(0,Math.min(1,1-(m.ros_ecr/Math.max(n,1)))));
+  }
+  if(m.trend_adds!=null){
+    LG._maxadds = LG._maxadds || Math.max(1,...(LG.players||[]).map(x=>(x.mkt||{}).trend_adds||0));
+    parts.push(Math.min(1,(m.trend_adds||0)/LG._maxadds));
+  }
+  if(p.pct_owned_change!=null){
+    parts.push(Math.max(0,Math.min(1,(p.pct_owned_change||0)/15)));
+  }
+  if(!parts.length) return null;
+  return parts.reduce((a,b)=>a+b,0)/parts.length;
+}
+function paneDemand(){
+  if(!(LG.players||[]).length) return emptyBuild("Rival demand");
+  const faab = ((LG.league||{}).acquisition||{}).model === "faab";
+  const pool = (LG.players||[]).filter(p=>p.marginal_reg!=null)
+    .sort((a,b)=>(b.marginal_reg||0)-(a.marginal_reg||0));
+  const fallback = !pool.length;
+  const rows = (fallback? (LG.players||[]).filter(p=>!p.owner_team_id).slice(0,40) : pool)
+   .map((p,i)=>{
+    const m=p.mkt||{}, d=demandScore(p);
+    const rec = p.bid? `<b class="mono">$${p.bid.suggested}</b> <span class="sub">p80 $${p.bid.p80} ·
+        contested ${pct(p.bid.p_contested)}</span>`
+      : p.claim? `<b>${p.claim.recommend?"CLAIM":"WAIT"}</b> <span class="sub">survives ${pct(p.claim.p_survives)}</span>`
+      : `<span class="dim">—</span>`;
+    return `<tr class="${i%2?"alt":""}" data-id="${p.id}" style="cursor:pointer">
+      <td class="l"><b>${esc(p.name)}</b> <span class="chip pos ${POSC[p.pos]||""}">${esc(p.pos||"")}</span>
+        <span class="sub">${esc(p.team||"")}${p.injury&&p.injury!=="ACTIVE"?" · "+esc(p.injury):""}</span></td>
+      <td class="num"><b>${num(p.marginal_reg,1)}</b><span class="sub">post ${num(p.marginal_post,1)}</span></td>
+      <td class="num">${num(p.ros_ppg,1)}</td>
+      <td class="num">${m.ros_ecr==null?"—":m.ros_ecr}</td>
+      <td class="num">${m.trend_adds==null?"—":num(m.trend_adds,0)}</td>
+      <td class="num">${p.pct_owned==null?"—":num(p.pct_owned,0)+"%"}<span class="sub">${
+        p.pct_owned_change==null?"":(p.pct_owned_change>0?"+":"")+num(p.pct_owned_change,1)}</span></td>
+      <td class="num">${d==null?"—":`<span class="dbar"><i class="${d>.66?"hot":""}"
+        style="width:${(d*100).toFixed(0)}%"></i></span>${num(d*100,0)}`}</td>
+      <td class="l">${rec}</td></tr>`;
+  }).join("");
+
+  const myByes = byeLoad();
+  return `<section class="panel">
+    <div class="phead"><h2>Rival demand <span class="chip info">primary</span></h2>
+      <span class="lede">The sources' biggest in-season job is not re-pricing players — it is
+      predicting <b>how many rivals want this one this week</b>. ECR, Sleeper trending adds and
+      ESPN %-owned change are the estimators; the ${faab?"bid":"claim"} on the right is what they
+      buy you.</span></div>
+    <div class="banner"><b>Marginal first.</b> The leftmost number is <code>marginal_reg</code> —
+      what this player adds to <b>your</b> optimal lineup, from <code>engine/lineup.py</code>. That is
+      the in-season edge no national ranking can price, because it is roster-specific. Consensus
+      columns are context, and they come second on purpose.</div>
+    <div class="scrollx"><table style="min-width:840px"><thead><tr>
+      <th class="l">player</th><th>marginal</th><th>ros ppg</th><th>ECR</th><th>trend adds</th>
+      <th>%owned</th><th>demand</th><th class="l">${faab?"bid":"claim"}</th>
+    </tr></thead><tbody>${rows||`<tr><td colspan="8" class="dim l" style="padding:18px">
+      no waiver rows in the payload</td></tr>`}</tbody></table></div>
+    ${fallback?`<div class="banner limit">No waiver rows in <code>season_data.json</code> yet, so
+      this is the free-agent pool by projection with no marginal value attached — the part that
+      matters most is exactly the part that is missing.</div>`:""}
+    </section>
+    <section class="panel">
+      <div class="phead"><h2>Your roster's own edges</h2>
+        <span class="lede">Bye load and the playoff window (weeks ${((LG.league||{}).regular_weeks||0)+1}–17)
+        are roster-specific too — no consensus ranking prices them for you.</span></div>
+      <div class="pbody">${myByes}</div>
+    </section>`;
+}
+function byeLoad(){
+  const me = LG.me, teams = LG.teams||[];
+  const mine = teams.find(t=>me && t.team_id===me.team_id);
+  if(!mine || !(mine.roster||[]).length) return `<div class="empty">No roster for your team in the payload.</div>`;
+  const ids = byId(), weeks = {};
+  (mine.roster||[]).forEach(id=>{
+    const p = ids[id]; if(!p||!p.bye) return;
+    (weeks[p.bye] = weeks[p.bye]||[]).push(p);
+  });
+  const ks = Object.keys(weeks).map(Number).sort((a,b)=>a-b);
+  if(!ks.length) return `<div class="empty">No bye weeks recorded on your roster.</div>`;
+  const reg = (LG.league||{}).regular_weeks||0;
+  return `<div class="scrollx"><table style="min-width:420px"><thead><tr>
+    <th class="l">week</th><th>players idle</th><th class="l">who</th></tr></thead><tbody>
+    ${ks.map((w,i)=>`<tr class="${i%2?"alt":""}${weeks[w].length>2?" r-warn":""}">
+      <td class="l mono">week ${w}${w>reg?` <span class="chip stale">playoffs</span>`:""}</td>
+      <td class="num"><b>${weeks[w].length}</b></td>
+      <td class="l">${weeks[w].map(p=>`${esc(p.name)} <span class="dim">${esc(p.pos)}</span>`).join(", ")}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+}
+
+function paneSources(){
+  const srcs = (LG.status||{}).sources||[];
+  const cards = srcs.map(s=>{
+    const cov = s.coverage||{}, p = cov.pct;
+    const cls = s.state==="live"?"live":s.state==="failed"?"failed":"missing";
+    const chip = s.state==="live"?`<span class="chip ok">live</span>`
+      : s.state==="failed"?`<span class="chip bad">failed</span>`
+      : `<span class="chip missing">never fetched</span>`;
+    return `<div class="src ${cls}">
+      <div class="top"><span class="nm">${esc(s.name)}</span>${chip}
+        <span class="dim mono" style="margin-left:auto;font-size:11px">${age(s.age_hours)}</span></div>
+      <div class="variant">${esc(s.variant||"—")}${s.league_independent?
+        ` <span class="dim">(same feed for every league, by design)</span>`:""}</div>
+      ${(s.urls_cached||[]).length?`<div class="urls">${s.urls_cached.slice(0,6).map(u=>
+        `${esc(u.url)}${u.age_hours!=null?` <span class="dim">· cached ${age(u.age_hours)}${
+          u.tier?" ("+esc(u.tier)+")":""}</span>`:""}`).join("<br>")}</div>`
+       :(s.variant_detail||[]).length?`<div class="urls">${s.variant_detail.slice(0,6)
+        .map(u=>esc(u)).join("<br>")}</div>`:""}
+      ${s.blurb?`<div class="note">${esc(s.blurb)}</div>`:""}
+      ${s.error?`<div class="errbox">${esc(s.error)}</div>`:""}
+      ${s.state==="missing"?`<div class="note">${esc(s.note||"")}</div>`:`
+        <div class="covbar"><i style="width:${p==null?0:(p*100).toFixed(0)}%"></i></div>
+        <div class="kv"><span>coverage</span><b>${cov.matched==null?"—":cov.matched+" / "+cov.total}${
+          p==null?"":" · "+pct(p)+" of pool"}</b></div>
+        <div class="kv"><span>records</span><b>${s.records==null?"—":Number(s.records).toLocaleString()}</b></div>
+        <div class="kv"><span>fetched</span><b>${when(s.fetched)}</b></div>`}
+      ${cov.basis?`<div class="note"><b>denominator:</b> ${esc(cov.basis)}</div>`:""}
+    </div>`;
+  }).join("");
+
+  // variant matrix across every league in scope — the per-league correctness check
+  const names = [...new Set(DATA.leagues.flatMap(l=>((l.status||{}).sources||[]).map(s=>s.name)))].sort();
+  const matrix = names.map((n,i)=>{
+    const cells = DATA.leagues.map(l=>{
+      const s = ((l.status||{}).sources||[]).find(x=>x.name===n);
+      return s? (s.variant||"—") : "—";
+    });
+    const differs = new Set(cells).size>1;
+    return `<tr class="${i%2?"alt":""}"><td class="l"><b>${esc(n)}</b></td>
+      ${cells.map(c=>`<td class="l mono" ${differs?'style="color:var(--go-ink)"':''}>${esc(c)}</td>`).join("")}
+      <td class="l">${differs?`<span class="chip ok">per-league</span>`
+        :`<span class="chip info">identical</span>`}</td></tr>`;
+  }).join("");
+
+  return `<section class="panel">
+    <div class="phead"><h2>Source registry</h2>
+      <span class="lede">Every Tier-A adapter: live or failed, how old, how much of the pool it
+      reached, and <b>which file it pulled for this league</b>.</span></div>
+    <div class="srcgrid">${cards||`<div class="empty">no adapters discovered</div>`}</div>
+    <div class="banner"><b>A coverage percentage without its denominator is not
+      interpretable</b> — so each card states the pool it was measured against. Low coverage is not
+      automatically a defect: a trending-adds feed publishes ~100 players on purpose, and absence
+      from it is itself the signal. The Coverage tab separates "did not reach him" from "was never
+      going to".</div>
+  </section>
+  <section class="panel">
+    <div class="phead"><h2>Variant matrix — all leagues</h2>
+      <span class="lede">The per-league correctness check: a half-PPR 12-team league and a PPR 8-team
+      2QB league must visibly pull different files. Green rows differ by league.</span></div>
+    <div class="scrollx"><table style="min-width:620px"><thead><tr><th class="l">adapter</th>
+      ${DATA.leagues.map(l=>`<th class="l">${esc(l.key)}<span class="sub">${
+        esc(((l.status||{}).profile||{}).scoring_label||"")} ${
+        esc(((l.status||{}).profile||{}).size||"")}tm</span></th>`).join("")}
+      <th class="l"></th></tr></thead><tbody>${matrix}</tbody></table></div>
+  </section>`;
+}
+
+let DIV_FILTER = "all";
+let DIV_ROSTERABLE = true;
+/* How deep this league can actually roster: size x roster size, the same
+   convention the source adapters use for their reference pool. Derived from the
+   payload (team roster lengths), never a constant. */
+function rosterableCap(){
+  const teams = LG.teams||[];
+  const rs = Math.max(0, ...teams.map(t=>(t.roster||[]).length));
+  const size = (LG.league||{}).size || teams.length || 0;
+  return (rs && size)? rs*size : (LG.players||[]).length;
+}
+function paneDiverge(){
+  if(!(LG.players||[]).length) return emptyBuild("Divergence");
+  // Rank BOTH sides over the same population: ours across the whole pool would be a
+  // ~1000-deep list against a ~400-deep consensus, and the gap would mostly measure
+  // the difference in list length. So rank only the players who joined to an ECR.
+  const joined = (LG.players||[]).filter(p=>(p.mkt||{}).ros_ecr!=null);
+  const rank = {};
+  joined.slice().sort((a,b)=>(b.ros_points||0)-(a.ros_points||0)).forEach((p,i)=>rank[p.id]=i+1);
+  // WITHIN POSITION is the honest comparison. Our rank is raw projected points;
+  // an overall ECR is scarcity-aware, so every QB looks "cheap" to us and every RB
+  // dear — that is the two lists meaning different things, not an edge. Ranking
+  // both sides inside a position removes it.
+  const ourPos = {}, ecrPos = {}, byPos = {};
+  joined.forEach(p=>(byPos[p.pos||"?"]=byPos[p.pos||"?"]||[]).push(p));
+  Object.values(byPos).forEach(list=>{
+    list.slice().sort((a,b)=>(b.ros_points||0)-(a.ros_points||0)).forEach((p,i)=>ourPos[p.id]=i+1);
+    list.slice().sort((a,b)=>((a.mkt||{}).ros_ecr||1e9)-((b.mkt||{}).ros_ecr||1e9))
+        .forEach((p,i)=>ecrPos[p.id]=i+1);
+  });
+  const cap = rosterableCap();
+  const rows = joined
+    .map(p=>{
+      const m=p.mkt||{}, r=regimeTag(p);
+      const gap = ecrPos[p.id] - ourPos[p.id];   // + => we are higher on him than consensus
+      return {p, m, r, gap, rank:rank[p.id], ourPos:ourPos[p.id], ecrPos:ecrPos[p.id]};
+    })
+    .filter(x=>!DIV_ROSTERABLE || x.rank<=cap || (x.m.ros_ecr||1e9)<=cap)
+    .filter(x=>DIV_FILTER==="all"||x.r.key===DIV_FILTER)
+    .sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap))
+    .slice(0,60);
+  const body = rows.map((x,i)=>{
+    const {p,m,r,gap}=x;
+    return `<tr class="${i%2?"alt":""} ${r.key==="warn"?"r-warn":r.key==="faab"||r.key==="trade"?"r-opp":""}"
+        data-id="${p.id}" style="cursor:pointer">
+      <td class="l"><b>${esc(p.name)}</b> <span class="chip pos ${POSC[p.pos]||""}">${esc(p.pos||"")}</span>
+        <span class="sub">${esc(p.team||"")}</span></td>
+      <td class="l">${r.html}<span class="sub">${esc(r.why)}</span></td>
+      <td class="num">${p.marginal_reg==null?`<span class="dim">—</span>`:`<b>${num(p.marginal_reg,1)}</b>`}</td>
+      <td class="num">${num(p.ros_ppg,1)}<span class="sub">${esc(p.pos)}${x.ourPos} us · #${x.rank} overall</span></td>
+      <td class="num">${esc(p.pos)}${x.ecrPos}<span class="sub">#${m.ros_ecr} overall</span></td>
+      <td class="num" style="color:${gap>0?"var(--go-ink)":"var(--stop-ink)"}">${gap>0?"+":""}${gap}</td>
+      <td class="num">${m.tier==null?"—":m.tier}</td>
+      <td class="num">${m.trade_value==null?"—":num(m.trade_value,0)}</td></tr>`;
+  }).join("");
+  const counts = {};
+  (LG.players||[]).forEach(p=>{const k=regimeTag(p).key; counts[k]=(counts[k]||0)+1;});
+  const chips = [["all","All"],["faab","FAAB opportunity"],["trade","Trade"],
+                 ["priority","Priority (weak)"],["warn","Start/sit warning"]]
+    .filter(([k])=>k==="all"||counts[k])
+    .map(([k,l])=>`<button class="fchip${DIV_FILTER===k?" on":""}" data-div="${k}">${esc(l)}</button>`).join("")
+    + `<button class="fchip${DIV_ROSTERABLE?" on":""}" id="div-rost"
+        title="top ${cap} by our points or by ECR — size x roster size">rosterable only</button>`;
+
+  return `<section class="panel">
+    <div class="phead"><h2>Divergence <span class="chip info">secondary</span></h2>
+      <span class="lede">Where we and the market disagree — <b>labelled by whether that disagreement
+      can actually be monetised</b>. Sorted by the size of the rank gap.</span>
+      <span class="right">${chips}</span></div>
+    <div class="banner limit"><b>Honest limit.</b> In-season we have no independent projection
+      source — <b>ESPN's projection is our backbone</b>. So "our ros_ppg vs FantasyPros ECR" is
+      largely <b>ESPN vs FantasyPros</b>: a vendor cross-check, not proprietary edge. Read a big gap
+      as "these two vendors disagree", and check the join before you act on it.</div>
+    <div class="regimes">
+      <div class="regime opp"><div class="h">FAAB waivers — strongest</div>A blind-bid auction with a
+        budget: the same mechanism as the draft. Value him above the room and you win him cheap.</div>
+      <div class="regime opp"><div class="h">Trades — yes, but</div>The disagreement that pays is with
+        <b>that manager</b>, not the nation. Prefer his calibrated bias; consensus is the negotiation
+        anchor people cite.</div>
+      <div class="regime"><div class="h">Priority waivers — weak</div>No price, so no surplus. Consensus
+        informs timing (will he clear?), not value.</div>
+      <div class="regime warnt"><div class="h">Start / sit — inverted</div>No market, no counterparty.
+        ECR averages ~100 analysts, which cuts variance. A sharp divergence means <b>check your
+        inputs</b> — bad join, stale projection, missed injury — not alpha.</div>
+    </div>
+    <div class="scrollx"><table style="min-width:900px"><thead><tr>
+      <th class="l">player</th><th class="l">regime</th><th>marginal</th><th>our ros ppg</th>
+      <th>consensus</th><th>Δ rank in pos</th><th>tier</th><th>trade val</th>
+    </tr></thead><tbody>${body||`<tr><td colspan="8" class="l dim" style="padding:18px">
+      nothing joined to FantasyPros yet</td></tr>`}</tbody></table></div>
+    <p class="note" style="padding:0 14px 12px">Δ = consensus rank − our rank, <b>within the
+      player's own position</b>, over the ${joined.length} players that joined to a FantasyPros ECR
+      (of ${(LG.players||[]).length} in the pool). Positive (green) = we are higher on him than the
+      market. <b>Rosterable only</b> keeps the top ${cap} (${(LG.league||{}).size||"?"} teams x
+      roster size) by our points or by consensus — past that depth a rank gap cannot be acted on in
+      this league. Comparing overall ranks instead would mostly measure two different things: ours is raw
+      projected points, an overall ECR is already scarcity-aware — which makes every QB look
+      underpriced and every RB overpriced, an artifact rather than an edge.</p>
+  </section>`;
+}
+
+function paneCoverage(){
+  const joins = LG.coverage_join||[], srcs=(LG.status||{}).sources||[];
+  if(!joins.length) return emptyBuild("Coverage");
+  const body = joins.map((j,i)=>{
+    const adapter = srcs.find(s=>s.name===j.source)||{};
+    const acov = adapter.coverage||{};
+    // only a source that is SUPPOSED to cover the pool can have a coverage defect
+    const bad = j.expect==="full" && j.missed_rostered>0;
+    return `<tr class="${i%2?"alt":""}${bad?" r-warn":""}">
+      <td class="l"><b>${esc(j.source)}</b>
+        ${j.expect==="full"?`<span class="chip info">full pool</span>`
+          :`<span class="chip missing">partial by design</span>`}
+        <span class="sub">${esc(j.label)} · <code>mkt.${esc(j.field)}</code></span>
+        <span class="sub">${esc(j.why||"")}</span></td>
+      <td class="num">${j.joined} / ${j.total}</td>
+      <td class="num">${pct(j.pct_of_pool)}
+        <div class="agebar"><i class="${j.expect==="full"&&j.pct_of_pool<.9?"warn":""}"
+          style="width:${(j.pct_of_pool*100).toFixed(0)}%"></i></div></td>
+      <td class="num">${j.missed}</td>
+      <td class="num">${bad? `<b style="color:var(--warn-ink)">${j.missed_rostered}</b>`:j.missed_rostered}</td>
+      <td class="num">${acov.matched==null?"—":acov.matched+" / "+acov.total}
+        ${acov.basis?`<span class="sub" style="text-align:right">${esc(acov.basis)}</span>`:""}</td>
+      <td class="l">${(j.top_misses||[]).slice(0,4).map(p=>
+        `${esc(p.name)} <span class="dim">${esc(p.pos)} ${num(p.ros_points,0)}${p.owner_team_id?" · rostered":""}</span>`
+        ).join("<br>")||`<span class="dim">none</span>`}</td></tr>`;
+  }).join("");
+  return `<section class="panel">
+    <div class="phead"><h2>Coverage gaps</h2>
+      <span class="lede">Who failed to join, and what share of the value pool they represent — the
+      draft builder's convention carried into the season. A miss that is all waiver flotsam does not
+      matter; a miss on a rostered starter does.</span></div>
+    <div class="scrollx"><table style="min-width:860px"><thead><tr>
+      <th class="l">source → field</th><th>joined</th><th>% of ROS pool</th><th>missed</th>
+      <th>of those, rostered</th><th>adapter said</th><th class="l">biggest misses</th>
+    </tr></thead><tbody>${body}</tbody></table></div>
+    <p class="note" style="padding:0 14px 12px"><b>Amber marks a real gap only for a source that
+      set out to cover the whole pool.</b> A trending feed or a usage stat that does not apply to a
+      kicker is not a miss. <b>Two different denominators, on purpose.</b>
+      "joined" is measured against this league's built player pool (${(LG.players||[]).length}
+      players); "adapter said" is the adapter's own coverage against its reference pool. They
+      disagree when the adapter reached players the build dropped, or vice versa.</p>
+  </section>`;
+}
+
+function paneTierB(){
+  const tb = LG.tierb||{};
+  if(!tb.present){
+    return `<section class="panel"><div class="phead"><h2>Tier-B allow-list</h2>
+      <span class="lede">What the advisor is permitted to fetch live, by category.</span></div>
+      <div class="pbody"><div class="empty"><div class="big">No allow-list yet</div>
+      <code class="path">${esc(tb.path||"config/research_sources.json")}</code> does not exist.
+      It is owned by the research workstream (WS-2); until it lands, live research has nothing it is
+      allowed to read, and this console has nothing to test-fetch.
+      <div class="note">Expected shape: <code class="mono">[{id, name, url, category, good_for}]</code></div>
+      </div></div></section>`;
+  }
+  const cats = {};
+  (tb.sources||[]).forEach(s=>(cats[s.category]=cats[s.category]||[]).push(s));
+  const dead = (tb.dead||[]).map((s,i)=>`<tr class="${i%2?"alt":""}" style="opacity:.72">
+      <td class="l"><b style="text-decoration:line-through">${esc(s.name)}</b>
+        <span class="sub">${esc(s.good_for||"")}</span>
+        <span class="path">${esc(s.url)}</span></td>
+      <td class="l" style="width:150px"><span class="chip bad">${esc(s.status||"dead")}</span>
+        <span class="sub">checked ${esc(s.verified||"")}</span></td></tr>`).join("");
+  const blocks = Object.entries(cats).map(([cat,list])=>`
+    <h3 style="margin:14px 0 6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+      color:var(--muted)">${esc(cat)} <span class="dim">(${list.length})</span></h3>
+    <div class="scrollx"><table style="min-width:620px"><tbody>
+    ${list.map((s,i)=>`<tr class="${i%2?"alt":""}">
+      <td class="l"><b>${esc(s.name)}</b><span class="sub">${esc(s.good_for||"")}</span>
+        <span class="path">${esc(s.url)}</span>
+        ${s.verified?`<span class="sub">verified ${esc(s.verified)}</span>`:""}</td>
+      <td class="l" style="width:150px"><button class="btn tbtest" data-id="${esc(s.id)}">Test fetch</button>
+        <div class="sub" id="tb-${esc(s.id)}"></div></td></tr>`).join("")}
+    </tbody></table></div>`).join("");
+  return `<section class="panel">
+    <div class="phead"><h2>Tier-B allow-list</h2>
+      <span class="lede">Pages the advisor may read live, on demand, with citations — never ingested
+      into the valuation.</span>
+      <span class="right"><span class="chip ok">${(tb.sources||[]).length} live</span>
+        ${(tb.dead||[]).length?`<span class="chip bad">${(tb.dead||[]).length} dead</span>`:""}</span></div>
+    <div class="pbody">${blocks}
+      ${dead?`<h3 style="margin:18px 0 6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+        color:var(--stop-ink)">Dead — recorded so nobody re-adds them
+        <span class="dim">(${(tb.dead||[]).length})</span></h3>
+        <div class="banner limit"><b>${(tb.dead||[]).length} of ${(tb.dead||[]).length+(tb.sources||[]).length}
+        entries in the curated directory are defunct.</b> They are listed, not hidden — a link
+        directory that has rotted is a fact about your research inputs.</div>
+        <div class="scrollx"><table style="min-width:620px"><tbody>${dead}</tbody></table></div>`:""}
+      <p class="note"><span class="path">${esc(tb.path)}</span>
+        ${tb.meta&&tb.meta.checked?` · checked ${esc(tb.meta.checked)}`:""}</p></div>
+  </section>`;
+}
+
+function paneTrace(){
+  const t = LG.trace||{};
+  if(!t.present || !(t.entries||[]).length){
+    return `<section class="panel"><div class="phead"><h2>Research trace</h2>
+      <span class="lede">What a live research call fetched, what it cited, and what it cost.</span></div>
+      <div class="pbody"><div class="empty"><div class="big">No research calls recorded</div>
+      Live research is auditable only if it writes a trace. Expected at
+      <code class="path">${esc(t.path||"")}</code>, one entry per advisor call:
+      <div class="note"><code class="mono">{ts, question, model, research_enabled, latency_ms,
+        base_latency_ms, fetched:[{url,status,ms,bytes}], cited:[url]}</code></div>
+      </div></div></section>`;
+  }
+  const rows = (t.entries||[]).map((e,i)=>`<tr class="${i%2?"alt":""}">
+      <td class="l"><b>${esc((e.question||"").slice(0,90))}</b>
+        <span class="sub">${when(e.ts)} · ${esc(e.model||"")}</span></td>
+      <td class="num">${e.latency_ms==null?"—":num(e.latency_ms,0)+"ms"}
+        <span class="sub">${e.base_latency_ms!=null?"+"+num(e.latency_ms-e.base_latency_ms,0)+"ms research":""}</span></td>
+      <td class="l">${(e.fetched||[]).map(f=>`<span class="path">${esc(f.url)}</span>
+        <span class="dim">${f.status||""} ${f.ms?f.ms+"ms":""}</span>`).join("<br>")||`<span class="dim">nothing fetched</span>`}</td>
+      <td class="l">${(e.cited||[]).map(u=>`<span class="path">${esc(u)}</span>`).join("<br>")||`<span class="dim">no citations</span>`}</td>
+    </tr>`).join("");
+  return `<section class="panel">
+    <div class="phead"><h2>Research trace</h2>
+      <span class="lede">Live research, audited: what it read, what it cited, what it cost in latency.</span></div>
+    <div class="scrollx"><table style="min-width:760px"><thead><tr>
+      <th class="l">question</th><th>latency</th><th class="l">fetched</th><th class="l">cited</th>
+    </tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+/* ───────── run trigger ───────── */
+function drawRunbar(){
+  const bar = $("#runbar"); if(!bar) return;
+  bar.innerHTML = RUN_ENABLED
+    ? `<span class="chip ok">run triggers armed</span>
+       <span class="txt">PIPELINE_RUN_ENABLED is set on this server. A stage runs as a subprocess
+       from a fixed allow-list; the log streams below.</span>`
+    : `<span class="chip missing">run triggers off</span>
+       <span class="txt">Running a stage from a browser is remote code execution, so it ships
+       <b>off</b>. Start the server with <code class="mono">PIPELINE_RUN_ENABLED=1</code> to arm it —
+       the buttons will tell you exactly this if you press them.</span>`;
+  document.querySelectorAll(".run").forEach(b=>b.addEventListener("click",()=>runStage(b.dataset.stage,b)));
+}
+async function runStage(stage,btn){
+  const log = $("#joblog"); log.hidden=false;
+  log.innerHTML = `<b>POST /api/pipeline/run</b> {"league":"${esc(LG.key)}","stage":"${esc(stage)}"}\n`;
+  btn.disabled=true;
+  try{
+    const r = await fetch("/api/pipeline/run",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({league:LG.key,stage})});
+    const j = await r.json();
+    if(!r.ok || !j.ok){
+      log.innerHTML += `<span class="bad">HTTP ${r.status} — ${esc(j.error||"refused")}</span>\n`
+        + (j.detail?esc(j.detail)+"\n":"")
+        + (j.stages_allowed?`allowed stages: ${esc(j.stages_allowed.join(", "))}\n`:"");
+      btn.disabled=false; return;
+    }
+    JOB.id=j.job_id; JOB.next=0;
+    clearInterval(JOB.timer);
+    JOB.timer=setInterval(()=>pollJob(btn),900);
+    pollJob(btn);
+  }catch(e){
+    log.innerHTML += `<span class="bad">${esc(e.message||e)}</span>\n`; btn.disabled=false;
+  }
+}
+async function pollJob(btn){
+  if(!JOB.id) return;
+  try{
+    const r=await fetch(`/api/pipeline/job/${encodeURIComponent(JOB.id)}?after=${JOB.next}`);
+    const j=await r.json(); if(!j.ok) return;
+    JOB.next=j.next;
+    const log=$("#joblog");
+    (j.lines||[]).forEach(l=>log.innerHTML+=esc(l)+"\n");
+    log.scrollTop=log.scrollHeight;
+    if(j.state!=="running"){
+      clearInterval(JOB.timer); JOB.timer=null; JOB.id=null;
+      log.innerHTML += `<b>${esc(j.state)} — exit ${j.exit_code} in ${j.duration_s}s</b>\n`;
+      if(btn) btn.disabled=false;
+      refreshStatus();
+    }
+  }catch(e){ clearInterval(JOB.timer); JOB.timer=null; if(btn) btn.disabled=false; }
+}
+async function probeRunFlag(){
+  try{
+    const r = await fetch("/api/data-console/healthz");
+    if(!r.ok) return;
+    const j = await r.json();
+    RUN_ENABLED = !!j.run_enabled;
+    drawRunbar();
+  }catch(e){ /* opened from disk: stay with the injected snapshot */ }
+}
+async function refreshStatus(){
+  const btn=$("#refresh"); btn.textContent="…";
+  try{
+    const r=await fetch(`/api/pipeline/status?league=${encodeURIComponent(LG.key)}`);
+    const j=await r.json();
+    if(j.ok && (j.statuses||[]).length){
+      LG.status = j.statuses[0];
+      RUN_ENABLED = !!j.run_enabled;
+      delete LG._ranked; delete LG._byid;
+      render();
+    }
+  }catch(e){ /* offline snapshot */ }
+  btn.textContent="↻";
+}
+
+/* ───────── wiring ───────── */
+function drawPane(){
+  const p = $("#pane");
+  p.innerHTML =
+      TAB==="stages"?   paneStages()
+    : TAB==="calib"?    paneCalib()
+    : TAB==="curve"?    paneCurve()
+    : TAB==="players"?  panePlayers()
+    : TAB==="demand"?   paneDemand()
+    : TAB==="sources"?  paneSources()
+    : TAB==="diverge"?  paneDiverge()
+    : TAB==="coverage"? paneCoverage()
+    : TAB==="tierb"?    paneTierB()
+    :                   paneTrace();
+  if(TAB==="stages") drawRunbar();
+  if(TAB==="players") wirePlayers();
+  if(TAB==="diverge"){
+    p.querySelectorAll("[data-div]").forEach(b=>
+      b.addEventListener("click",()=>{DIV_FILTER=b.dataset.div; drawPane();}));
+    const rb=p.querySelector("#div-rost");
+    if(rb) rb.addEventListener("click",()=>{DIV_ROSTERABLE=!DIV_ROSTERABLE; drawPane();});
+  }
+  if(TAB==="tierb") p.querySelectorAll(".tbtest").forEach(b=>
+    b.addEventListener("click",()=>testFetch(b.dataset.id)));
+  // any row carrying a player id jumps to that player's provenance card
+  p.querySelectorAll("tr[data-id]").forEach(tr=>tr.addEventListener("click",()=>{
+    PSEL = byId()[tr.dataset.id]; TAB="players"; drawTabs(); drawPane();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }));
+}
+async function testFetch(id){
+  const out=document.getElementById("tb-"+id); if(!out) return;
+  out.textContent="…";
+  try{
+    const r=await fetch("/api/research/test_fetch",{method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({league:LG.key,id})});
+    const j=await r.json();
+    out.innerHTML = j.ok? `<span style="color:var(--go-ink)">HTTP ${j.status} · ${bytes(j.bytes)} ·
+      ${j.elapsed_ms}ms${j.cache?` · cache ${esc(j.cache)}`:""}</span>`
+      : `<span style="color:var(--stop-ink)">${esc(j.error||("HTTP "+j.status))}</span>`;
+  }catch(e){ out.innerHTML=`<span style="color:var(--stop-ink)">${esc(e.message||e)}</span>`; }
+}
+function render(){
+  if(!LG){ $("#pane").innerHTML=`<div class="empty">No leagues in the registry.</div>`; return; }
+  delete LG._maxadds;
+  drawVitals(); drawWarn(); drawTabs(); drawPane();
+  $("#foot").textContent =
+    `payload ${DATA.source} · built ${when(DATA.generated)} · ${LG.key} status collected `
+    + `${when((LG.status||{}).generated)} · mode ${LG.mode}`;
+}
+$("#theme").addEventListener("click",()=>{
+  const d=document.documentElement;
+  d.dataset.theme = d.dataset.theme==="light" ? "dark" : "light";
+  try{localStorage.setItem("dc:theme",d.dataset.theme);}catch(e){}
+});
+try{const t=localStorage.getItem("dc:theme"); if(t)document.documentElement.dataset.theme=t;}catch(e){}
+$("#refresh").addEventListener("click",refreshStatus);
+render();
+probeRunFlag();
+</script>

@@ -54,6 +54,12 @@ calibrates these from years of ESPN auction history is not yet in this repo. Sea
 if config/tendencies.json exists ({"Manager Name": {"mult": {...}, "conc": N,
 "maxbuy": N}}), those values are used per manager — that's where calibrated output
 plugs in later.
+
+A manager in the league with NO entry in tendencies.json (a mid-season substitution,
+an expansion team) gets neutral_profile() — the reserved "_league_default" entry
+calibrate.py writes, i.e. the LEAGUE AVERAGE, not a flat 1.0. See neutral_profile()
+for why 1.0 is the wrong default. config/league.json "manager_labels" optionally
+renames a manager on the board; tendencies merge on the relabelled name.
 """
 import json
 import os
@@ -62,6 +68,9 @@ import sys
 import openpyxl
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)          # so the sibling extractor imports when we are imported
+from extract_csg import norm_name as _csg_norm  # noqa: E402  (one shared join key)
 ROOT = os.path.dirname(HERE)
 POSITIONS = ["QB", "RB", "WR", "TE"]  # skill positions the console drafts
 
@@ -98,13 +107,155 @@ def load_config():
         return json.load(f)
 
 
+# reserved key in tendencies.json: the profile to use for a manager with no auction
+# history. calibrate.py writes it as the league positional average.
+LEAGUE_DEFAULT_KEY = "_league_default"
+
+
 def load_tendencies():
-    """Optional calibrated opponent profiles ({name: {mult, conc, maxbuy}}); {} if absent."""
+    """Optional calibrated opponent profiles ({name: {mult, conc, maxbuy}}); {} if absent.
+    Keys starting with "_" are reserved (see LEAGUE_DEFAULT_KEY), not manager names."""
     path = os.path.join(ROOT, "config", "tendencies.json")
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
     return {}
+
+
+def neutral_profile(tendencies, budget):
+    """The profile for a manager with NO auction history — a substitution, an expansion
+    team, or any league with no calibration at all.
+
+    "Neutral" must mean *league-average*, not a flat 1.0 multiplier: 1.0 would model a
+    newcomer as willing to pay full projected value at every position (~2.4x the league
+    norm at QB in a typical league) with a max-buy equal to the entire budget, which
+    inflates the console's predicted competition for the players you're actually bidding
+    on. Prefers calibrate.py's league-average entry; else averages the calibrated
+    managers present; else falls back to 1.0 (no calibration to average).
+    """
+    default = tendencies.get(LEAGUE_DEFAULT_KEY)
+    if default and default.get("mult"):
+        return ({p: float(default["mult"].get(p, 1.0)) for p in POSITIONS},
+                default.get("conc", 50), default.get("maxbuy", budget))
+    real = [t for k, t in tendencies.items() if not k.startswith("_") and t.get("mult")]
+    if not real:
+        return {p: 1.0 for p in POSITIONS}, 50, budget
+    mult = {p: round(sum(float(t["mult"].get(p, 1.0)) for t in real) / len(real), 2)
+            for p in POSITIONS}
+    conc = round(sum(t.get("conc", 50) for t in real) / len(real))
+    maxbuy = round(sum(t.get("maxbuy", budget) for t in real) / len(real))
+    return mult, conc, maxbuy
+
+
+def load_csg(season):
+    """Optional COMPLEMENTARY market/consensus data from the CSG sheet; {} if absent.
+
+    Produced by extract_csg.py. This is the outside view (where the wider market ranks
+    and prices a player) and is advisory ONLY — it never feeds worth/vbd, which stay
+    recomputed from your scraped ESPN scoring. Its value is precisely the disagreement:
+    a player our league-accurate model prices well above the market is either a real
+    edge or a projection we should not trust, and the console shows both numbers so the
+    call is yours.
+    """
+    path = os.path.join(HERE, "csg_consensus.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path) as f:
+            return json.load(f).get(str(season)) or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def merge_csg(players, csg):
+    """Attach p["mkt"] (market/consensus fields) to every player CSG knows.
+
+    Joined on a punctuation/suffix-insensitive name key, because ESPN and CSG disagree
+    on "James Cook III" vs "James Cook" and "D.J. Moore" vs "DJ Moore". Only non-null
+    fields are emitted, so the injected payload stays small and the console can test for
+    presence. Returns (matched, missed_names).
+    """
+    # exported as short keys: this dict is inlined into index.html on every build
+    KEEP = {"mkt_price": "price", "espn_rank": "espn", "ecr": "ecr", "boris_tier": "boris",
+            "gold": "gold", "csg_adj_vbd": "advbd", "bs_val": "bs", "status": "status"}
+    matched, missed = 0, []
+    for p in players:
+        rec = csg.get(_csg_norm(p["name"]))
+        if not rec:
+            missed.append(p["name"])
+            continue
+        mkt = {out: rec[src] for src, out in KEEP.items() if rec.get(src) is not None}
+        if not mkt:
+            missed.append(p["name"])
+            continue
+        # our league-accurate price minus the market's: >0 = we like him more than the room
+        if "price" in mkt:
+            mkt["edge"] = round(p["worth"] - mkt["price"], 1)
+        p["mkt"] = mkt
+        matched += 1
+    return matched, missed
+
+
+def load_curve():
+    """config/price_curve.json — what each position/tier ACTUALLY cleared at in the
+    comparable (full-supply, $200-wallet) seasons. None if absent.
+
+    The console needs this because a pure opponent-bid model has a structural blind spot:
+    it prices every player as if all 11 rivals still had a full budget and every need open,
+    which is true only for the first nomination. Validated against 2025 it is accurate at
+    tier 1 and at the $1 tail but predicts $70 for an RB4 that really went for $17.
+    """
+    path = os.path.join(ROOT, "config", "price_curve.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            c = json.load(f)
+    except (OSError, ValueError):
+        return None
+    # ship only what the template needs: pos -> tier -> cleared price
+    by_tier = {}
+    for pos, tiers in (c.get("by_tier") or {}).items():
+        for tier, rec in tiers.items():
+            if rec.get("price"):
+                by_tier.setdefault(pos, {})[tier] = rec["price"]
+    if not by_tier:
+        return None
+    return {"tier": by_tier,
+            "rank": [r["p50"] for r in (c.get("by_rank") or [])],
+            "seasons": c.get("comparable_seasons") or []}
+
+
+# Measured on 2025 — the only season sharing 2026's regime ($200 wallet, full player
+# supply). Each entry is (min elboberto proj_value, paid/proj ratio actually observed).
+# Monotone by construction except the very top step, which genuinely turns down: nobody
+# can pay 1.36x for an $84 projection ($114) when the most ever paid is ~$110, so budgets
+# cap the top. Top band uses the top-10 aggregate ratio (1.28), which reproduces 2025's
+# actual top prices; the rest are that band's median.
+PRICE_PREMIUM = [(50, 1.28), (35, 1.36), (25, 1.15), (15, 0.75), (8, 0.35), (0, 0.34)]
+
+
+def load_proj_values(season):
+    """{normalized name: elboberto proj_value} for the season, or {}.
+
+    The console's own `worth` is recomputed from YOUR scoring and runs ~1.11x these
+    values at the top, so the two are NOT interchangeable. The league's price history is
+    measured against proj_value, so pricing must use proj_value to stay on that scale.
+    """
+    path = os.path.join(HERE, "elboberto_projections.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for rec in data.get(str(season)) or []:
+        v = rec.get("proj_value")
+        if v:
+            out[_csg_norm(rec["name"])] = float(v)
+    return out
 
 
 def load_plan():
@@ -368,19 +519,77 @@ def main():
         print("  Raw stat sheets absent — using the workbook's pre-computed CheatSheet "
               "values (NOT adjusted to your league).")
 
+    # Optional display relabelling (config/league.json "manager_labels"): ESPN gives the
+    # owner's real name, but at the table you know some teams by their team name — a
+    # mid-season substitution especially. Tendencies are merged on the LABELLED name, so a
+    # relabelled newcomer correctly falls through to the league-average profile.
+    labels = cfg.get("manager_labels") or {}
+    if labels:
+        relabelled = [(n, labels[n]) for n in manager_names if n in labels]
+        manager_names = [labels.get(n, n) for n in manager_names]
+        if me in labels:
+            me = labels[me]
+        if relabelled:
+            print("  Manager labels from config/league.json: "
+                  + ", ".join(f"{a} -> {b}" for a, b in relabelled))
+        unused = sorted(set(labels) - {a for a, _ in relabelled})
+        if unused:
+            print(f"  ⚠ manager_labels keys matched no scraped manager: {', '.join(unused)}")
+
     tendencies = load_tendencies()
     if tendencies:
         print(f"  Applying calibrated tendencies from config/tendencies.json "
-              f"({len(tendencies)} managers).")
-    managers = []
+              f"({len([k for k in tendencies if not k.startswith('_')])} managers).")
+    n_mult, n_conc, n_maxbuy = neutral_profile(tendencies, budget)
+    managers, uncalibrated = [], []
     for name in manager_names:
         t = tendencies.get(name) or {}
+        if not t.get("mult"):
+            uncalibrated.append(name)
         managers.append({
             "name": name,
-            "mult": t.get("mult") or {p: 1.0 for p in POSITIONS},
-            "conc": t.get("conc", 50),      # <72 => no stars-and-scrubs tilt
-            "maxbuy": t.get("maxbuy", budget),
+            "mult": t.get("mult") or dict(n_mult),
+            "conc": t.get("conc", n_conc),   # <72 => no stars-and-scrubs tilt
+            "maxbuy": t.get("maxbuy", n_maxbuy),
         })
+    if uncalibrated and tendencies:
+        print(f"  No auction history for {', '.join(uncalibrated)} — league-average "
+              f"profile (mult {n_mult}, conc {n_conc}, maxbuy ${n_maxbuy}).")
+
+    # Complementary market view (advisory; worth/vbd are already final at this point).
+    csg = load_csg(season)
+    if csg:
+        matched, missed = merge_csg(players, csg)
+        pool_worth = sum(p["worth"] for p in players) or 1
+        cov_worth = sum(p["worth"] for p in players if p.get("mkt")) / pool_worth
+        print(f"  Market view from csg_consensus.json ({season}): matched {matched}/"
+              f"{len(players)} players = {cov_worth:.0%} of the $ pool.")
+        rich = [p for p in players if p.get("mkt", {}).get("edge") is not None]
+        if rich:
+            hot = sorted(rich, key=lambda x: -x["mkt"]["edge"])[:3]
+            cold = sorted(rich, key=lambda x: x["mkt"]["edge"])[:3]
+            print("    we're highest vs market: "
+                  + ", ".join(f"{p['name']} ${p['worth']} vs ${p['mkt']['price']:.0f}" for p in hot))
+            print("    market's highest vs us:  "
+                  + ", ".join(f"{p['name']} ${p['worth']} vs ${p['mkt']['price']:.0f}" for p in cold))
+
+    # projection values on the scale the league's price history was measured against
+    pvs = load_proj_values(season)
+    if pvs:
+        hit = 0
+        for pl in players:
+            v = pvs.get(_csg_norm(pl["name"]))
+            if v:
+                pl["pv"] = round(v, 1)
+                hit += 1
+        print(f"  Projection values (elboberto proj_value) attached to {hit}/{len(players)} "
+              f"players — the scale the price premium is calibrated on.")
+
+    curve = load_curve()
+    if curve:
+        n = sum(len(v) for v in curve["tier"].values())
+        print(f"  Price curve from config/price_curve.json: {n} position/tier prices "
+              f"from seasons {curve['seasons']} — anchors the console's will-go estimate.")
 
     plan = load_plan()
     if plan:
@@ -397,6 +606,8 @@ def main():
         "bench": league["bench"],
         "my_mult": {p: float(my_mult.get(p, 1.0)) for p in POSITIONS},
         "plan": plan,          # per-slot bid ceilings (backtest-supported plan); None => neutral frame
+        "curve": curve,        # historical clearing prices by position/tier; None => pure model
+        "premium": PRICE_PREMIUM,   # (proj_value floor, observed paid/proj) — prices will-go
         "players": players,
         "managers": managers,
     }

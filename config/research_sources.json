@@ -1,0 +1,147 @@
+{
+  "_meta": {
+    "purpose": "Tier-B research allow-list. These pages are READ LIVE by the advisor when a question warrants it (opt-in per question), with citations. They are NOT scraped into adapters and never touch the valuation — ros_points / marginal stay computed from each league's own scraped ESPN scoring (docs/contracts.md guardrail 6).",
+    "tier_a_is_elsewhere": "The structured adapters live in scraping/sources/ (fantasypros, borischen, sleeper, fantasycalc, nflverse). Anything in THIS file is deliberately not an adapter: HTML-only, no public API, or too low-volume to be worth a nightly parse.",
+    "editable_without_code": true,
+    "usage": "An advisor may fetch any url whose entry is in `allow`. Entries in `dead` are recorded so nobody re-adds them.",
+    "checked": "2026-09-14",
+    "source_of_truth": "docs/inseason_plan.md section 3e"
+  },
+
+  "allow": [
+    {
+      "name": "FantasyPros — rest-of-season consensus (all scoring variants)",
+      "url": "https://www.fantasypros.com/nfl/rankings/ros-overall.php",
+      "category": "rankings",
+      "what_its_good_for": "Human-readable view of the same ECR the fantasypros adapter ingests. Useful for reading expert NOTES and the per-player spread, which the JSON blob only summarises. Swap the slug for ros-ppr-overall.php / ros-half-point-ppr-overall.php to match a league's scoring.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "FantasyPros — weekly positional rankings",
+      "url": "https://www.fantasypros.com/nfl/rankings/half-point-ppr-flex.php",
+      "category": "rankings",
+      "what_its_good_for": "This week's consensus with expert commentary. Slug pattern: {''|ppr-|half-point-ppr-}{qb|rb|wr|te|k|dst|flex}.php — QB/K/DST have no scoring variant.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "FantasyPros — injury news",
+      "url": "https://www.fantasypros.com/nfl/injury-news.php",
+      "category": "injuries",
+      "what_its_good_for": "Beat-reporter injury notes with timestamps. The reason a snap share collapsed, which nflverse can only show you the effect of.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "FantasyPros — team depth charts",
+      "url": "https://www.fantasypros.com/nfl/teams/",
+      "category": "depth-charts",
+      "what_its_good_for": "Current depth and role. Replaces the Footballguys depth-chart page, which is dead. Use when deciding whether a backup is one snap from value.",
+      "verified": "2026-09-14 · 200 (https://www.fantasypros.com/nfl/depth-chart/ redirects here)"
+    },
+    {
+      "name": "FantasyPros — trade tools",
+      "url": "https://www.fantasypros.com/nfl/trade/",
+      "category": "trade",
+      "what_its_good_for": "A second market opinion on a specific trade, to sanity-check the fantasycalc value the trade finder uses.",
+      "verified": "2026-09-14 · 202"
+    },
+    {
+      "name": "FantasyPros — stat leaders / usage reports",
+      "url": "https://www.fantasypros.com/nfl/reports/leaders/",
+      "category": "stats",
+      "what_its_good_for": "Red-zone looks, snap counts and target leaders in one place when the nflverse assets are stale or a week behind.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "Razzball Football",
+      "url": "https://football.razzball.com/",
+      "category": "waiver",
+      "what_its_good_for": "Waiver-wire columns and streaming picks with reasoning. Strong on the 'who is the add this week' question that a raw ranking does not answer.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "Razzball — rest-of-season rankings",
+      "url": "https://football.razzball.com/rest-of-season-rankings/",
+      "category": "rankings",
+      "what_its_good_for": "An independent ROS opinion to set against FantasyPros consensus. NOTE: the canonical URL redirects to a year-stamped post, so check the date on what you land on before quoting it.",
+      "verified": "2026-09-14 · 200 (redirects to a dated post — verify the season)"
+    },
+    {
+      "name": "FFToday — rest-of-way rankings",
+      "url": "https://www.fftoday.com/rankings/",
+      "category": "rankings",
+      "what_its_good_for": "Rest-of-way projections by position. Pattern: playerrank.php?o=2&PosID={10 QB,20 RB,30 WR,40 TE,80 K,99 DST}; o=1 is the preseason set, o=2 is rest-of-way. Weekly is playerwkrank.php.",
+      "verified": "2026-09-14 · 200 (the old playerRoSproj.php slug is 404 — use playerrank.php?o=2)"
+    },
+    {
+      "name": "TeamRankings — NFL stat pages",
+      "url": "https://www.teamrankings.com/nfl/",
+      "category": "matchup",
+      "what_its_good_for": "Points-allowed-by-position and pace/efficiency splits — the replacement for the dead games.espn.go.com 'points against' page. Game-environment context for a streaming decision.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "TeamRankings — NFL odds and lines (Vegas)",
+      "url": "https://www.teamrankings.com/nfl/odds/",
+      "category": "vegas",
+      "what_its_good_for": "Spreads and totals. Implied team total is the single best one-number proxy for game environment; a 27-point implied total changes a streaming call more than two ranking slots do.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "TeamRankings — opponent points per game",
+      "url": "https://www.teamrankings.com/nfl/stat/opponent-points-per-game",
+      "category": "matchup",
+      "what_its_good_for": "Direct defensive strength lookup when evaluating a D/ST stream or a matchup-based start/sit.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "NFL Weather",
+      "url": "https://www.nflweather.com/",
+      "category": "weather",
+      "what_its_good_for": "Wind and precipitation by game. Wind above ~15mph is the only weather variable that reliably moves kicker and passing output. JS-rendered with no tables, which is exactly why it is Tier B and not an adapter. Week pages: /week/{season}/week-{N}.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "Rotowire — NFL",
+      "url": "https://www.rotowire.com/football/",
+      "category": "news",
+      "what_its_good_for": "Fast player-news feed with fantasy impact lines. Good for 'what happened in the last 12 hours' before a waiver run.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "Rotowire — NFL news feed",
+      "url": "https://www.rotowire.com/football/news.php",
+      "category": "news",
+      "what_its_good_for": "The raw chronological feed, when you want everything since the last check rather than the curated front page.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "NBC Sports Fantasy (formerly Rotoworld)",
+      "url": "https://www.nbcsports.com/fantasy/football",
+      "category": "news",
+      "what_its_good_for": "Analysis columns and player notes. This is where rotoworld.com now lives — link to this, never to the old domain.",
+      "verified": "2026-09-14 · 200"
+    },
+    {
+      "name": "FF Librarian",
+      "url": "http://www.fflibrarian.com/",
+      "category": "tools",
+      "what_its_good_for": "Directory of fantasy tools and articles — the useful residue of the r/fantasyfootball resources wiki, kept current by a human. Use it to find a tool, not as a data source. HTTP ONLY: its https endpoint fails the TLS handshake, so fetch over http.",
+      "verified": "2026-09-14 · 200 over http; https fails (SSL: UNEXPECTED_EOF_WHILE_READING)"
+    }
+  ],
+
+  "dead": [
+    {"name": "Fantasy Sharks", "url": "https://www.fantasysharks.com/", "status": "HTTP 400", "checked": "2026-09-14", "note": "do not build against"},
+    {"name": "Nerdball", "url": "http://nerdball.co/", "status": "no DNS", "checked": "2026-09-14"},
+    {"name": "Fantasy Football Metrics", "url": "http://www.fantasyfootballmetrics.net/", "status": "HTTP 405", "checked": "2026-09-14"},
+    {"name": "Footballguys depth charts", "url": "https://www.footballguys.com/depth-charts", "status": "HTTP 404", "checked": "2026-09-14", "note": "superseded by the FantasyPros team pages in `allow`"},
+    {"name": "StatMilk", "url": "http://www.statmilk.com/", "status": "HTTP 403", "checked": "2026-09-14"},
+    {"name": "ESPN points-against (legacy)", "url": "http://games.espn.go.com/ffl/pointsagainst", "status": "HTTP 400", "checked": "2026-09-14", "note": "superseded by TeamRankings in `allow`"},
+    {"name": "KFFL", "url": "http://www.kffl.com/", "status": "redirects to thehuddle.com; its tools are gone", "checked": "2026-09-14"},
+    {"name": "FF Toolbox", "url": "http://www.fftoolbox.com/", "status": "redirects to fulltimefantasy.com", "checked": "2026-09-14"},
+    {"name": "Rotoworld", "url": "http://www.rotoworld.com/", "status": "redirects to nbcsports.com/fantasy", "checked": "2026-09-14", "note": "use the NBC Sports Fantasy entry in `allow`"},
+    {"name": "FOX Sports fantasy research", "url": "https://www.foxsports.com/fantasy/football/research", "status": "redirects to generic foxsports.com/nfl", "checked": "2026-09-14"},
+    {"name": "Pro Football Reference", "url": "https://www.pro-football-reference.com/", "status": "HTTP 403 to non-browser clients", "checked": "2026-09-14", "note": "excellent data, but it blocks automated fetches; nflverse carries the same underlying numbers"},
+    {"name": "Twitter/X beat-writer list", "url": "https://x.com/", "status": "no free API; the wiki's ~400 handles are flagged out-of-date at source", "checked": "2026-09-14", "note": "not ingestible. The useful residue is the NAMES — put them in the league briefing as 'whose reporting to weight', not as a feed."}
+  ]
+}
