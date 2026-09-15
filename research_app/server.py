@@ -20,8 +20,11 @@ import sys
 import time
 import uuid
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+import base64
+import secrets as _secrets
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +49,30 @@ MAX_SESSIONS = 20
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 app = FastAPI(title="research desk")
+
+# ── HTTP Basic auth (same semantics as draft_app's CONSOLE_PASSWORD) ─────────
+# Credentials come from the environment (config/.env), NEVER from this file —
+# the repo remote is public. Unset RESEARCH_PASSWORD = no auth (local-only use).
+AUTH_USER = os.environ.get("RESEARCH_USER", "admin")
+AUTH_PASSWORD = os.environ.get("RESEARCH_PASSWORD", "")
+
+
+@app.middleware("http")
+async def basic_auth(request: Request, call_next):
+    if AUTH_PASSWORD and request.url.path != "/healthz":
+        header = request.headers.get("authorization", "")
+        ok = False
+        if header.startswith("Basic "):
+            try:
+                user, _, pw = base64.b64decode(header[6:]).decode().partition(":")
+                ok = (_secrets.compare_digest(user, AUTH_USER)
+                      and _secrets.compare_digest(pw, AUTH_PASSWORD))
+            except Exception:
+                ok = False
+        if not ok:
+            return Response(status_code=401, headers={
+                "www-authenticate": 'Basic realm="research desk"'})
+    return await call_next(request)
 
 
 class Session:

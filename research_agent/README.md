@@ -13,7 +13,9 @@ generic web) are disabled — it can only reach hosts the directory names.
 .venv/bin/python -m research_agent "which kicker should I stream this week?"
 .venv/bin/python -m research_agent -q --model claude-opus-5 "..."   # -q = final answer only
 
-# Chat UI (research_app/, port 8010)
+# Launcher UI (research_app/, port 8010). Login + keys come from config/.env
+# (gitignored): set -a && . config/.env && set +a
+# RESEARCH_USER/RESEARCH_PASSWORD gate everything but /healthz (unset pw = open).
 ANTHROPIC_API_KEY=... .venv/bin/uvicorn server:app --app-dir research_app --host 127.0.0.1 --port 8010
 
 # Same tools inside Claude Code sessions: the ff-research plugin (claude_plugin/)
