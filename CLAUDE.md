@@ -18,6 +18,9 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `pipeline.py` | **Single entry point** — `scrape/calibrate/simulate/build/inject/all` | yes |
 | `draft_sheets/build_tool_data.py` | Console builder — projections + scrape → `tool_data.json` | yes |
 | `scraping/scrape_league.py` | Fresh-setup ESPN scraper (settings + managers, config-driven) | yes |
+| `research_agent/` | Claude Agent SDK research agent: public resource directory + local league/tendency tools; `mcp_server.py` serves the same tools over stdio (see its README, incl. the starlette pin caveat) | yes |
+| `research_app/` | Chat UI over the research agent (FastAPI + SSE, port 8010, local-only — needs `ANTHROPIC_API_KEY`) | yes |
+| `claude_plugin/` | `ff-research` Claude Code plugin: `build.py` generates the installable marketplace into gitignored `local/` (absolute paths stay out of git) | yes (`local/` no) |
 | `draft_sheets/*_elboberto.xlsm` | Universal projection baseline (checked in) | yes |
 | `draft_sheets/CSG*auction.xlsm` | CSG sheet — **complementary market view** (third-party) | no (local) |
 | `draft_sheets/extract_csg.py` | CSG `Overall` tab → `csg_consensus.json` | yes |
