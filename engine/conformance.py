@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Conformance harness — the engine's regression test.
 
-Enforces docs/inseason_plan.md 0b: the engine must contain no league-specific facts,
+Enforces docs/local/inseason_plan.md 0b: the engine must contain no league-specific facts,
 and the lineup solver must be genuinely optimal (not a positional cascade that happens
 to work for 1QB leagues).
 

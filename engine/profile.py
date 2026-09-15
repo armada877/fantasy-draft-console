@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """LeagueProfile — every league-specific fact, derived from scraped settings.
 
-The engine's one rule (docs/inseason_plan.md 0b): no module may hardcode a league
+The engine's one rule (docs/local/inseason_plan.md 0b): no module may hardcode a league
 property. Team count, scoring, which positions start, whether waivers cost money,
 how many QBs you must field — all of it is read off the platform payload here and
 passed around as a profile object.

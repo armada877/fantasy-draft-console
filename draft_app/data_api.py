@@ -2,7 +2,7 @@
 """Data & research console API — a mountable FastAPI `APIRouter`.
 
 WS-5 owns `server.py`, so this ships as a router the coordinating session mounts
-with one line (see docs/ws7_stage.md):
+with one line (see docs/local/ws7_stage.md):
 
     from data_api import router as data_router
     app.include_router(data_router)

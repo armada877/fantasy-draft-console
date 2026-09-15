@@ -142,10 +142,12 @@ def manager_names(payload, canon=None):
     """{memberId: canonical manager name}.
 
     Two traps, both of which silently cost a manager their calibration:
-      1. ESPN ships trailing spaces inside the name parts — firstName 'Kevin ' plus
-         lastName 'Kim' joins to 'Kevin  Kim' (DOUBLE space), which then fails to match
-         'Kevin Kim' in season_tendencies.json. `.strip()` does not fix an INTERNAL
-         double space; collapsing on split() does.
+      1. ESPN ships trailing spaces inside the name parts — a firstName 'Ada ' plus
+         lastName 'Byron' joins to 'Ada  Byron' (DOUBLE space), which then fails to
+         match 'Ada Byron' in season_tendencies.json. `.strip()` does not fix an
+         INTERNAL double space; collapsing on split() does. (A real manager in this
+         account is affected; the example is anonymised because this file is tracked
+         and the remote is public.)
       2. A manager's ESPN display name drifts between seasons ('Jon' -> 'Jonathan'),
          so the name is not a stable key at all. config/manager_canon.json maps the
          stable member GUID to the canonical name — the same bridge analysis/lib.py

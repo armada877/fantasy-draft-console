@@ -43,6 +43,8 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `analysis/research/a1..a17` | Archived one-off research that produced `reports/league_analysis.md` | **no (local)** |
 | `config/tendencies.json` | Calibrated opponent profiles (produced by `calibrate.py`) | no (local) |
 | `scraping/raw/`, `reports/`, `league/` | League data / analysis outputs | no (local) |
+| `docs/*.md` | **Frozen contracts + the backtest charter** — the rules future work follows | yes |
+| `docs/local/` | Plans, PM board, per-workstream wiring sheets (they name real leagues/ids) | no (local) |
 
 ## The golden rule: edit the template, then re-inject
 
@@ -262,7 +264,11 @@ Service env vars: `ANTHROPIC_API_KEY`, `CONSOLE_PASSWORD` (HTTP Basic on everyth
   `op read 'op://HMD LOCAL/Claude - API Key/credential'`). ESPN cookies live in
   `scraping/.espn_auth.json` (gitignored). Never print or commit these.
 - **League-specific content stays local** (see `.gitignore`): scraped data, generated
-  payloads, `reports/`, `league/`, `config/league.json`, and `config/briefing.md`. The
+  payloads, `reports/`, `league/`, `docs/local/`, `config/league.json`, and
+  `config/briefing.md`. Adding a file to `docs/` (rather than `docs/local/`) is a
+  decision to PUBLISH it — the remote is public, so keep league ids, manager real
+  names and team names out of anything tracked. Use the league KEY (`2kdome`), which
+  is already public in the code, not the ESPN display name or a manager's name. The
   universal `*_elboberto.xlsm` projection baseline **is** tracked; live-edited `.xlsx`/`.csv` copies are not.
 - **Models:** default `claude-haiku-4-5` for live latency; the dropdown also allows
   `claude-sonnet-5` and `claude-opus-4-8` (allow-listed in `server.py`).

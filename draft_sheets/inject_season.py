@@ -127,7 +127,7 @@ def league_card(ctx, fixtures: bool = False) -> dict:
                      ("size", "scoring_label", "acquisition", "lineup_slots", "slot_names",
                       "playoff_teams", "regular_weeks", "veto_votes")})
         # forward-compatible: season_data.json's league block does not carry draft_type
-        # today (see docs/ws5_stage.md), but read it if WS-4 starts sending it.
+        # today (see docs/local/ws5_stage.md), but read it if WS-4 starts sending it.
         for k in ("draft_type", "auction_budget"):
             if lg.get(k):
                 card[k] = lg[k]
