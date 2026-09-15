@@ -50,6 +50,16 @@ for p in (ROOT, HERE):
 
 import leagues                                                      # noqa: E402
 from engine import projection_policy, valuation                     # noqa: E402
+
+# Load every MEASURED projection tuning into the policy registry. None of them
+# ship (see analysis/registered_adjustments.py), and that is the point: without
+# this import the console's policy panel is empty and cannot tell "nothing was
+# ever tried" apart from "five things were tried and all five were refused".
+try:
+    from analysis.registered_adjustments import load as _load_adjustments
+    _load_adjustments()
+except Exception as _e:                                             # pragma: no cover
+    print(f"  • projection policy: no measured candidates loaded ({_e})")
 from engine.profile import LeagueProfile, slot_name                 # noqa: E402
 from engine.state import SeasonState                                # noqa: E402
 from engine.trades import buy_low_sell_high, find_trades            # noqa: E402

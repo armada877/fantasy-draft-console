@@ -16,6 +16,7 @@ Usage:
     python3 pipeline.py csg                 # CSG sheet -> csg_consensus.json (market view)
     python3 pipeline.py simulate            # agent-auction strategy test (stdout)
     python3 pipeline.py scrape calibrate build inject   # full refresh from ESPN
+    python3 pipeline.py backfill validate   # in-season: re-score the projection baseline
 
 Stages run in the order you list them. Flags:
     --deep      with `scrape`: also pull full multi-season history (scraping/scrape.py)
@@ -38,7 +39,7 @@ DRAFT_STAGES = ("scrape", "calibrate", "csg", "simulate", "build", "inject", "al
 # In-season stages. Each is league-scoped and runs for every league on the ESPN
 # account (leagues.all()) unless --league narrows it.
 SEASON_STAGES = ("season-scrape", "sources", "season-calibrate", "season-build",
-                 "season-inject", "data-console", "week")
+                 "season-inject", "data-console", "backfill", "validate", "week")
 STAGES = DRAFT_STAGES + SEASON_STAGES
 
 TEMPLATE = os.path.join(ROOT, "draft_sheets", "draft_tool_template.html")
@@ -179,6 +180,28 @@ def data_console(args):
     run(PY, os.path.join(ROOT, "draft_sheets", "inject_data_console.py"), *_league_args(args))
 
 
+def backfill(args):
+    """WS-8a — historical weekly boxscores: the ground truth every backtest needs.
+
+    Completed weeks are cached IMMUTABLE, so this is free after the first run and
+    only pays for the weeks that have been played since.
+    """
+    run(PY, os.path.join(ROOT, "scraping", "backfill_weeks.py"), *_league_args(args))
+
+
+def validate(args):
+    """WS-8b/c/e — score the projection baseline, every candidate correction, and
+    every external source against what actually happened.
+
+    Run it AFTER `backfill`, and expect null results: as of 2026-09-15 no correction
+    survives, so the baseline ships unmodified. That is the system working.
+    """
+    backfill(args)
+    run(PY, os.path.join(ROOT, "analysis", "backtest_projections.py"), *_league_args(args))
+    run(PY, os.path.join(ROOT, "analysis", "backtest_lineups.py"), *_league_args(args))
+    run(PY, os.path.join(ROOT, "analysis", "backtest_sources.py"), *_league_args(args))
+
+
 def week(args):
     """The weekly refresh: everything needed before a waiver run.
 
@@ -189,6 +212,10 @@ def week(args):
     sources(args)
     if getattr(args, "calibrate", False):
         season_calibrate(args)
+    # One more played week of ground truth, every week. Cheap (the completed weeks
+    # are already cached) and it is what keeps the projection policy's evidence
+    # current instead of frozen at whatever the last manual run measured.
+    backfill(args)
     season_build(args)
     season_inject(args)
     data_console(args)
@@ -198,7 +225,8 @@ DISPATCH = {"scrape": scrape, "calibrate": calibrate, "csg": csg, "simulate": si
             "build": build, "inject": inject, "all": do_all,
             "season-scrape": season_scrape, "sources": sources,
             "season-calibrate": season_calibrate, "season-build": season_build,
-            "season-inject": season_inject, "data-console": data_console, "week": week}
+            "season-inject": season_inject, "data-console": data_console,
+            "backfill": backfill, "validate": validate, "week": week}
 
 
 def main():

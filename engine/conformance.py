@@ -252,12 +252,42 @@ def test_projection_policy():
         v, _ = pp.adjusted_points(100.0)
         check("an adjustment that HARMS an underpowered league is refused", v == 100.0)
 
+        # The half of the bar WS-8 had to add. Four real candidates beat the
+        # baseline's MAE in all three leagues and then lost realized points, so
+        # accuracy evidence alone must not be able to promote anything.
         pp.REGISTRY.clear()
-        pp.register(pp.Adjustment("earned", lambda p, pl, pr: p * 0.9, pp.Validation(
+        pp.register(pp.Adjustment("mae_only", lambda p, pl, pr: p * 1.2, pp.Validation(
             "m", (2024,), (pp.LeagueResult("2kdome", 5.0, 4.0, 5000),
                            pp.LeagueResult("chi-phi-american", 5.0, 4.6, 5000)))))
+        v, _ = pp.adjusted_points(100.0)
+        check("MAE evidence with NO lineup replay is refused", v == 100.0)
+
+        MAE_OK = (pp.LeagueResult("2kdome", 5.0, 4.0, 5000),
+                  pp.LeagueResult("chi-phi-american", 5.0, 4.6, 5000))
+        pp.REGISTRY.clear()
+        pp.register(pp.Adjustment("mae_up_points_down", lambda p, pl, pr: p * 1.2,
+                                  pp.Validation("m", (2024,), MAE_OK, decision=(
+                                      pp.DecisionResult("2kdome", 1500, +0.21, 3.0, 12.0),
+                                      pp.DecisionResult("chi-phi-american", 500, -0.12, -2.3, 3.0)))))
+        v, _ = pp.adjusted_points(100.0)
+        check("better MAE but FEWER realized points is refused", v == 100.0)
+
+        pp.REGISTRY.clear()
+        pp.register(pp.Adjustment("points_noise", lambda p, pl, pr: p * 1.2,
+                                  pp.Validation("m", (2024,), MAE_OK, decision=(
+                                      pp.DecisionResult("2kdome", 1500, +0.02, 0.4, 4.0),
+                                      pp.DecisionResult("chi-phi-american", 500, +0.01, 0.2, 3.0)))))
+        v, _ = pp.adjusted_points(100.0)
+        check("a points gain indistinguishable from noise is refused", v == 100.0)
+
+        pp.REGISTRY.clear()
+        pp.register(pp.Adjustment("earned", lambda p, pl, pr: p * 0.9,
+                                  pp.Validation("m", (2024,), MAE_OK, decision=(
+                                      pp.DecisionResult("2kdome", 1500, +0.9, 4.1, 18.0),
+                                      pp.DecisionResult("chi-phi-american", 500, +0.7, 2.6, 16.0)))))
         v, applied = pp.adjusted_points(100.0)
-        check("a CROSS-LEAGUE validated adjustment applies", abs(v - 90.0) < 1e-9 and applied == ["earned"])
+        check("an adjustment that improves MAE AND adds points applies",
+              abs(v - 90.0) < 1e-9 and applied == ["earned"])
     finally:
         pp.REGISTRY.clear()
         pp.REGISTRY.update(saved)

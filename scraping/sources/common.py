@@ -454,6 +454,39 @@ def cache_file(ctx, name):
     return ctx.raw(os.path.join("sources", f"{name}.json"))
 
 
+def archive_file(ctx, name, season, week):
+    return ctx.raw(os.path.join("sources", "archive",
+                                f"{name}_{season}_wk{int(week):02d}.json"))
+
+
+def archive(ctx, name, env) -> str | None:
+    """Freeze this week's snapshot of a source — WS-8e's prerequisite.
+
+    External rankings publish only their CURRENT values. There is no historical
+    archive to buy or scrape, so "did FantasyPros add anything over ESPN?" is
+    permanently unanswerable unless we start keeping the evidence NOW. One file per
+    (source, season, week).
+
+    **First write wins.** A snapshot taken on Tuesday is what you actually knew when
+    you set a lineup; one taken on Monday night knows the results. Overwriting would
+    quietly convert a forecast into a postdiction, which is the single easiest way to
+    manufacture a source that looks prescient. `graded_at` records when it was taken
+    so the backtest can check the snapshot predates the games rather than trust us.
+    """
+    week = env.get("week")
+    if not env.get("ok") or week in (None, ""):
+        return None
+    path = archive_file(ctx, name, env.get("season") or ctx.season, week)
+    if os.path.exists(path):
+        return None
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({**env, "_archived": _now()}, f, separators=(",", ":"))
+    os.replace(tmp, path)
+    return path
+
+
 def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -506,5 +539,6 @@ def run_adapter(name, collect, ctx, week=None, *, refresh=False, ttl=DEFAULT_TTL
             json.dump(env, f, indent=1)
             f.write("\n")
         os.replace(tmp, path)
+        archive(ctx, name, env)
     env["_cache"] = {"hit": False, "age_s": 0}
     return env

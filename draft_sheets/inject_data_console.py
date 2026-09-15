@@ -338,6 +338,13 @@ def _projection_policy():
         from engine import projection_policy as pp
     except Exception as e:
         return {"present": False, "error": f"{type(e).__name__}: {e}"}
+    # Load every MEASURED candidate. Without this the panel is empty and cannot tell
+    # "nothing was ever tried" apart from "five things were tried and all refused".
+    try:
+        from analysis.registered_adjustments import load as _load_adjustments
+        _load_adjustments()
+    except Exception:
+        pass
     rows = []
     for name, adj in sorted(pp.REGISTRY.items()):
         ok, why = adj.ships()
@@ -351,15 +358,24 @@ def _projection_policy():
                                          "baseline_mae": r.baseline_mae, "model_mae": r.model_mae,
                                          "improvement": r.improvement, "powered": r.powered,
                                          "seasons_held_out": list(r.seasons_held_out or [])}
-                                        for r in val.results]} if val else None),
+                                        for r in val.results],
+                            # The half of the bar that refuses what MAE would promote:
+                            # realized points from replaying real lineups.
+                            "decision": [{"league": d.league, "team_weeks": d.team_weeks,
+                                          "points_delta": d.points_delta, "t": d.t,
+                                          "moved_pct": d.moved_pct}
+                                         for d in (val.decision or ())]} if val else None),
         })
     return {"present": True, "audit": pp.audit(), "adjustments": rows,
             "refused": [{"name": n, "why": w} for n, w in pp.refused()],
             "bar": {"min_n": pp.MIN_N, "min_powered_leagues": pp.MIN_POWERED_LEAGUES,
-                    "harm_tolerance": pp.HARM_TOLERANCE},
-            "baseline": ("ESPN projection, recomputed against this league's own scoring — "
-                         "any deviation must beat it out-of-sample in at least "
-                         f"{pp.MIN_POWERED_LEAGUES} powered leagues or it does not ship")}
+                    "harm_tolerance": pp.HARM_TOLERANCE, "min_t": pp.MIN_T},
+            "baseline": ("ESPN projection, recomputed against this league's own scoring. "
+                         "FantasyPros cannot replace it: its full-coverage product is a "
+                         "RANKING (no points), and its projections pages serve ten players "
+                         "per position. Any deviation must beat the baseline out-of-sample "
+                         f"in at least {pp.MIN_POWERED_LEAGUES} powered leagues on accuracy "
+                         "AND add realized points in a lineup replay, or it does not ship")}
 
 
 def _tierb(ctx):

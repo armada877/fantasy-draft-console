@@ -31,7 +31,10 @@ from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advis
 | `draft_app/eval_advisor.py` | Advisor eval (mock draft → probe → check) | yes |
 | `draft_sheets/tool_data.json` | Generated console data (players + profiles) | no (generated) |
 | `scraping/scrape.py`, `scrape_playercards.py`, `extract_har.py` | Full historical scrapers | yes |
-| `analysis/calibrate.py` | Opponent history → `config/tendencies.json` (reuses `a18.build_agents`) | **no (local)** |
+| `analysis/calibrate.py` | Opponent history → `config/tendencies.json` (reuses `a18.build_agents`) | yes |
+| `analysis/backtest_*.py` | WS-8 validation: projection accuracy, lineup replay, source value | yes |
+| `scraping/backfill_weeks.py` | WS-8a: historical weekly boxscores → paired (projection, actual) | yes |
+| `reports/` | Generated validation artifacts (`projection_accuracy.json`, `lineup_replay.json`, `source_value.json`) | no (generated) |
 | `analysis/lib.py` | **Canonical** `effective_wallet` / `regime` / `norm_cost` helpers | **no (local)** |
 | `analysis/price_curve.py` | Full-supply price + tier curve → `config/price_curve.json` | **no (local)** |
 | `analysis/plan_tiers.py` | Grades a budget plan → the tiers it actually buys | **no (local)** |
@@ -115,6 +118,55 @@ code reads); it feeds calibration/research **only**, never the console valuation
 For a brand-new league with no history, `all` skips `calibrate` and builds a neutral-opponent
 console. The archived `analysis/research/a1..a17` (the scripts behind `reports/league_analysis.md`)
 run with `PYTHONPATH=analysis python3 analysis/research/<script>.py`.
+
+## In-season projections: the baseline is validated, and nothing else ships
+
+**Default state: the baseline, unmodified.** `ros_points` is ESPN's projection recomputed
+on the league's own scraped scoring. Every deviation from it routes through
+`engine/projection_policy.py`, which REFUSES anything that has not been paid for. As of
+2026-09-15 five corrections have been measured and all five are refused, so the console
+runs the untouched vendor projection — by evidence, not by default.
+
+**The evidence base (WS-8, `docs/backtest_charter.md`):**
+
+| artifact | what it is |
+|---|---|
+| `scraping/backfill_weeks.py` | 39,020 paired (projection, actual) player-weeks — 2kdome 2018-25, chi-phi 2022-25, inlaws 2025. `pipeline.py backfill` |
+| `analysis/backtest_projections.py` | accuracy, leave-one-season-out, per league/position/tier/week |
+| `analysis/backtest_lineups.py` | 2,362 team-weeks replayed — what the projection is worth IN POINTS |
+| `analysis/backtest_sources.py` | forward test of external sources as rankings; "insufficient data" until weeks accumulate |
+| `analysis/registered_adjustments.py` | loads the measured results into the policy registry so the data console shows every refusal |
+
+Run the lot with `python3 pipeline.py validate`. `pipeline.py week` re-runs `backfill`
+every week, so the evidence stays current instead of frozen at the last manual run.
+
+**The two-part bar — do not weaken it back to MAE.** An `Adjustment` needs a `Validation`
+carrying BOTH `results` (accuracy: >= 2 leagues at n >= 500 held-out player-weeks, whole
+seasons held out, beats baseline in every powered league, harms no underpowered league by
+> 2%) AND `decision` (realized points from the lineup replay, positive in every league,
+t >= 2 in at least two). The second half exists because four corrections beat the
+baseline's MAE in **all three leagues** and then lost points: `week_decay` "improved" MAE
+0.4% while moving **0% of lineups** (a within-week multiplier cannot reorder a week);
+`positional_bias` cost chi-phi-american 0.12 pts/team-week at t = -2.31. Conformance test
+[5] enforces both halves on every run.
+
+**What is actually true about the baseline** (all three leagues, out of sample): MAE
+5.3-5.9 points per player-week, bias ≈ 0 overall, but D/ST is under-projected by 0.9-1.4
+and the 20+ tier over-projected by 0.4-0.8. Ranking by it beats what the manager really
+started by +3.88 (2kdome) / +2.11 (chi-phi) / -0.31 (inlaws) points per team-week, against
+a hindsight ceiling ~17-20 points higher. Correcting the known biases does not convert
+into points — that has been tried and measured, not assumed.
+
+**FantasyPros cannot be the baseline, on availability.** Its full-coverage product is a
+RANKING (no points, so no `marginal`, no FAAB ceiling, no trade delta), and its projections
+pages serve **ten players per position** (measured: `rb.php` 10 rows, `&max=200` changes
+nothing, `ros-{pos}.php` is not a real page — it silently serves the QB table).
+`scraping/sources/fantasypros_proj.py` keeps that finding and the top-10 cross-check; it is
+registered but deliberately NOT in the default fetch order. The comparison that IS possible
+is FantasyPros-as-a-ranking against ESPN's ordering, which `backtest_sources.py` runs
+forward from the first archived snapshot — external sources publish no history, so
+`scraping/sources/common.archive()` freezes one snapshot per source-week, FIRST WRITE WINS
+(a snapshot taken later in the week has seen the results).
 
 ## Cross-season price normalization (read before touching any historical $)
 

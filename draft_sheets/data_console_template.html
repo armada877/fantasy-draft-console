@@ -751,6 +751,13 @@ function panePolicy(){
   const adj = po.adjustments||[];
   const rows = adj.map((a,i)=>{
     const v = a.validation;
+    const dec = v? (v.decision||[]).map(d=>`<tr>
+        <td class="l mono">${esc(d.league)}</td>
+        <td class="num">${num(d.team_weeks,0)}</td>
+        <td class="num" style="color:${d.points_delta>0?"var(--go-ink)":"var(--stop-ink)"}">${
+          (d.points_delta>0?"+":"")+num(d.points_delta,3)}</td>
+        <td class="num">${d.t==null?"—":num(d.t,2)}</td>
+        <td class="num">${num(d.moved_pct,1)}%</td></tr>`).join("") : "";
     const res = v? (v.results||[]).map(r=>`<tr class="${r.powered?"":"nodata"}">
         <td class="l mono">${esc(r.league)}</td>
         <td class="num">${num(r.n,0)}${r.powered?"":` <span class="chip missing">underpowered</span>`}</td>
@@ -765,8 +772,13 @@ function panePolicy(){
       <div class="${a.ships?"note":"errbox"}">${esc(a.reason)}</div>
       ${res?`<div class="scrollx"><table style="min-width:420px;margin-top:8px"><thead><tr>
         <th class="l">league</th><th>held-out n</th><th>baseline MAE</th><th>model MAE</th><th>gain</th>
-        </tr></thead><tbody>${res}</tbody></table></div>
-        ${v.method?`<div class="note">${esc(v.method)}${v.notes?" · "+esc(v.notes):""}</div>`:""}`:""}
+        </tr></thead><tbody>${res}</tbody></table></div>`:""}
+      ${dec?`<div class="note" style="margin-top:8px">Accuracy is not the test — points are.
+        Lineups replayed from real rosters, scored with what actually happened:</div>
+        <div class="scrollx"><table style="min-width:420px;margin-top:4px"><thead><tr>
+        <th class="l">league</th><th>team-weeks</th><th>Δ pts/week</th><th>t</th><th>lineups moved</th>
+        </tr></thead><tbody>${dec}</tbody></table></div>`:""}
+      ${res&&v.method?`<div class="note">${esc(v.method)}${v.notes?" · "+esc(v.notes):""}</div>`:""}
     </div>`;
   }).join("");
   return `<section class="panel">

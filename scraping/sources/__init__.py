@@ -16,6 +16,8 @@ Registered sources
 | name          | gives                                                          |
 |---------------|----------------------------------------------------------------|
 | `fantasypros` | rest-of-season expert consensus (ECR) + this week's consensus  |
+| `fantasypros_proj` | projected component stats, re-scorable in league scoring —
+                  TOP TEN PER POSITION ONLY (paywall), so opt-in, never the default |
 | `borischen`   | weekly tiers + rank standard deviation                         |
 | `sleeper`     | trending adds/drops, league-independent, hours ahead of ESPN   |
 | `fantasycalc` | redraft trade values, priced for THIS league's settings        |
@@ -48,10 +50,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from . import borischen, common, fantasycalc, fantasypros, nflverse, sleeper  # noqa: E402
+from . import (borischen, common, fantasycalc, fantasypros,  # noqa: E402
+               fantasypros_proj, nflverse, sleeper)
 
 REGISTRY = {
     fantasypros.NAME: fantasypros,
+    fantasypros_proj.NAME: fantasypros_proj,
     borischen.NAME: borischen,
     sleeper.NAME: sleeper,
     fantasycalc.NAME: fantasycalc,
@@ -59,6 +63,12 @@ REGISTRY = {
 }
 # fetch order: nflverse first so the espn_id crosswalk is warm before the
 # name-only sources need it.
+#
+# `fantasypros_proj` is REGISTERED BUT NOT IN THE DEFAULT ORDER. Its free pages serve
+# ten players per position (measured; see that module), which cannot rank a waiver
+# wire, so paying six requests a week for it by default would buy a rounding error.
+# Fetch it explicitly — `--source fantasypros_proj` — when you want the top-of-board
+# cross-check.
 ORDER = [nflverse.NAME, fantasypros.NAME, borischen.NAME, sleeper.NAME, fantasycalc.NAME]
 
 
