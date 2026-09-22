@@ -1,0 +1,14 @@
+Rank,Player,Pos,Team,PosRank,FPTS,Status,StartVBD,BenchVBD,AvgVBD,Tier,$,AvgVBD$
+1,Alpha Quarterback,QB,,1,22.0,Starter,9,11,10,QB1,40,50
+2,Bravo Quarterback,QB,,2,19.5,Starter,7,9,8,QB2,32,40
+3,Charlie Quarterback,QB,,3,17.0,Starter,5,7,6,QB3,24,30
+4,Alpha Runner,RB,,1,19.0,Starter,9,11,10,RB1,40,50
+5,Bravo Runner,RB,,2,16.5,Starter,7,9,8,RB2,32,40
+6,Charlie Runner,RB,,3,14.0,Starter,5,7,6,RB3,24,30
+7,Alpha Wideout,WR,,1,17.0,Starter,9,11,10,WR1,40,50
+8,Bravo Wideout,WR,,2,14.5,Starter,7,9,8,WR2,32,40
+9,Golf Wideout,WR,,3,12.0,Starter,5,7,6,WR3,24,30
+10,Alpha Tightend,TE,,1,12.0,Starter,9,11,10,TE1,40,50
+11,Bravo Tightend,TE,,2,9.5,Starter,7,9,8,TE2,32,40
+12,Charlie Tightend,TE,,3,7.0,Starter,5,7,6,TE3,24,30
+13,Delta Tightend,TE,,4,8.0,Starter,0.5,2.5,1.5,TE4,6.0,7.5

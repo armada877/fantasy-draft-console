@@ -1,0 +1,467 @@
+<title>Boris, Elbo &amp; CSG</title>
+<style>
+:root{
+  --ground:#f5f6f8; --card:#ffffff; --card2:#eef0f3; --line:#dde1e7;
+  --ink:#14161a; --ink2:#5a6069; --ink3:#8a919b;
+  --elb:#2a78d6; --csg:#eb6834;
+  --mine-bg:#14161a; --mine-fg:#ffffff;
+  --tier-h:222; --tier-s:22%;
+  --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181c; --card:#1e2126; --card2:#262a30; --line:#343941;
+    --ink:#f2f3f5; --ink2:#b8bdc6; --ink3:#7d8590;
+    --elb:#3987e5; --csg:#d95926;
+    --mine-bg:#f2f3f5; --mine-fg:#14161a;
+    --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181c; --card:#1e2126; --card2:#262a30; --line:#343941;
+  --ink:#f2f3f5; --ink2:#b8bdc6; --ink3:#7d8590;
+  --elb:#3987e5; --csg:#d95926;
+  --mine-bg:#f2f3f5; --mine-fg:#14161a;
+  --accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.sub{color:var(--ink2);margin:6px 0 0;max-width:72ch}
+.headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.asof{background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;min-width:250px;max-width:330px}
+.asof-line{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink)}
+.freshdot{width:9px;height:9px;border-radius:50%;flex:none}
+.freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
+.asof-src{list-style:none;margin:6px 0 8px;padding:0;font-size:11px;color:var(--ink3)}
+.asof-src li{padding:1px 0}
+.refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;margin:2px 0 6px;
+  border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
+.refreshbtn:hover:not(:disabled){border-color:#9aa3b2}
+.refreshbtn:disabled{opacity:.55;cursor:default}
+.asof-hint{font-size:11px;color:var(--ink3);margin-top:6px;max-width:34ch}
+.modenav{display:flex;gap:16px;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;margin:0 0 10px}
+.modenav .on{color:var(--ink)}
+.modenav a{color:var(--ink3);text-decoration:none}
+.modenav a:hover{color:var(--accent)}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0 6px}
+.seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--ink2);font:inherit;font-weight:600;
+  padding:7px 14px;border-radius:6px;cursor:pointer}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.seg button .shape{display:block;font-size:10.5px;font-weight:500;color:var(--ink3);letter-spacing:.02em}
+.postabs button{padding:6px 13px}
+.leaguemeta{font-size:13px;color:var(--ink2)}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:16px 0 20px}
+.legend .m{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.legend .m b{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.legend .m span{display:block;font-size:12.5px;color:var(--ink2);margin-top:3px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.boardbox{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1000px}
+th{position:sticky;top:0;background:var(--card);z-index:2;text-align:left;
+  font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);
+  padding:10px 10px;border-bottom:1px solid var(--line)}
+th.num,td.num{text-align:right}
+th[data-tip]{cursor:help;text-decoration:underline dotted var(--ink3);text-underline-offset:3px}
+td{padding:6px 10px;border-bottom:1px solid var(--line);font-size:13.5px}
+tr:last-child td{border-bottom:0}
+tr.tierbreak td{border-top:2px solid var(--ink3)}
+tr:hover td{background:var(--card2)}
+.pname{font-weight:650;white-space:nowrap}
+.posmark{font-size:10.5px;font-weight:700;color:var(--ink3);letter-spacing:.05em;margin-right:6px}
+.badge{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.08em;border-radius:4px;
+  padding:1.5px 5px;margin-left:7px;vertical-align:1px}
+.badge.mine{background:var(--mine-bg);color:var(--mine-fg)}
+.badge.fa{border:1.5px dashed var(--ink3);color:var(--ink2)}
+.chip{display:inline-block;min-width:30px;text-align:center;font-weight:700;font-size:12px;
+  border-radius:6px;padding:2.5px 6px}
+.chip.none{background:transparent;color:var(--ink3);font-weight:500}
+.bar{display:inline-block;height:9px;border-radius:0 4px 4px 0;vertical-align:middle;margin-right:7px;min-width:2px}
+.bar.elb{background:var(--elb)}
+.bar.csg{background:var(--csg)}
+.cellbar{white-space:nowrap}
+.perwk{color:var(--ink3);font-size:11.5px;margin-left:5px}
+.ecr{color:var(--ink2);font-size:12px}
+.pts{font-weight:650}
+.note{font-size:12.5px;color:var(--ink3);margin-top:14px;max-width:95ch}
+.lineupcard{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:16px 18px;margin:0 0 18px}
+.lu-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.lu-head h2{margin:2px 0 0;font-size:19px;letter-spacing:-.01em}
+.lu-total{font-size:22px;font-weight:750}
+.lu-total small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink3);text-align:right}
+.lu-grid{display:grid;grid-template-columns:minmax(340px,1.1fr) 1fr;gap:8px 28px;margin-top:12px}
+@media (max-width:760px){.lu-grid{grid-template-columns:1fr}}
+.lu-table{min-width:0;width:100%}
+.lu-table td{padding:4.5px 8px;font-size:13.5px}
+.lu-table .slot{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--ink3);width:52px}
+.lu-table .flexslot{color:var(--accent)}
+.lu-bench h3{margin:0 0 6px;font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink3)}
+.lu-bench ul{list-style:none;margin:0;padding:0;columns:2;column-gap:24px;font-size:12.5px;color:var(--ink2)}
+.lu-bench li{padding:2.5px 0;break-inside:avoid}
+.inj{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.06em;border-radius:3px;
+  padding:1px 4px;margin-left:6px;background:var(--csg);color:#fff;vertical-align:1px}
+#tip{position:fixed;pointer-events:none;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:10px 13px;font-size:12.5px;box-shadow:0 6px 24px rgba(0,0,0,.25);
+  z-index:10;display:none;max-width:360px}
+#tip h4{margin:0 0 5px;font-size:13.5px}
+#tip table{min-width:0;width:auto}
+#tip td,#tip th{padding:1.5px 8px 1.5px 0;border:0;font-size:12px}
+#tip th{position:static;text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink3)}
+#tip .sum{margin:6px 0 0;color:var(--ink2);font-size:12px;max-width:40ch}
+@media (prefers-reduced-motion: no-preference){
+  .seg button{transition:background .12s}
+}
+</style>
+<div class="wrap">
+<header id="pagehead">
+  <div class="headrow">
+    <div>
+      <nav class="modenav" aria-label="Console mode"><span class="on">Manage</span><a href="/draft">Draft</a></nav>
+      <div class="eyebrow">One player &middot; three valuation methods &middot; two horizons</div>
+      <h1>Boris, Elbo &amp; CSG</h1>
+    </div>
+    <div class="asof" id="asof">
+      <div class="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></div>
+      <ul class="asof-src mono" id="asof-src"></ul>
+      <button id="refreshbtn" class="refreshbtn" type="button">Refresh data</button>
+      <div class="asof-hint">or: <span class="mono">python3 pipeline.py week</span></div>
+    </div>
+  </div>
+  <p class="sub">The same data run through three ported methodologies:
+  <b>Boris Chen</b> (Gaussian-mixture tiers over expert-consensus ranks),
+  <b>elboberto</b> (VBD vs. seat-count baselines), and the
+  <b>CSG sheet</b> (VBD vs. games-played baselines, scarcity-adjusted) &mdash;
+  at either horizon: <b>this week</b> (start/sit) or <b>rest of season</b> (trades &amp; waivers).
+  The common unit is <b>projected points</b> and <b>points above replacement (VBD)</b>,
+  comparable across players and positions. Both VBD bars share one axis;
+  heavy rules mark Boris tier breaks.</p>
+</header>
+
+<div class="controls">
+  <div class="seg" id="leagueseg" role="tablist" aria-label="League"></div>
+  <div class="seg" id="hseg" role="tablist" aria-label="Horizon"></div>
+  <div class="seg postabs" id="posseg" role="tablist" aria-label="Position"></div>
+  <div class="seg" id="scopeseg" role="tablist" aria-label="Scope"></div>
+  <div class="leaguemeta mono" id="meta"></div>
+</div>
+
+<div class="legend">
+  <div class="m"><b><span class="dot" style="background:var(--ink3)"></span>Boris tier</b>
+    <span>GMM cluster over expert consensus (avg &plusmn; std per player). Rank-space: says who's interchangeable, not how much better.</span></div>
+  <div class="m"><b><span class="dot" style="background:var(--elb)"></span>elboberto &mdash; VBD</b>
+    <span>Points above the last starter / last rostered player; baselines from lineup seat counts</span></div>
+  <div class="m"><b><span class="dot" style="background:var(--csg)"></span>CSG &mdash; VBD</b>
+    <span>Same idea, baselines from historical games-played depth; scarcity-adjusted value alongside</span></div>
+</div>
+
+<section class="lineupcard">
+  <div class="lu-head">
+    <div>
+      <div class="eyebrow" id="lu-eyebrow"></div>
+      <h2 id="lu-title"></h2>
+    </div>
+    <div class="lu-total mono" id="lu-total"></div>
+  </div>
+  <div class="lu-grid">
+    <table class="lu-table" id="lu-starters" aria-label="Optimal starters"></table>
+    <div class="lu-bench" id="lu-bench"></div>
+  </div>
+</section>
+
+<div class="boardbox"><table id="board" aria-label="Player valuation board"></table></div>
+<p class="note" id="footnote"></p>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+let DATA = /*DATA*/;
+let A, HZ, WEEKS_LEFT;
+const POSN = ["ALL","FLEX","QB","RB","WR","TE"];
+const FLEX_POS = ["RB","WR","TE"];
+let league = null, pos = "ALL", hz = "ros", scope = "all";
+const SCOPES = [{key:"all", label:"Everyone"}, {key:"minefa", label:"Mine + FA"}];
+
+// The page boots from the baked-in DATA, then /api/board-data may hand it a newer
+// snapshot — everything derived from DATA is (re)bound here.
+function bindData(d){
+  DATA = d; A = d.asof;
+  HZ = [{key:"week", label:"This week", shape:`Week ${A.week} pts`},
+        {key:"ros",  label:"Rest of season", shape:`Weeks ${A.week}-${A.final_week} pts`}];
+  WEEKS_LEFT = A.weeks_left;
+  COLTIPS.pts = `Raw FantasyPros consensus point projection for the selected horizon (this week's game, or total for weeks ${A.week}-${A.final_week}), in this league's scoring flavor.`;
+  if (!DATA.leagues[league]) league = Object.keys(DATA.leagues)[0];
+}
+
+const $ = s => document.querySelector(s);
+
+const COLTIPS = {
+  rank: "Row order. In position views this is ECR: the player's expert-consensus rank at this position and horizon. In ALL/FLEX views, # ranks by mean VBD across the two engines.",
+  player: "MINE = on my roster in this league. FA = currently on waivers here (drives CSG's scarcity factor).",
+  pts: "",  // filled by bindData (depends on the current week)
+  btier: "Boris Chen method: Gaussian-mixture clustering of expert ranks. Players sharing a tier are effectively interchangeable; the gap between tiers is real. Says nothing about size of the edge.",
+  cons: "Average expert rank \u00b1 how much the experts disagree (std dev). Positional-rank units, NOT points \u2014 switches with the horizon like every other column.",
+  etier: "elboberto's tier: z-score ladder over its VBD, position-relative (e.g. RB3 = roughly a low-end starter).",
+  evbd: "elboberto value: projected points above replacement. Baselines from lineup seat counts \u2014 the last starter and the last rostered player at the position.",
+  ctier: "CSG's tier: half a standard deviation of VBD per tier, counted down from the position leader.",
+  cvbd: "CSG value: projected points above replacement. Baselines from historical games-played depth, so injuries and byes push replacement deeper than seat counts imply.",
+  cadj: "CSG VBD \u00d7 (1.5 \u2212 0.5 \u00d7 share of the position's value still on waivers). A picked-clean position is worth more to hold; only meaningful within this league.",
+};
+
+function tierColor(t, max){
+  const f = Math.min((t-1)/Math.max(max-1,1), 1);
+  const l = 30 + f*44;
+  const fg = l > 55 ? "#14161a" : "#ffffff";
+  return `background:hsl(var(--tier-h) var(--tier-s) ${l}%);color:${fg}`;
+}
+
+function seg(el, items, cur, fn, shape){
+  el.innerHTML = "";
+  for (const it of items){
+    const b = document.createElement("button");
+    b.role = "tab";
+    b.innerHTML = shape ? `${it.label}<span class="shape">${it.shape}</span>` : it.label ?? it;
+    const key = it.key ?? it;
+    if (key === cur) b.classList.add("on");
+    b.onclick = () => fn(key);
+    el.appendChild(b);
+  }
+}
+
+function fmt(n, d=1){ return n==null ? "\u2014" : (+n).toFixed(d); }
+
+function render(){
+  const L = DATA.leagues[league];
+  const ros = hz === "ros";
+  seg($("#leagueseg"), Object.entries(DATA.leagues).map(([k,v]) =>
+    ({key:k, label:v.label, shape:`${v.size} tm &middot; ${v.scoring}`})), league,
+    k => { league = k; render(); }, true);
+  seg($("#hseg"), HZ, hz, h => { hz = h; render(); }, true);
+  seg($("#posseg"), POSN, pos, p => { pos = p; render(); });
+  seg($("#scopeseg"), SCOPES, scope, s => { scope = s; render(); });
+  $("#meta").textContent = L.lineup;
+
+  const H = p => p[hz] ?? {};
+  const pts = p => H(p).csg?.pts ?? H(p).elb?.pts ?? null;
+  const meanVbd = p => ((H(p).elb?.vbd ?? 0) + (H(p).csg?.vbd ?? 0)) / 2;
+
+  const all = pos === "ALL" || pos === "FLEX";
+  let shown;
+  if (all){
+    shown = L.players.filter(p => (pos === "ALL" || FLEX_POS.includes(p.pos))
+        && ((H(p).elb?.vbd ?? 0) > 0 || (H(p).csg?.vbd ?? 0) > 0))
+      .sort((a,b) => meanVbd(b) - meanVbd(a)).slice(0, 90);
+  } else {
+    shown = L.players.filter(p => p.pos === pos && (H(p).boris || H(p).elb || H(p).csg))
+      .sort((a,b) => (H(a).boris?.posrank ?? 900+(H(a).elb?.posrank??99)) - (H(b).boris?.posrank ?? 900+(H(b).elb?.posrank??99)))
+      .filter(p => H(p).boris || (H(p).elb && H(p).elb.vbd > 0) || (H(p).csg && H(p).csg.vbd > 0));
+  }
+  if (scope === "minefa") shown = shown.filter(p => p.mine || p.fa);
+  const maxVbd = Math.max(1, ...shown.map(p => Math.max(H(p).elb?.vbd ?? 0, H(p).csg?.vbd ?? 0)));
+  const maxBoris = Math.max(1, ...shown.map(p => H(p).boris?.tier ?? 1));
+  const maxCsg  = Math.max(1, ...shown.map(p => H(p).csg && H(p).csg.vbd>0 ? +String(H(p).csg.tier).replace(/\D+/g,"") : 1));
+
+  const ptsHead = ros ? "Proj pts (ROS)" : "Proj pts (wk)";
+  let html = `<thead><tr>
+    <th class="num" data-tip="rank">${all ? "#" : "ECR"}</th><th data-tip="player">Player</th>
+    <th class="num" data-tip="pts">${ptsHead}</th>
+    <th data-tip="btier">Boris tier</th><th class="ecr" data-tip="cons">Consensus</th>
+    <th data-tip="etier">Elbo tier</th><th class="cellbar" data-tip="evbd">elboberto VBD</th>
+    <th data-tip="ctier">CSG tier</th><th class="cellbar" data-tip="cvbd">CSG VBD</th>
+    <th class="num" data-tip="cadj">CSG scarcity-adj</th></tr></thead><tbody>`;
+  let prevTier = null;
+  shown.forEach((p, i) => {
+    const h = H(p);
+    const bt = h.boris?.tier ?? null;
+    const brk = !all && bt != null && prevTier != null && bt !== prevTier;
+    if (bt != null) prevTier = bt;
+    const et = h.elb && h.elb.vbd > 0 ? h.elb.tier : null;
+    const ctn = h.csg && h.csg.vbd > 0 ? +String(h.csg.tier).replace(/\D+/g,"") : null;
+    const chip = (t, max, label) => t == null
+      ? `<span class="chip none">&mdash;</span>`
+      : `<span class="chip" style="${tierColor(t,max)}">${label ?? t}</span>`;
+    const bar = (v, cls) => v == null || v <= 0 ? `<span class="ecr">&mdash;</span>` :
+      `<span class="bar ${cls}" style="width:${Math.round(v/maxVbd*100)}px"></span>` +
+      `<span class="mono">${fmt(v, ros ? 0 : 1)}</span>` +
+      (ros ? `<span class="perwk mono">+${fmt(v/WEEKS_LEFT)}/wk</span>` : "");
+    html += `<tr data-i="${i}" class="${brk ? "tierbreak" : ""}">
+      <td class="num mono">${all ? i+1 : (h.boris?.posrank ?? "\u2014")}</td>
+      <td class="pname">${all ? `<span class="posmark">${p.pos}</span>` : ""}${p.name}${p.mine ? '<span class="badge mine">MINE</span>' : ""}${p.fa ? '<span class="badge fa">FA</span>' : ""}</td>
+      <td class="num mono pts">${fmt(pts(p), 1)}</td>
+      <td>${chip(bt, maxBoris, all && bt != null ? p.pos.charAt(0)+bt : bt)}</td>
+      <td class="ecr mono">${h.boris ? fmt(h.boris.ecr)+" \u00b1 "+fmt(h.boris.std) : "\u2014"}</td>
+      <td>${chip(et == null ? null : +String(et).replace(/\D+/g,""), 8, et)}</td>
+      <td class="cellbar">${bar(h.elb?.vbd, "elb")}</td>
+      <td>${chip(ctn, Math.min(maxCsg, 12), ctn == null ? null : p.pos + ctn)}</td>
+      <td class="cellbar">${bar(h.csg?.vbd, "csg")}</td>
+      <td class="num mono">${h.csg && h.csg.vbd > 0 ? fmt(h.csg.adj) : "\u2014"}</td>
+    </tr>`;
+  });
+  html += "</tbody>";
+  $("#board").innerHTML = html;
+  $("#footnote").textContent =
+    `${L.label}: ${L.size} teams, ${L.scoring}, lineup ${L.lineup}. ` +
+    (all ? `${pos} view ranks ${pos === "FLEX" ? "flex-eligible players (RB/WR/TE)" : "every position"} on one axis by mean VBD across the two engines &mdash; the apples-to-apples comparison. ` : ``) +
+    (ros ? `ROS horizon: points are projected totals for weeks ${A.week}-${A.final_week}; VBD is points above the replacement level this league's size and lineup imply; +x.x/wk is that edge per week. Two players are a fair swap when their VBDs match; a waiver add is worth FAAB in proportion to its VBD gap over the player it replaces. `
+         : `Weekly horizon: points are this week's projection; VBD is this week's edge over the weekly replacement level &mdash; the start/sit and streaming lens. `) +
+    `CSG scarcity-adj multiplies VBD by how much of the position's remaining value is already rostered here. ` +
+    (scope === "minefa" ? `Scope: only my roster and current free agents \u2014 the add/drop decision set. ` : ``) +
+    `Rows with no positive value under any engine are hidden. Sources: FantasyPros consensus + points, rosters as of Week ${A.week}. K/DST excluded.`;
+
+  const tip = $("#tip");
+  document.querySelectorAll("#board th[data-tip]").forEach(th => {
+    th.addEventListener("mousemove", e => {
+      tip.style.display = "block";
+      tip.innerHTML = `<h4>${th.textContent}</h4><p class="sum" style="margin-top:2px">${COLTIPS[th.dataset.tip]}</p>`;
+      const w = tip.offsetWidth, ht = tip.offsetHeight;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 10) + "px";
+      tip.style.top  = Math.min(e.clientY + 14, innerHeight - ht - 10) + "px";
+    });
+    th.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+  document.querySelectorAll("#board tbody tr").forEach(tr => {
+    const p = shown[+tr.dataset.i];
+    tr.addEventListener("mousemove", e => {
+      const h = H(p), o = p[hz === "ros" ? "week" : "ros"] ?? {};
+      tip.style.display = "block";
+      const wk = v => ros && v > 0 ? ` (+${fmt(v/WEEKS_LEFT)}/wk)` : "";
+      const opts = o.csg?.pts ?? o.elb?.pts;
+      tip.innerHTML = `<h4>${p.name} <span class="ecr">${p.pos}${p.mine ? " \u00b7 my roster" : ""}${p.fa ? " \u00b7 free agent" : ""}</span></h4>
+        <table><tr><th></th><th>tier</th><th>value</th></tr>
+        <tr><td>Boris</td><td>${h.boris?.tier ?? "\u2014"}</td><td class="mono">${h.boris ? "ECR "+fmt(h.boris.ecr)+" \u00b1 "+fmt(h.boris.std) : "\u2014"}</td></tr>
+        <tr><td>elboberto</td><td>${h.elb?.tier ?? "\u2014"}</td><td class="mono">${h.elb ? fmt(h.elb.vbd)+" VBD"+wk(h.elb.vbd) : "\u2014"}</td></tr>
+        <tr><td>CSG</td><td>${h.csg?.tier ?? "\u2014"}</td><td class="mono">${h.csg ? fmt(h.csg.vbd)+" VBD &rarr; "+fmt(h.csg.adj)+" adj" : "\u2014"}</td></tr>
+        <tr><td>Proj pts</td><td></td><td class="mono">${fmt(pts(p))}${ros ? " ROS" : " this wk"}${opts != null ? " \u00b7 " + fmt(opts) + (ros ? " this wk" : " ROS") : ""}</td></tr></table>
+        <p class="sum">${meanVbd(p) > 0
+          ? "Worth ~" + fmt(meanVbd(p), ros ? 0 : 1) + " pts over replacement " + (ros ? "rest-of-season" : "this week") + " &mdash; weigh against any player, any position."
+          : "At or below replacement in this league at this horizon."}</p>`;
+      const w = tip.offsetWidth, ht = tip.offsetHeight;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 10) + "px";
+      tip.style.top  = Math.min(e.clientY + 14, innerHeight - ht - 10) + "px";
+    });
+    tr.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+}
+function renderLineup(){
+  const L = DATA.leagues[league];
+  const boardWk = name => {
+    const q = L.players.find(x => x.name === name);
+    return q?.week?.csg?.pts ?? q?.week?.elb?.pts ?? null;
+  };
+  const roster = L.roster.map(([name, p, wk, ros, inj]) => {
+    const b = boardWk(name);
+    // injured/bye players carry ESPN's 0.0 even if the consensus board still lists them
+    const use = (inj && wk === 0) ? 0 : (b ?? wk);
+    return {name, p, wk: use, espn: b == null, inj};
+  });
+  const FLEXELIG = ["RB","WR","TE"];
+  const used = new Set();
+  const rows = [];
+  // dedicated slots first (top-N by weekly projection), then FLEX from best remaining
+  for (const [slot, n] of L.slots.filter(s => s[0] !== "FLEX")){
+    const cands = roster.filter(r => r.p === slot && !used.has(r.name))
+      .sort((a,b) => b.wk - a.wk).slice(0, n);
+    cands.forEach(c => { used.add(c.name); rows.push({slot, ...c}); });
+    for (let i = cands.length; i < n; i++) rows.push({slot, name: "(empty)", p: slot, wk: 0, inj: ""});
+  }
+  for (const [slot, n] of L.slots.filter(s => s[0] === "FLEX")){
+    const cands = roster.filter(r => FLEXELIG.includes(r.p) && !used.has(r.name))
+      .sort((a,b) => b.wk - a.wk).slice(0, n);
+    cands.forEach(c => { used.add(c.name); rows.push({slot: "FLEX", ...c}); });
+    for (let i = cands.length; i < n; i++) rows.push({slot: "FLEX", name: "(empty)", p: "", wk: 0, inj: ""});
+  }
+  const total = rows.reduce((s, r) => s + (r.wk || 0), 0);
+  $("#lu-title").textContent = L.team;
+  $("#lu-total").innerHTML = `<small>projected total</small>${total.toFixed(1)}`;
+  $("#lu-starters").innerHTML = rows.map(r =>
+    `<tr><td class="slot ${r.slot === "FLEX" ? "flexslot" : ""}">${r.slot}</td>
+     <td class="pname">${r.name}${r.inj ? `<span class="inj">${r.inj}</span>` : ""}</td>
+     <td class="ecr">${r.p}${r.espn ? " \u00b7 espn" : ""}</td>
+     <td class="num mono pts">${(r.wk ?? 0).toFixed(1)}</td></tr>`).join("");
+  const bench = roster.filter(r => !used.has(r.name)).sort((a,b) => b.wk - a.wk);
+  $("#lu-bench").innerHTML = `<h3>Bench &middot; this week</h3><ul>` + bench.map(r =>
+    `<li><span class="mono">${(r.wk ?? 0).toFixed(1)}</span> &nbsp;${r.name} <span class="ecr">${r.p}</span>${r.inj ? `<span class="inj">${r.inj}</span>` : ""}</li>`).join("") + `</ul>` +
+    `<p class="ecr" style="margin:8px 0 0">Points = the board's this-week consensus numbers; rows marked espn (K/DST, injured) use ESPN league projections, which the consensus boards don't cover.</p>`;
+}
+const _render = render;
+render = function(){ _render(); renderLineup(); };
+function renderAsof(){
+  const a = DATA.asof;
+  $("#lu-eyebrow").innerHTML =
+    `Optimal lineup &middot; week ${a.week} &middot; same points as the board`;
+  const built = new Date(a.built);
+  const days = (Date.now() - built.getTime()) / 864e5;
+  const dot = $("#freshdot");
+  dot.className = "freshdot " + (days < 3 ? "ok" : days < 7 ? "warn" : "stale");
+  const dfmt = d => {
+    const s = String(d);
+    const dt = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + "T12:00:00") : new Date(s);
+    return dt.toLocaleDateString(undefined, {month:"short", day:"numeric"});
+  };
+  $("#asof-text").textContent = `Week ${a.week} data \u00b7 built ${dfmt(built)}` +
+    (days >= 3 ? ` (${Math.floor(days)}d old)` : "");
+  $("#asof-src").innerHTML = Object.entries(a.sources).map(([k, v]) =>
+    `<li>${k}: ${dfmt(v)}</li>`).join("");
+}
+bindData(DATA);
+renderAsof();
+render();
+
+// Live data: ask the server for the latest snapshot (Supabase-backed when
+// configured). Newer build than what's on screen -> re-render.
+// Any failure leaves the current data, so a static copy still works.
+async function adoptLatest(){
+  try {
+    const r = await fetch("/api/board-data", {cache: "no-store"});
+    if (!r.ok) return false;
+    const j = await r.json();
+    const d = j && j.data;
+    if (d && d.asof && d.leagues && d.asof.built !== A.built) {
+      bindData(d);
+      renderAsof();
+      render();
+      return true;
+    }
+  } catch (e) { /* offline / file:// — keep what's on screen */ }
+  return false;
+}
+adoptLatest();
+
+// Refresh button: kick the server-side pipeline run, poll until it lands,
+// then swap in the new data. Needs the deploy to carry the pipeline (501 if not).
+const rbtn = $("#refreshbtn");
+async function pollRefresh(){
+  let s;
+  try { s = await (await fetch("/api/refresh/status", {cache: "no-store"})).json(); }
+  catch (e) { setTimeout(pollRefresh, 8000); return; }
+  if (s.running) {
+    const mins = ((Date.now()/1000 - s.started) / 60).toFixed(1);
+    rbtn.textContent = `Refreshing… ${mins} min`;
+    setTimeout(pollRefresh, 5000);
+    return;
+  }
+  rbtn.disabled = false;
+  if (s.ok === false) { rbtn.textContent = "Refresh failed — retry"; return; }
+  rbtn.textContent = "Refresh data";
+  await adoptLatest();
+}
+if (rbtn) rbtn.onclick = async () => {
+  rbtn.disabled = true;
+  rbtn.textContent = "Starting…";
+  let r;
+  try { r = await fetch("/api/refresh", {method: "POST"}); }
+  catch (e) { rbtn.disabled = false; rbtn.textContent = "Refresh data (server offline)"; return; }
+  if (r.status === 501) { rbtn.textContent = "Refresh unavailable in this deploy"; return; }
+  pollRefresh();   // 409 (already running) just joins the poll
+};
+</script>

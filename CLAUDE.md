@@ -4,77 +4,93 @@ Guidance for Claude working in this repo. See `README.md` for the user-facing ov
 
 ## What this is
 
-A live fantasy-football **auction draft console** (`draft_app/`) plus the **data pipeline**
-that feeds it (`scraping/`, `analysis/`, `draft_sheets/`). The console re-prices players
-from calibrated opponent tendencies and includes a thin LLM advisor (`/api/advise`).
+One app, two modes:
+
+- **Draft (pre-season)** — a live fantasy-football **auction draft console** (`/draft`)
+  that re-prices players from calibrated opponent tendencies, plus a thin LLM advisor
+  (`/api/advise`). Fed by the draft pipeline (`scraping/`, `analysis/`, `draft_sheets/`).
+- **Manage (in-season)** — the **fftiers board** (`/manage`): one page, three valuation
+  methods per player (Boris Chen-style ECR tiers, elboberto VBD, CSG games-based VBD),
+  two horizons (this week / rest of season), across every league in `config/boards.json`.
+  Fed by the `fftiers/` package (FantasyPros consensus ranks + live ESPN projections).
+
+`draft_app/server.py` serves both: `/` redirects to `DEFAULT_MODE` (env, default
+`manage`), `/draft` → `static/index.html`, `/manage` → `static/board.html`.
 
 ## Layout
 
 | Path | Role | Tracked? |
 |------|------|----------|
-| `draft_sheets/draft_tool_template.html` | **Frontend source** — edit this | yes |
-| `draft_app/static/index.html` | Generated: template + injected data | no (generated) |
-| `draft_app/server.py` | FastAPI: serves console + `/api/advise` | yes |
-| `pipeline.py` | **Single entry point** — `scrape/calibrate/simulate/build/inject/all` | yes |
-| `draft_sheets/build_tool_data.py` | Console builder — projections + scrape → `tool_data.json` | yes |
+| `draft_sheets/draft_tool_template.html` | **Draft frontend source** — edit this | yes |
+| `draft_sheets/board_template.html` | **Manage frontend source** — edit this | yes |
+| `draft_app/static/index.html` | Generated: draft template + injected data | no (generated) |
+| `draft_app/static/board.html` | Generated: board template + injected viz-data | no (generated) |
+| `draft_app/server.py` | FastAPI: two modes + `/api/advise` | yes |
+| `pipeline.py` | **Single entry point** — draft: `scrape/calibrate/csg/simulate/build/inject/all`; manage: `pull/tiers/vbd-boards/csg-boards/board/week` | yes |
+| `fftiers/` | The manage engine: league-configurable tier charts (`cli`), elboberto VBD port (`vbd_cli`), CSG VBD port (`csg_cli`), live ESPN client (`espn_cli`), board builder (`board`) | yes |
+| `leagues/*.yaml` | Per-league configs (teams, roster slots, scoring) — name real leagues | no (except `example-standard-12.yaml`) |
+| `config/boards.json` | Manage league registry: key → league_id, team_id, label, yaml | no (local; `boards.example.json` tracked) |
+| `dat/` | FantasyPros rank caches (`{year}/week-N-POS-SCORING.json`; week **90** = ROS) + ESPN pulls (`espn/{key}-*.csv`, `-roster.json`, `-meta.json`) | no (fetched) |
+| `out/` | fftiers outputs: `{key}/week-N/{png,txt,csv,vbd,csg}`, `board/viz-data.json` | no (generated) |
+| `pyproject.toml` | fftiers packaging (`pip install -e .` into `.venv`) | yes |
+| `draft_sheets/build_tool_data.py` | Draft console builder — projections + scrape → `tool_data.json` | yes |
 | `scraping/scrape_league.py` | Fresh-setup ESPN scraper (settings + managers, config-driven) | yes |
-| `research_agent/` | Claude Agent SDK research agent: public resource directory + local league/tendency tools; `mcp_server.py` serves the same tools over stdio (see its README, incl. the starlette pin caveat) | yes |
-| `research_app/` | Chat UI over the research agent (FastAPI + SSE, port 8010, local-only — needs `ANTHROPIC_API_KEY`) | yes |
-| `claude_plugin/` | `ff-research` Claude Code plugin: `build.py` generates the installable marketplace into gitignored `local/` (absolute paths stay out of git) | yes (`local/` no) |
 | `draft_sheets/*_elboberto.xlsm` | Universal projection baseline (checked in) | yes |
 | `draft_sheets/CSG*auction.xlsm` | CSG sheet — **complementary market view** (third-party) | no (local) |
 | `draft_sheets/extract_csg.py` | CSG `Overall` tab → `csg_consensus.json` | yes |
 | `draft_sheets/check_csg_settings.py` | Diff CSG's league settings vs your scrape | yes |
 | `draft_sheets/csg_consensus.json` | Generated CSG consensus data, by season | no (generated) |
-| `config/league.json` | Your league: id, season, `me`, projections path, `my_mult` | no (local) |
-| `config/league.example.json` | League config template | yes |
+| `config/league.json` | Draft league: id, season, `me`, projections path, `my_mult` | no (local) |
 | `config/briefing.md` | Advisor system prompt (league-specific) | no (local) |
-| `config/briefing.example.md` | Generic briefing template | yes |
 | `config/` | All local, league-specific config + secrets | no (except `*.example*`, `README.md`) |
 | `draft_app/eval_advisor.py` | Advisor eval (mock draft → probe → check) | yes |
-| `draft_sheets/tool_data.json` | Generated console data (players + profiles) | no (generated) |
-| `scraping/scrape.py`, `scrape_playercards.py`, `extract_har.py` | Full historical scrapers | yes |
+| `draft_sheets/tool_data.json` | Generated draft console data (players + profiles) | no (generated) |
+| `scraping/scrape.py`, `scrape_playercards.py`, `extract_har.py` | Full historical scrapers (draft calibration) | yes |
 | `analysis/calibrate.py` | Opponent history → `config/tendencies.json` (reuses `a18.build_agents`) | yes |
-| `analysis/backtest_*.py` | WS-8 validation: projection accuracy, lineup replay, source value | yes |
-| `scraping/backfill_weeks.py` | WS-8a: historical weekly boxscores → paired (projection, actual) | yes |
-| `reports/` | Generated validation artifacts (`projection_accuracy.json`, `lineup_replay.json`, `source_value.json`) | no (generated) |
-| `analysis/lib.py` | **Canonical** `effective_wallet` / `regime` / `norm_cost` helpers | **no (local)** |
-| `analysis/price_curve.py` | Full-supply price + tier curve → `config/price_curve.json` | **no (local)** |
-| `analysis/plan_tiers.py` | Grades a budget plan → the tiers it actually buys | **no (local)** |
-| `config/price_curve.json` | What each board rank / tier really costs | no (local) |
-| `analysis/lib.py`, `a5`, `a18`, `a19` | Calibration + auction-sim engine (real manager names) | **no (local)** |
-| `analysis/research/a1..a17` | Archived one-off research that produced `reports/league_analysis.md` | **no (local)** |
-| `config/tendencies.json` | Calibrated opponent profiles (produced by `calibrate.py`) | no (local) |
+| `analysis/lib.py` | **Canonical** `effective_wallet` / `regime` / `norm_cost` helpers | yes |
+| `analysis/price_curve.py` | Full-supply price + tier curve → `config/price_curve.json` | yes |
+| `analysis/plan_tiers.py` | Grades a budget plan → the tiers it actually buys | yes |
+| `analysis/a5`, `a18`, `a19`, `backtest_willgo.py` | Calibration + auction-sim engine | yes |
+| `analysis/research/a1..a17` | Archived one-off research behind `reports/league_analysis.md` | yes |
+| `config/tendencies.json`, `price_curve.json` | Calibration outputs | no (local) |
 | `scraping/raw/`, `reports/`, `league/` | League data / analysis outputs | no (local) |
-| `docs/*.md` | **Frozen contracts + the backtest charter** — the rules future work follows | yes |
-| `docs/local/` | Plans, PM board, per-workstream wiring sheets (they name real leagues/ids) | no (local) |
+| `tests/draft_regression.py` | sha256-pins the draft payload (golden: `tests/draft_golden.json`) | yes |
+| `tests/board_smoke.py` + `tests/fixtures_board/` | Offline manage-board build + inject check (synthetic data) | yes |
+| `docs/local/` | Local plans/notes (name real leagues/ids) | no (local) |
+
+History note: the previous in-season stack (engine/, season console, research_agent/app,
+claude_plugin, WS-8 backtests) was removed in favor of fftiers — it lives on the
+`in-season-console` branch history if ever needed.
 
 ## The golden rule: edit the template, then re-inject
 
-The served console is **generated**. Never hand-edit `draft_app/static/index.html`.
-Edit `draft_sheets/draft_tool_template.html` (it has a `/*DATA*/` marker), then re-inject —
-`python3 pipeline.py inject` does exactly this (template + `tool_data.json` →
-`static/index.html` + `static/data.json`). The equivalent by hand:
+Both served pages are **generated**. Never hand-edit anything under `draft_app/static/`.
 
-```bash
-python3 -c "tpl=open('draft_sheets/draft_tool_template.html').read(); \
-data=open('draft_sheets/tool_data.json').read(); \
-open('draft_app/static/index.html','w').write(tpl.replace('/*DATA*/', data))"
-cp draft_sheets/tool_data.json draft_app/static/data.json
-```
+- Draft: edit `draft_sheets/draft_tool_template.html` (has a `/*DATA*/` marker), then
+  `python3 pipeline.py inject` (template + `tool_data.json` → `static/index.html` + `static/data.json`).
+- Manage: edit `draft_sheets/board_template.html` (same `/*DATA*/` convention), then
+  `python3 pipeline.py board` (template + `out/board/viz-data.json` → `static/board.html`).
 
 ## Run / verify
 
 ```bash
 # server (advisor needs the key; briefing.md is loaded if present)
-cd draft_app && ANTHROPIC_API_KEY=sk-ant-... uvicorn server:app --host 127.0.0.1 --port 8000
-curl -s localhost:8000/healthz        # {"ok":true,"advisor":true}
+cd draft_app && ANTHROPIC_API_KEY=sk-ant-... ../.venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000
+curl -s localhost:8000/healthz        # {"ok":true,"advisor":true,...}
+#   /        → 307 to /manage (override with DEFAULT_MODE=draft)
+#   /draft   → auction console      (404 hint: pipeline.py build inject)
+#   /manage  → fftiers board        (404 hint: pipeline.py week)
+python3 tests/draft_regression.py     # draft payload byte-identical
+.venv/bin/python tests/board_smoke.py # manage board builds + injects offline
 python3 draft_app/eval_advisor.py     # eval the advisor against a mock draft
 ```
 
 The server has **no --reload**; restart it after editing `server.py` or `config/briefing.md`.
 
-## Data pipeline (regenerate console data)
+Python: use the repo venv (`.venv/bin/python pipeline.py …`) — it has openpyxl (draft
+build) and the fftiers deps (scikit-learn, matplotlib, PyYAML; `pip install -e .`).
+
+## Draft data pipeline (regenerate console data)
 
 **One entry point — `pipeline.py`.** Stages run in the order you list them:
 
@@ -89,11 +105,10 @@ The server has **no --reload**; restart it after editing `server.py` or `config/
 | `all` | local refresh: `calibrate` (if history) → `csg` (if sheet) → `build` → `inject` | — |
 
 ```bash
-python3 pipeline.py all                # refresh console from already-scraped history
-python3 pipeline.py scrape calibrate build inject   # full refresh from ESPN
-python3 pipeline.py build inject       # rebuild after editing the template only
+.venv/bin/python pipeline.py all       # refresh console from already-scraped history
+.venv/bin/python pipeline.py scrape calibrate build inject   # full refresh from ESPN
+.venv/bin/python pipeline.py build inject   # rebuild after editing the template only
 ```
-Needs `openpyxl` (in `draft_app/requirements.txt`) — use a venv: `.venv/bin/python pipeline.py …`.
 
 **Valuation is league-accurate (do not regress this):** `build_tool_data.py` recomputes FPTS
 from the scraped ESPN scoring (statId→points), then VBD (replacement = teams×starters + FLEX
@@ -102,76 +117,77 @@ the workbook's baked-in CheatSheet values. Falls back to CheatSheet if raw sheet
 and to workbook roster defaults + generic opponents when no scrape exists, so the console
 always runs. Schema is in build_tool_data's docstring.
 
-**Opponent calibration (local, gitignored `analysis/`):** `calibrate.py` reuses
-`a18_agent_auction.build_agents()` — per-manager positional aggression ($-weighted paid/proj),
-stars-and-scrubs concentration, and max-buy ceiling from 2017–2025 auction history — and writes
-`config/tendencies.json` (`{name: {mult, conc, maxbuy}}` plus a reserved `_league_default`
-entry). `build_tool_data.py` merges it per manager by name; a manager with **no** auction
-history (a substitution, an expansion team) gets `_league_default` — the **league average**,
-not a flat `1.0`. This matters: `1.0` models a newcomer as paying full projected value at
-every position (~2.4× the league norm at QB here) with no max-buy, which inflates the
-console's predicted competition. `config/league.json` `manager_labels` optionally renames a
-manager on the board (ESPN reports the owner's real name; you may know a team by its team
-name) — tendencies merge on the **relabelled** name. `calibrate.py` keys tendencies by the current
-league's **scraped** manager names (bridging ESPN member GUIDs) so a returning manager whose
-scraped display name drifted from their calibration identity (e.g. "Jon" vs "Jonathan") still
-matches. The projection baseline
-`elboberto_projections.json` is regenerated from the tracked `*_elboberto.xlsm` by
-`extract_elboberto_master.py` (its fields are named `proj_value`/`start_vbd` — what the analysis
-code reads); it feeds calibration/research **only**, never the console valuation.
+**Opponent calibration:** `calibrate.py` reuses `a18_agent_auction.build_agents()` —
+per-manager positional aggression ($-weighted paid/proj), stars-and-scrubs concentration,
+and max-buy ceiling from 2017–2025 auction history — and writes `config/tendencies.json`
+(`{name: {mult, conc, maxbuy}}` plus a reserved `_league_default` entry). A manager with
+**no** auction history gets `_league_default` — the **league average**, not a flat `1.0`
+(1.0 would model a newcomer paying ~2.4× the league norm at QB with no ceiling).
+`config/league.json` `manager_labels` optionally renames a manager on the board; tendencies
+merge on the **relabelled** name, and `calibrate.py` bridges ESPN member GUIDs so a returning
+manager whose display name drifted still matches. `elboberto_projections.json` (regenerated
+from the tracked `*_elboberto.xlsm` by `extract_elboberto_master.py`) feeds
+calibration/research **only**, never the console valuation.
 
-For a brand-new league with no history, `all` skips `calibrate` and builds a neutral-opponent
-console. The archived `analysis/research/a1..a17` (the scripts behind `reports/league_analysis.md`)
-run with `PYTHONPATH=analysis python3 analysis/research/<script>.py`.
+For a brand-new league with no history, `all` skips `calibrate` and builds a
+neutral-opponent console. The archived `analysis/research/a1..a17` run with
+`PYTHONPATH=analysis python3 analysis/research/<script>.py`.
 
-## In-season projections: the baseline is validated, and nothing else ships
+## Manage pipeline (the weekly board refresh)
 
-**Default state: the baseline, unmodified.** `ros_points` is ESPN's projection recomputed
-on the league's own scraped scoring. Every deviation from it routes through
-`engine/projection_policy.py`, which REFUSES anything that has not been paid for. As of
-2026-09-15 five corrections have been measured and all five are refused, so the console
-runs the untouched vendor projection — by evidence, not by default.
+| Stage | Does | Network |
+|-------|------|---------|
+| `pull` | ESPN projections (week + ROS CSVs), my roster, league meta → `dat/espn/`; refreshes FantasyPros rank caches (current week + ROS sentinel week 90) → `dat/{year}/` | ESPN + FantasyPros |
+| `tiers` | GMM tier charts per league → `out/{key}/week-N/{png,txt,csv}` | none with `--no-download` |
+| `vbd-boards` | elboberto VBD, both horizons, league-scored ESPN projections → `out/{key}/week-N/vbd/` | none |
+| `csg-boards` | CSG games-based VBD, both horizons → `out/{key}/week-N/csg/` | none |
+| `board` | viz-data + template → `static/board.html` (golden rule); pushes the build to the Supabase snapshot store when configured (`--no-push` to skip) | Supabase (optional) |
+| `week` | `pull → tiers → vbd-boards → csg-boards → board` — the Tuesday one-liner | as `pull` |
 
-**The evidence base (WS-8, `docs/backtest_charter.md`):**
+```bash
+.venv/bin/python pipeline.py week                  # full weekly refresh, all leagues
+.venv/bin/python pipeline.py week --league 2kdome  # one league
+.venv/bin/python pipeline.py board                 # re-render after editing the template
+```
 
-| artifact | what it is |
-|---|---|
-| `scraping/backfill_weeks.py` | 39,020 paired (projection, actual) player-weeks — 2kdome 2018-25, chi-phi 2022-25, inlaws 2025. `pipeline.py backfill` |
-| `analysis/backtest_projections.py` | accuracy, leave-one-season-out, per league/position/tier/week |
-| `analysis/backtest_lineups.py` | 2,362 team-weeks replayed — what the projection is worth IN POINTS |
-| `analysis/backtest_sources.py` | forward test of external sources as rankings; "insufficient data" until weeks accumulate |
-| `analysis/registered_adjustments.py` | loads the measured results into the policy registry so the data console shows every refusal |
+Requirements: `config/boards.json` (see `boards.example.json`), `leagues/{key}.yaml` per
+league (generate with `.venv/bin/python -m fftiers.espn_cli sync-league <id>`), ESPN cookies
+in `scraping/.espn_auth.json` (or `ESPN_SWID`/`ESPN_S2` env), and `FANTASYPROS_API_KEY`
+(or `api_key.txt`, gitignored) — without the FP key, `pull` warns and reuses cached ranks.
 
-Run the lot with `python3 pipeline.py validate`. `pipeline.py week` re-runs `backfill`
-every week, so the evidence stays current instead of frozen at the last manual run.
+**Snapshot store (Supabase, project `fantasy-console`):** every `board` build is also
+persisted as one row in `board_snapshots` (whole viz-data as jsonb) via the
+`put_board_snapshot` RPC; the server's `/api/board-data` reads the latest via
+`get_board_snapshot`, falling back to `out/board/viz-data.json`. The board page boots
+from its baked-in data, then fetches `/api/board-data` and hot-swaps if a newer build
+exists — so a local `pipeline.py week` refreshes the DEPLOYED site without a redeploy.
+The table has RLS on with zero policies; both RPCs require `BOARD_DB_SECRET` (stored in
+`private.app_config`), so the publishable API key alone reads nothing. All three
+settings (`SUPABASE_URL`, `SUPABASE_API_KEY`, `BOARD_DB_SECRET`) live in `config/.env`
+locally and must be set as Railway env vars for the deployed reader. Endpoint responses
+are cached in-process for 60s. History accumulates one row per build — week-over-week
+trend data for free.
 
-**The two-part bar — do not weaken it back to MAE.** An `Adjustment` needs a `Validation`
-carrying BOTH `results` (accuracy: >= 2 leagues at n >= 500 held-out player-weeks, whole
-seasons held out, beats baseline in every powered league, harms no underpowered league by
-> 2%) AND `decision` (realized points from the lineup replay, positive in every league,
-t >= 2 in at least two). The second half exists because four corrections beat the
-baseline's MAE in **all three leagues** and then lost points: `week_decay` "improved" MAE
-0.4% while moving **0% of lineups** (a within-week multiplier cannot reorder a week);
-`positional_bias` cost chi-phi-american 0.12 pts/team-week at t = -2.31. Conformance test
-[5] enforces both halves on every run.
+**Relational fact tables (Supabase), fed automatically:** an AFTER INSERT trigger on
+`board_snapshots` (`shred_board_snapshot`) shreds every build into three layers —
+`consensus_ranks` (global: one row per season/fp_week/scoring-flavor/player; fp_week 90
+= ROS), `player_valuations` (per league_id × horizon × method: points/vbd/tier — raw
+data is global, league settings map it to per-league value), and `rosters` (per
+league/week). Upserts, so rebuilding a week overwrites it. No client code involved —
+any snapshot push populates them. RLS is on with no policies (server-side access only)
+until app features read them directly.
 
-**What is actually true about the baseline** (all three leagues, out of sample): MAE
-5.3-5.9 points per player-week, bias ≈ 0 overall, but D/ST is under-projected by 0.9-1.4
-and the 20+ tier over-projected by 0.4-0.8. Ranking by it beats what the manager really
-started by +3.88 (2kdome) / +2.11 (chi-phi) / -0.31 (inlaws) points per team-week, against
-a hindsight ceiling ~17-20 points higher. Correcting the known biases does not convert
-into points — that has been tried and measured, not assumed.
-
-**FantasyPros cannot be the baseline, on availability.** Its full-coverage product is a
-RANKING (no points, so no `marginal`, no FAAB ceiling, no trade delta), and its projections
-pages serve **ten players per position** (measured: `rb.php` 10 rows, `&max=200` changes
-nothing, `ros-{pos}.php` is not a real page — it silently serves the QB table).
-`scraping/sources/fantasypros_proj.py` keeps that finding and the top-10 cross-check; it is
-registered but deliberately NOT in the default fetch order. The comparison that IS possible
-is FantasyPros-as-a-ranking against ESPN's ordering, which `backtest_sources.py` runs
-forward from the first archived snapshot — external sources publish no history, so
-`scraping/sources/common.archive()` freezes one snapshot per source-week, FIRST WRITE WINS
-(a snapshot taken later in the week has seen the results).
+Key conventions (do not regress):
+- **Week 90 is the ROS sentinel** in `dat/{year}/` FantasyPros caches — `board.py` reads
+  both `week-N` and `week-90` caches per position/scoring.
+- **The board's valuation math lives in fftiers**, ported and verified against its source
+  workbooks (elboberto FPTS to ~rounding over 492 players; CSG StartVBD/AvgVBD ≤0.07 over
+  484). The elboberto and CSG boards are separate methods on purpose — never merge them.
+- **ESPN pulls are the source of truth for non-standard scoring** (~400 players in the
+  league's exact points); FantasyPros consensus covers STD/HALF/PPR ranks only, and
+  off-formula scoring is surfaced in `SCORING-NOTES.txt`, never silently ignored.
+- `fftiers/espn.py` and `scraping/scrape_league.py` are two separate ESPN clients (manage
+  vs draft) with separate auth loaders reading the same cookie file. Known seam, accepted.
 
 ## Cross-season price normalization (read before touching any historical $)
 
@@ -217,7 +233,7 @@ worse than the coin-flip gate and below v1's 45%. An earlier 56% "validated" rea
 artifact of normalizing by the nominal $300. No static shape is promoted; `config/plan.json`
 remains a disciplined default.
 
-## The CSG sheet: a complementary market view (never the valuation)
+## The CSG sheet: a complementary market view (never the draft valuation)
 
 `extract_csg.py` reads the CSG workbook's `Overall` tab (header row 11, players from row
 12; layout stable across v11–v14) into `csg_consensus.json`, keyed by season.
@@ -225,57 +241,67 @@ remains a disciplined default.
 (`price`, `espn`, `ecr`, `boris`, `gold`, `advbd`, `bs`, `status`, plus a derived `edge` =
 our `worth` − market price). Joined on a punctuation/suffix-insensitive name key
 (`extract_csg.norm_name` — the single definition, imported by the builder; don't fork it).
-Currently 238/264 players = **99% of the $ pool**; every miss is a $1 player.
 
 **It is advisory and must stay that way.** `worth`/`vbd` remain recomputed from the scraped
 ESPN scoring — CSG's own VBD/price columns are computed for *its* settings, so treating them
 as valuation would silently regress league accuracy. The value is the *disagreement*: the
 console shows `market $X (±N us)` under Worth and a ▲/▼ on the board when divergence is
-material (≥$5 **and** ≥25%), and the advisor state carries `market_price`/`ecr` so it can
-reason about consensus. As of the 2026 build our model runs ~12% above market on the top 16.
+material (≥$5 **and** ≥25%), and the advisor state carries `market_price`/`ecr`.
+(The manage board's CSG method is different: `fftiers/csg.py` re-runs the CSG *engine* on
+the league's own settings — that one IS a valuation, scoped to the manage mode.)
 
 **Coverage is uneven per year — check `pipeline.py csg` output, never assume a column.**
-BeerSheets (`bs_val`/`beer_tier`) is **0/385 in the 2026 sheet** (needs a manual paste into
-the hidden `Beersheet Paste` tab) though populated for 2023–25; `PosScarcity` is empty in all
-four; `AdjVBD` exists only from v14.1; Gold Score is top-of-board only (~45); NFL ranks are
-empty in 2026.
-
-**Settings:** run `python3 draft_sheets/check_csg_settings.py` — it diffs the sheet's
-`League Info`/`Overall` settings against your scrape and prints the exact cells to change.
 **Do not write these workbooks with openpyxl:** it cannot recalculate formulas and drops
-this file's conditional-formatting and data-validation extensions, so the sheet would look
-updated while every downstream VBD/price stayed cached at the old settings. Edit in Excel,
-save, re-run the checker, then `python3 pipeline.py csg build inject`.
+conditional-formatting/data-validation extensions. Edit in Excel, save, re-run
+`check_csg_settings.py`, then `python3 pipeline.py csg build inject`.
 
 ## Deploying (Railway)
 
 `./deploy_railway.sh` (`--dry-run` to inspect first). The repo's GitHub remote is **public**
-and the console payload (`draft_app/static/*`) + `config/briefing.md` are gitignored, so a
-git-based deploy would ship an empty console with a generic advisor. The script instead
-stages just the runtime surface — `server.py`, `requirements.txt`, `Procfile`,
-`railway.json`, `static/`, `config/briefing.md` — into a temp dir and runs `railway up`
-from there, so ESPN cookies, raw scrapes, the `.xlsm` and `analysis/` never leave the box.
-It refuses to deploy if anything secret-shaped is staged.
+and the served payloads (`draft_app/static/*`) + `config/briefing.md` are gitignored, so a
+git-based deploy would ship an empty app. The script instead stages just the runtime
+surface — `server.py`, `requirements.txt`, `Procfile`, `railway.json`, `static/index.html`,
+`static/data.json`, `static/board.html`, `config/briefing.md` — into a temp dir and runs
+`railway up` from there, so ESPN cookies, raw scrapes, the `.xlsm`, `dat/`, `leagues/` and
+`analysis/` never leave the box. It refuses to deploy if anything secret-shaped is staged.
+
+**Auth is two parallel mechanisms** (either grants access; neither configured = open,
+so local dev is frictionless): Supabase email OTP login for browsers (`/login` →
+`/api/session` sets an httpOnly cookie; server validates the token against
+`/auth/v1/user` and requires the email ∈ `ALLOWED_EMAILS` — signups are open by design
+for future multi-tenant, the allowlist is the gate) and HTTP Basic `CONSOLE_PASSWORD`
+for curl/scripts. Multi-tenant seeds already in Supabase: `user_leagues` (per-user
+league registry, RLS owner-only; pre-seeded rows claimed by email via the
+`on_auth_user_created` trigger) and `board_snapshots.user_id`.
 
 Service env vars: `ANTHROPIC_API_KEY`, `CONSOLE_PASSWORD` (HTTP Basic on everything but
-`/healthz`; **unset = the URL is public and `/api/advise` spends your credit**), and
-`STRATEGY_BRIEFING_PATH=/app/config/briefing.md`.
+`/healthz`; **unset = the URL is public and `/api/advise` spends your credit**),
+`ALLOWED_EMAILS` (comma-separated; the email-login gate),
+`STRATEGY_BRIEFING_PATH=/app/config/briefing.md`, optional `DEFAULT_MODE=draft|manage`,
+and — for live board data without redeploys — `SUPABASE_URL`, `SUPABASE_API_KEY`,
+`BOARD_DB_SECRET` (see the snapshot-store section; without them `/manage` serves its
+baked data).
 
 ## Conventions & guardrails
 
 - **Secrets stay out of git.** `ANTHROPIC_API_KEY` via env (the user keeps it in 1Password:
   `op read 'op://HMD LOCAL/Claude - API Key/credential'`). ESPN cookies live in
-  `scraping/.espn_auth.json` (gitignored). Never print or commit these.
+  `scraping/.espn_auth.json` (gitignored); the FantasyPros key in env or gitignored
+  `api_key.txt`. Never print or commit these.
 - **League-specific content stays local** (see `.gitignore`): scraped data, generated
-  payloads, `reports/`, `league/`, `docs/local/`, `config/league.json`, and
-  `config/briefing.md`. Adding a file to `docs/` (rather than `docs/local/`) is a
-  decision to PUBLISH it — the remote is public, so keep league ids, manager real
-  names and team names out of anything tracked. Use the league KEY (`2kdome`), which
-  is already public in the code, not the ESPN display name or a manager's name. The
-  universal `*_elboberto.xlsm` projection baseline **is** tracked; live-edited `.xlsx`/`.csv` copies are not.
+  payloads, `reports/`, `league/`, `docs/local/`, `config/league.json`, `config/boards.json`,
+  `config/briefing.md`, `leagues/*.yaml` (except the example), `dat/`, `out/`. Adding a file
+  to `docs/` (rather than `docs/local/`) is a decision to PUBLISH it — the remote is public,
+  so keep league ids, manager real names and team names out of anything tracked, including
+  `draft_sheets/board_template.html` and `tests/fixtures_board/`. Use the league KEY
+  (`2kdome`), which is already public in the code, not the ESPN display name or a manager's
+  name. The universal `*_elboberto.xlsm` projection baseline **is** tracked; live-edited
+  `.xlsx`/`.csv` copies are not.
 - **Models:** default `claude-haiku-4-5` for live latency; the dropdown also allows
   `claude-sonnet-5` and `claude-opus-4-8` (allow-listed in `server.py`).
 - **The advisor's grounding** is the live `state` posted each call (every team's budget,
   needs, roster; best-available; inflation; on-the-block). Keep `draftStateForAdvisor()`
   in the template and the eval's state-builder in sync when changing the shape.
+- **Nothing ships untested**: `tests/draft_regression.py` guards the draft payload;
+  `tests/board_smoke.py` guards the manage build. Run both before calling work done.
 - Don't commit or push unless the user asks.

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Live auction draft console — FastAPI backend.
+"""Fantasy console — FastAPI backend with two modes.
 
-Serves the static console and a thin LLM advisor (/api/advise) powered by
+/draft is the live auction console (pre-season); /manage is the fftiers board
+(in-season); / redirects to DEFAULT_MODE (env, default "manage"). Also serves
+a thin LLM advisor (/api/advise) powered by
 Claude Haiku 4.5 (fast, for live-draft latency). The advisor's system prompt is
 a strategy briefing distilled from the league analysis, so it predicts opponent
 behavior with full context; the frontend posts the live draft state each call.
@@ -12,8 +14,12 @@ when deploying publicly, since /api/advise spends real Anthropic credit per call
 import base64
 import json
 import os
-import re
 import secrets
+import subprocess
+import sys
+import threading
+import time
+import urllib.request
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
@@ -59,13 +65,20 @@ STRATEGY_BRIEFING = _load_briefing()
 app = FastAPI(title="Live Auction Draft Console")
 
 # ── Access gate ──────────────────────────────────────────────────────────────
-# Deployed publicly (Railway), the console is a findable URL and /api/advise spends
-# real Anthropic credit on every call. Set CONSOLE_PASSWORD to require HTTP Basic on
-# everything except /healthz (Railway's health check must stay open). Unset => open,
-# so local development and `python3 draft_app/eval_advisor.py` are unaffected.
+# Two parallel mechanisms, either grants access:
+#   1. Supabase email login (browsers): /login sends an email OTP; /api/session turns
+#      the resulting access token into an httpOnly session cookie. The server checks
+#      the token against Supabase Auth AND requires the email to be in ALLOWED_EMAILS
+#      — signups are open (future multi-tenant), the allowlist is the launch gate.
+#   2. HTTP Basic CONSOLE_PASSWORD (curl/scripts/fallback), as before.
+# Neither configured => open, so local development stays frictionless.
 CONSOLE_PASSWORD = os.environ.get("CONSOLE_PASSWORD", "").strip()
 CONSOLE_USER = os.environ.get("CONSOLE_USER", "draft").strip() or "draft"
-OPEN_PATHS = {"/healthz"}
+ALLOWED_EMAILS = {e.strip().lower()
+                  for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()}
+SESSION_COOKIE = "fc_session"
+OPEN_PATHS = {"/healthz", "/login", "/api/session", "/favicon.ico"}
+_token_cache: dict = {}   # access_token -> (email, checked_at)
 
 
 def _authorized(header: str) -> bool:
@@ -81,15 +94,96 @@ def _authorized(header: str) -> bool:
             and secrets.compare_digest(pw, CONSOLE_PASSWORD))
 
 
+def _email_login_enabled() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_API_KEY and ALLOWED_EMAILS)
+
+
+def _supabase_email(token: str) -> str | None:
+    """The verified email behind a Supabase access token (5-min cache), else None."""
+    if not token:
+        return None
+    hit = _token_cache.get(token)
+    now = time.time()
+    if hit and now - hit[1] < 300:
+        return hit[0]
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/auth/v1/user",
+        headers={"apikey": SUPABASE_API_KEY, "Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            email = (json.load(r).get("email") or "").strip().lower()
+    except Exception:
+        return None
+    if email:
+        if len(_token_cache) > 200:
+            _token_cache.clear()
+        _token_cache[token] = (email, now)
+    return email or None
+
+
+def _session_ok(request: Request) -> bool:
+    if not _email_login_enabled():
+        return False
+    email = _supabase_email(request.cookies.get(SESSION_COOKIE, ""))
+    return bool(email and email in ALLOWED_EMAILS)
+
+
 @app.middleware("http")
-async def require_password(request: Request, call_next):
-    if CONSOLE_PASSWORD and request.url.path not in OPEN_PATHS:
-        if not _authorized(request.headers.get("authorization", "")):
+async def require_auth(request: Request, call_next):
+    gated = CONSOLE_PASSWORD or _email_login_enabled()
+    if gated and request.url.path not in OPEN_PATHS:
+        basic_ok = CONSOLE_PASSWORD and _authorized(request.headers.get("authorization", ""))
+        if not basic_ok and not _session_ok(request):
+            wants_html = ("text/html" in request.headers.get("accept", "")
+                          and request.method == "GET")
+            if wants_html and _email_login_enabled():
+                return RedirectResponse(f"/login?next={request.url.path}", status_code=307)
             return Response(
                 "Authentication required.", status_code=401,
-                headers={"WWW-Authenticate": 'Basic realm="Draft console", charset="UTF-8"'},
+                headers={"WWW-Authenticate": 'Basic realm="Draft console", charset="UTF-8"'}
+                        if CONSOLE_PASSWORD else {},
             )
     return await call_next(request)
+
+
+@app.get("/login")
+async def login_page():
+    if not _email_login_enabled():
+        return Response("Email login is not configured on this server.\n",
+                        status_code=404, media_type="text/plain")
+    page = open(os.path.join(HERE, "login.html"), encoding="utf-8").read()
+    page = page.replace("{{SUPABASE_URL}}", SUPABASE_URL)
+    page = page.replace("{{SUPABASE_API_KEY}}", SUPABASE_API_KEY)
+    return Response(page, media_type="text/html")
+
+
+@app.post("/api/session")
+async def create_session(req: Request):
+    """Turn a Supabase access token into the httpOnly session cookie (allowlist-gated)."""
+    if not _email_login_enabled():
+        return JSONResponse({"error": "email login not configured"}, status_code=404)
+    try:
+        token = ((await req.json()).get("access_token") or "").strip()
+    except Exception:
+        token = ""
+    email = _supabase_email(token)
+    if not email:
+        return JSONResponse({"error": "invalid or expired session"}, status_code=401)
+    if email not in ALLOWED_EMAILS:
+        return JSONResponse({"error": f"{email} isn't authorized for this console yet"},
+                            status_code=403)
+    resp = JSONResponse({"ok": True, "email": email})
+    resp.set_cookie(SESSION_COOKIE, token, max_age=7 * 86400, httponly=True,
+                    samesite="lax",
+                    secure=req.headers.get("x-forwarded-proto", req.url.scheme) == "https")
+    return resp
+
+
+@app.get("/logout")
+async def logout():
+    resp = RedirectResponse("/login", status_code=307)
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
 
 
 @app.post("/api/advise")
@@ -131,116 +225,147 @@ async def advise(req: Request):
 @app.get("/healthz")
 async def healthz():
     return {"ok": True, "advisor": bool(os.environ.get("ANTHROPIC_API_KEY")),
-            "gated": bool(CONSOLE_PASSWORD)}
+            "gated": bool(CONSOLE_PASSWORD) or _email_login_enabled(),
+            "email_login": _email_login_enabled(), "board_store": bool(SUPABASE_URL)}
 
 
-# ── Surface: launcher at /, per-league tools under /l/{key}/ ─────────────────
-# Everything served here is GENERATED (draft_sheets/inject_season.py for the launcher
-# and the in-season cockpit; pipeline.py's `inject` stage for the draft console).
-# Nothing under static/ is hand-written, and this module never builds a payload.
-#
-#   /                      launcher            static/home.html
-#   /l/{key}/draft         auction console     static/l/{key}/draft.html, else static/index.html
-#   /l/{key}/season        in-season cockpit   static/l/{key}/season.html
-#
-# The draft console MOVED here from /. Its bytes are untouched — the same generated
-# file, served at a new path (tests/draft_regression.py still guards it).
-KEY_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
-_MISSING = ("Not built yet. Generate it with:\n\n"
-            "    python3 draft_sheets/inject_season.py\n")
+# ── Board data: latest snapshot, Supabase first ──────────────────────────────
+# The manage page boots from the data baked into board.html, then fetches this for
+# anything newer. The pipeline's `board` stage pushes each build to the
+# board_snapshots table, so a local `pipeline.py week` refreshes the deployed site
+# without a redeploy. Unconfigured (local dev), it falls back to the build output
+# on disk; the page silently keeps its baked data if the endpoint has nothing.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_API_KEY = os.environ.get("SUPABASE_API_KEY", "").strip()
+BOARD_DB_SECRET = os.environ.get("BOARD_DB_SECRET", "").strip()
+VIZ_LOCAL = os.path.join(HERE, os.pardir, "out", "board", "viz-data.json")
+BOARD_CACHE_TTL = 60  # seconds; the page re-fetches per load, the store moves weekly
+_board_cache = {"at": 0.0, "body": None}
 
 
-def _registry():
-    """The generated launcher payload: {key: card}.
+def _latest_snapshot():
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/rpc/get_board_snapshot",
+        data=json.dumps({"secret": BOARD_DB_SECRET}).encode(),
+        headers={"apikey": SUPABASE_API_KEY,
+                 "Authorization": f"Bearer {SUPABASE_API_KEY}",
+                 "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.load(r)
 
-    Read per request (never cached) so a re-inject is picked up without a restart —
-    the server has no --reload. Falls back to the directories inject_season wrote, so
-    a stripped deploy bundle still routes.
-    """
+
+@app.get("/api/board-data")
+def board_data():  # sync on purpose: FastAPI runs it in the threadpool
+    now = time.time()
+    if _board_cache["body"] is not None and now - _board_cache["at"] < BOARD_CACHE_TTL:
+        return JSONResponse(_board_cache["body"])
+    if SUPABASE_URL and SUPABASE_API_KEY and BOARD_DB_SECRET:
+        try:
+            snap = _latest_snapshot()
+            if snap and snap.get("data"):
+                body = {"source": "supabase", "built_at": snap.get("built_at"),
+                        "data": snap["data"]}
+                _board_cache.update(at=now, body=body)
+                return JSONResponse(body)
+        except Exception:
+            pass  # store down or empty -> fall back to the local build
     try:
-        with open(os.path.join(STATIC_DIR, "leagues.json"), encoding="utf-8") as f:
-            reg = {lg.get("key"): lg for lg in (json.load(f).get("leagues") or [])
-                   if lg.get("key") and KEY_RE.match(lg["key"])}
-        if reg:
-            return reg
+        with open(VIZ_LOCAL, encoding="utf-8") as f:
+            viz = json.load(f)
+        body = {"source": "file", "built_at": (viz.get("asof") or {}).get("built"),
+                "data": viz}
+        _board_cache.update(at=now, body=body)
+        return JSONResponse(body)
     except (OSError, ValueError):
-        pass
-    try:
-        return {d: {} for d in os.listdir(os.path.join(STATIC_DIR, "l"))
-                if KEY_RE.match(d) and os.path.isdir(os.path.join(STATIC_DIR, "l", d))}
-    except OSError:
-        return {}
+        return JSONResponse(
+            {"error": "no board data — run `python3 pipeline.py week`"}, status_code=404)
 
 
-def _page(path: str, what: str):
+# ── Surface: two modes ───────────────────────────────────────────────────────
+# Everything served here is GENERATED (pipeline.py `inject` for the draft console,
+# `board` for the manage board). Nothing under static/ is hand-written, and this
+# module never builds a payload.
+#
+#   /         redirect to the default mode (DEFAULT_MODE env: manage|draft)
+#   /draft    auction console (pre-season)    static/index.html
+#   /manage   fftiers board (in-season)       static/board.html
+DEFAULT_MODE = os.environ.get("DEFAULT_MODE", "manage").strip().lower()
+if DEFAULT_MODE not in ("manage", "draft"):
+    DEFAULT_MODE = "manage"
+
+
+def _page(path: str, what: str, hint: str):
     if os.path.exists(path):
         return FileResponse(path, media_type="text/html")
-    return Response(f"{what} not built.\n\n{_MISSING}", status_code=404,
-                    media_type="text/plain")
-
-
-def _league(league_key: str):
-    """(static dir, launcher card) for a known league, or (None, None).
-
-    Validated against the registry, so no user-supplied string ever reaches a path.
-    """
-    if not KEY_RE.match(league_key or ""):
-        return None, None
-    reg = _registry()
-    if league_key not in reg:
-        return None, None
-    return os.path.join(STATIC_DIR, "l", league_key), reg[league_key]
-
-
-def _unknown(league_key: str):
-    return Response(f"unknown league {league_key!r}\n", status_code=404,
-                    media_type="text/plain")
+    return Response(f"{what} not built yet. Generate it with:\n\n    {hint}\n",
+                    status_code=404, media_type="text/plain")
 
 
 @app.get("/")
-async def launcher():
-    """The app's front door: every league, every tool."""
-    return _page(os.path.join(STATIC_DIR, "home.html"), "Launcher")
+async def root():
+    return RedirectResponse(f"/{DEFAULT_MODE}", status_code=307)
 
 
-@app.get("/l/{league_key}")
-async def league_root(league_key: str):
-    return RedirectResponse(f"/l/{league_key}/season", status_code=307)
+@app.get("/draft")
+async def draft_console():
+    return _page(os.path.join(STATIC_DIR, "index.html"),
+                 "Draft console", "python3 pipeline.py build inject")
 
 
-@app.get("/l/{league_key}/season")
-async def season_console(league_key: str):
-    d, _ = _league(league_key)
-    if d is None:
-        return _unknown(league_key)
-    return _page(os.path.join(d, "season.html"), f"In-season cockpit for {league_key}")
+@app.get("/manage")
+async def manage_board():
+    return _page(os.path.join(STATIC_DIR, "board.html"),
+                 "Manage board", "python3 pipeline.py week")
 
 
-@app.get("/l/{league_key}/draft")
-async def draft_console(league_key: str):
-    """The existing auction console, unchanged — only its route moved.
+# ── Refresh from the website ─────────────────────────────────────────────────
+# POST /api/refresh runs the manage pipeline (pull → vbd/csg boards → build+push)
+# in a background thread; the page polls /api/refresh/status and hot-swaps the new
+# data when it lands. `tiers` (PNG charts) is deliberately excluded: it needs
+# matplotlib, which the deployed image doesn't carry. Locally pipeline.py sits one
+# level up from this file; in the Railway bundle it sits alongside it. Requires the
+# same secrets the pipeline needs (ESPN_SWID/ESPN_S2, FANTASYPROS_API_KEY,
+# SUPABASE_* — env vars on Railway). Behind the same Basic auth as everything else.
+ROOT_DIR = os.path.abspath(os.path.join(HERE, os.pardir))
+PIPELINE = next((p for p in (os.path.join(HERE, "pipeline.py"),
+                             os.path.join(ROOT_DIR, "pipeline.py"))
+                 if os.path.exists(p)), None)
+REFRESH_STAGES = ("pull", "vbd-boards", "csg-boards", "board")
+_refresh = {"running": False, "started": None, "finished": None, "ok": None, "log": ""}
+_refresh_lock = threading.Lock()
 
-    A per-league generated console is served when one exists. Otherwise this falls back
-    to the single console `pipeline.py inject` writes at static/index.html, but ONLY for
-    the league that console was built for — the launcher card says which (`tools.draft`).
-    Serving it under another league's key would show that league one league's board.
-    """
-    d, card = _league(league_key)
-    if d is None:
-        return _unknown(league_key)
-    per_league = os.path.join(d, "draft.html")
-    if os.path.exists(per_league):
-        return FileResponse(per_league, media_type="text/html")
-    if (card or {}).get("tools", {}).get("draft") is False:
-        return Response(
-            f"No draft console for {league_key!r}.\n\n"
-            "static/index.html is generated by `pipeline.py inject` for the league in "
-            "config/league.json only.\n", status_code=404, media_type="text/plain")
-    return _page(os.path.join(STATIC_DIR, "index.html"), f"Draft console for {league_key}")
+
+def _run_refresh():
+    try:
+        p = subprocess.run([sys.executable, PIPELINE, *REFRESH_STAGES],
+                           cwd=os.path.dirname(PIPELINE),
+                           capture_output=True, text=True, timeout=1800)
+        ok, log = p.returncode == 0, (p.stdout + "\n" + p.stderr)[-4000:]
+    except Exception as e:  # timeout, spawn failure — report, never crash the server
+        ok, log = False, str(e)[-4000:]
+    if ok:
+        _board_cache.update(at=0.0, body=None)  # next /api/board-data is the new build
+    _refresh.update(running=False, finished=time.time(), ok=ok, log=log)
+
+
+@app.post("/api/refresh")
+async def refresh_start():
+    if PIPELINE is None:
+        return JSONResponse({"error": "refresh unavailable: pipeline not in this deploy"},
+                            status_code=501)
+    with _refresh_lock:
+        if _refresh["running"]:
+            return JSONResponse({"status": "already-running",
+                                 "started": _refresh["started"]}, status_code=409)
+        _refresh.update(running=True, started=time.time(), finished=None, ok=None, log="")
+    threading.Thread(target=_run_refresh, daemon=True).start()
+    return {"status": "started"}
+
+
+@app.get("/api/refresh/status")
+async def refresh_status():
+    return dict(_refresh)
 
 
 # Static assets (mounted last so the routes above and /api/* take precedence)
-from data_api import router as data_router  # noqa: E402
-app.include_router(data_router)
-
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

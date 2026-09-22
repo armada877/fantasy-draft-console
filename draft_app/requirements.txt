@@ -3,3 +3,7 @@ uvicorn[standard]==0.34.0
 anthropic>=0.40
 # used only by the data pipeline (draft_sheets/build_tool_data.py) to read the .xlsm projections
 openpyxl>=3.1
+# manage-board refresh from the website (/api/refresh): fftiers pull + build.
+# matplotlib is deliberately NOT here — the `tiers` chart stage doesn't run deployed.
+scikit-learn>=1.3
+PyYAML>=6.0

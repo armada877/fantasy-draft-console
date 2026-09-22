@@ -1,0 +1,180 @@
+{
+ "players": [
+  {
+   "rank_ecr": 1,
+   "player_name": "Alpha Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "1",
+   "rank_max": "3",
+   "rank_ave": "1.00",
+   "rank_std": "1.00"
+  },
+  {
+   "rank_ecr": 2,
+   "player_name": "Bravo Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "1",
+   "rank_max": "4",
+   "rank_ave": "2.20",
+   "rank_std": "1.10"
+  },
+  {
+   "rank_ecr": 3,
+   "player_name": "Charlie Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "2",
+   "rank_max": "5",
+   "rank_ave": "3.40",
+   "rank_std": "1.20"
+  },
+  {
+   "rank_ecr": 4,
+   "player_name": "Delta Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "3",
+   "rank_max": "6",
+   "rank_ave": "4.00",
+   "rank_std": "1.30"
+  },
+  {
+   "rank_ecr": 5,
+   "player_name": "Echo Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "4",
+   "rank_max": "7",
+   "rank_ave": "5.20",
+   "rank_std": "1.40"
+  },
+  {
+   "rank_ecr": 6,
+   "player_name": "Foxtrot Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "5",
+   "rank_max": "8",
+   "rank_ave": "6.40",
+   "rank_std": "1.50"
+  },
+  {
+   "rank_ecr": 7,
+   "player_name": "Golf Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "6",
+   "rank_max": "9",
+   "rank_ave": "7.00",
+   "rank_std": "1.60"
+  },
+  {
+   "rank_ecr": 8,
+   "player_name": "Hotel Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "7",
+   "rank_max": "10",
+   "rank_ave": "8.20",
+   "rank_std": "1.70"
+  },
+  {
+   "rank_ecr": 9,
+   "player_name": "India Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "8",
+   "rank_max": "11",
+   "rank_ave": "9.40",
+   "rank_std": "1.80"
+  },
+  {
+   "rank_ecr": 10,
+   "player_name": "Juliett Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "9",
+   "rank_max": "12",
+   "rank_ave": "10.00",
+   "rank_std": "1.90"
+  },
+  {
+   "rank_ecr": 11,
+   "player_name": "Kilo Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "10",
+   "rank_max": "13",
+   "rank_ave": "11.20",
+   "rank_std": "2.00"
+  },
+  {
+   "rank_ecr": 12,
+   "player_name": "Lima Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "11",
+   "rank_max": "14",
+   "rank_ave": "12.40",
+   "rank_std": "2.10"
+  },
+  {
+   "rank_ecr": 13,
+   "player_name": "Mike Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "12",
+   "rank_max": "15",
+   "rank_ave": "13.00",
+   "rank_std": "2.20"
+  },
+  {
+   "rank_ecr": 14,
+   "player_name": "November Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "13",
+   "rank_max": "16",
+   "rank_ave": "14.20",
+   "rank_std": "2.30"
+  },
+  {
+   "rank_ecr": 15,
+   "player_name": "Oscar Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "14",
+   "rank_max": "17",
+   "rank_ave": "15.40",
+   "rank_std": "2.40"
+  },
+  {
+   "rank_ecr": 16,
+   "player_name": "Papa Quarterback",
+   "player_team_id": "FA",
+   "player_opponent": "vs. BYE",
+   "player_positions": "QB",
+   "rank_min": "15",
+   "rank_max": "18",
+   "rank_ave": "16.00",
+   "rank_std": "2.50"
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+  "season": 2026,
+  "leagues": {
+    "my-league": {
+      "league_id": 0,
+      "team_id": 0,
+      "label": "My League",
+      "yaml": "leagues/my-league.yaml"
+    }
+  }
+}
