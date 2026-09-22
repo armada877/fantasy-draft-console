@@ -11,6 +11,15 @@ API_URL = (
     "https://api.fantasypros.com/public/v2/json/nfl/{year}/consensus-rankings"
     "?position={position}&week={week}&scoring={scoring}"
 )
+# Rest-of-season ranks are a different ranking TYPE, not a week: the API silently
+# clamps out-of-range weeks to the current week (week=90 returns weekly ranks!), so
+# ROS must be requested as type=ros with NO week param. Locally the ROS caches keep
+# living under the week-90 sentinel filename.
+ROS_WEEK = 90
+ROS_URL = (
+    "https://api.fantasypros.com/public/v2/json/nfl/{year}/consensus-rankings"
+    "?position={position}&scoring={scoring}&type=ros"
+)
 
 
 @dataclass
@@ -51,7 +60,10 @@ def download(data_dir: Path, year: int, week: int, position: str, scoring: str,
              api_key: str) -> Path:
     dest = cache_path(data_dir, year, week, position, scoring)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    url = API_URL.format(year=year, position=position, week=week, scoring=scoring)
+    if week == ROS_WEEK:
+        url = ROS_URL.format(year=year, position=position, scoring=scoring)
+    else:
+        url = API_URL.format(year=year, position=position, week=week, scoring=scoring)
     req = urllib.request.Request(url, headers={"x-api-key": api_key})
     with urllib.request.urlopen(req, timeout=30) as resp:
         dest.write_bytes(resp.read())
