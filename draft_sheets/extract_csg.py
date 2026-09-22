@@ -77,21 +77,18 @@ FIELDS = {
 BLANK = {"", "na", "n/a", "-", "--", "none"}
 
 
-def norm_name(s):
-    """Loose key for joining CSG names to ESPN/console names.
-
-    ESPN and CSG disagree on suffixes and punctuation ("James Cook III" vs "James Cook",
-    "Marvin Harrison Jr." vs "Marvin Harrison", "D.J. Moore" vs "DJ Moore"), so strip
-    punctuation, generational suffixes and case. Kept deliberately conservative — this
-    only ever attaches advisory market data, so a miss costs a blank column, not a wrong
-    price, and we would rather miss than mis-join two different players.
-    """
-    s = str(s or "").lower()
-    s = s.replace("&", "and")
-    s = re.sub(r"[.'`,]", "", s)
-    s = re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", "", s)
-    s = re.sub(r"[^a-z0-9]+", " ", s)
-    return " ".join(s.split())
+# The single name-join key lives in fftiers.names (shared with the manage board);
+# re-exported here so `from extract_csg import norm_name` keeps working.
+try:
+    from fftiers.names import norm_name
+except ImportError:  # standalone use without the fftiers install
+    def norm_name(s):
+        s = str(s or "").lower()
+        s = s.replace("&", "and")
+        s = re.sub(r"[.'`,]", "", s)
+        s = re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", "", s)
+        s = re.sub(r"[^a-z0-9]+", " ", s)
+        return " ".join(s.split())
 
 
 def _num(v):

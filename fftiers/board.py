@@ -33,6 +33,7 @@ from .cluster import assign_tiers
 from .config import LeagueConfig, load_league
 from .depth import plan_positions
 from .fetch import cache_path, load_rows
+from .names import norm_name
 
 CORE = ("QB", "RB", "WR", "TE")
 ROS_CACHE_WEEK = 90   # FantasyPros sentinel week for rest-of-season ranks
@@ -193,31 +194,49 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
     base = out_dir / key / f"week-{week}"
     horizons_spec = {"week": (week, f"week-{week}"),
                      "ros": (ROS_CACHE_WEEK, f"ros-from-{week}")}
-    mine = {r["name"].lower() for r in roster}
+    mine = {norm_name(r["name"]) for r in roster}
+    # Sources spell players differently (ESPN "Patrick Mahomes" vs FantasyPros
+    # "Patrick Mahomes II"), so every dict is keyed by (norm_name, pos) and a
+    # display name is kept per key — the ESPN engines' spelling wins, since the
+    # roster and free-agent state join on it.
+    display: dict = {}
+
+    def rekey(d, authoritative):
+        out = {}
+        for (name, pos), v in d.items():
+            k = (norm_name(name), pos)
+            if authoritative:
+                display[k] = name
+            else:
+                display.setdefault(k, name)
+            out[k] = v
+        return out
+
     horizons, keys_ = {}, set()
     for hz, (cache_week, blabel) in horizons_spec.items():
-        boris = boris_tiers(cfg, data_dir, cache_week)
-        elb = read_board(base / "vbd" / f"vbd-{blabel}.csv",
-                         {"posrank": "PosRank", "pts": "FPTS", "vbd": "AvgVBD", "tier": "Tier"})
+        boris = rekey(boris_tiers(cfg, data_dir, cache_week), False)
+        elb = rekey(read_board(base / "vbd" / f"vbd-{blabel}.csv",
+                    {"posrank": "PosRank", "pts": "FPTS", "vbd": "AvgVBD", "tier": "Tier"}), True)
         csg_path = base / "csg" / f"csg-{blabel}.csv"
-        csg = read_board(csg_path, {"posrank": "PosRank", "pts": "FPTS", "vbd": "AvgVBD",
-                                    "adj": "VBDAdj", "tier": "PosTier"})
+        csg = rekey(read_board(csg_path, {"posrank": "PosRank", "pts": "FPTS", "vbd": "AvgVBD",
+                                          "adj": "VBDAdj", "tier": "PosTier"}), True)
         rostered = {}
         with csg_path.open() as f:
             for row in csv.DictReader(f):
-                rostered[(row["Player"], row["Pos"])] = row["Rostered"] == "yes"
+                rostered[(norm_name(row["Player"]), row["Pos"])] = row["Rostered"] == "yes"
         horizons[hz] = {"boris": boris, "elb": elb, "csg": csg, "rostered": rostered}
         keys_ |= set(boris) | set(elb) | set(csg)
 
     players = []
-    for (name, pos) in sorted(keys_):
-        entry = {"name": name, "pos": pos, "mine": name.lower() in mine}
+    for key_ in sorted(keys_, key=lambda k: display[k]):
+        norm, pos = key_
+        entry = {"name": display[key_], "pos": pos, "mine": norm in mine}
         fa = False
         for hz, h in horizons.items():
-            entry[hz] = {"boris": h["boris"].get((name, pos)),
-                         "elb": h["elb"].get((name, pos)),
-                         "csg": h["csg"].get((name, pos))}
-            if (name, pos) in h["rostered"] and not h["rostered"][(name, pos)]:
+            entry[hz] = {"boris": h["boris"].get(key_),
+                         "elb": h["elb"].get(key_),
+                         "csg": h["csg"].get(key_)}
+            if key_ in h["rostered"] and not h["rostered"][key_]:
                 fa = True
         entry["fa"] = fa
         players.append(entry)
