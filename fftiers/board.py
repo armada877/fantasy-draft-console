@@ -171,6 +171,15 @@ def cmd_pull(args) -> int:
                   f" (paste fresh ranks via fftiers.text_to_cache if needed)")
         except urllib.error.URLError as e:
             print(f"  FP {pos}-{scoring} week {week}: {e.reason} - kept existing cache")
+        except RuntimeError as e:
+            # fetch refuses to write a truncated or wrong-week pool; its message
+            # already says the prior cache was kept — carry on with the next combo.
+            print(f"  FP: {e}")
+        except (OSError, ValueError) as e:
+            # read timeouts, connection resets, unparseable payloads — one bad
+            # combo must never abort the rest of the refresh.
+            print(f"  FP {pos}-{scoring} week {week}: {type(e).__name__}: {e} "
+                  f"- kept existing cache")
         else:
             print(f"  FP {pos}-{scoring} week {week} -> {path}")
     return 0
@@ -220,6 +229,9 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
         csg_path = base / "csg" / f"csg-{blabel}.csv"
         csg = rekey(read_board(csg_path, {"posrank": "PosRank", "pts": "FPTS", "vbd": "AvgVBD",
                                           "adj": "VBDAdj", "tier": "PosTier"}), True)
+        # Roster status is only OBSERVED via the CSG board's Rostered column (the
+        # engines share one ESPN pool, so vbd keys ⊆ csg keys in practice — a player
+        # in vbd but not csg would land fa:null "unknown", never a wrong claim).
         rostered = {}
         with csg_path.open() as f:
             for row in csv.DictReader(f):
@@ -232,13 +244,19 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
         norm, pos = key_
         entry = {"name": display[key_], "pos": pos, "mine": norm in mine}
         fa = False
+        observed = False   # did any horizon's CSG board actually report roster status?
         for hz, h in horizons.items():
             entry[hz] = {"boris": h["boris"].get(key_),
                          "elb": h["elb"].get(key_),
                          "csg": h["csg"].get(key_)}
-            if key_ in h["rostered"] and not h["rostered"][key_]:
-                fa = True
-        entry["fa"] = fa
+            if key_ in h["rostered"]:
+                observed = True
+                if not h["rostered"][key_]:
+                    fa = True
+        # A player seen only in FantasyPros consensus (never in any ESPN engine
+        # CSV) has UNKNOWN roster status — emit null, not a false "rostered".
+        # My own roster is an observation too: mine players keep fa=False.
+        entry["fa"] = fa if (observed or entry["mine"]) else None
         players.append(entry)
 
     slots = [[s, cfg.roster[s]] for s in SLOT_ORDER if cfg.roster.get(s, 0) > 0]

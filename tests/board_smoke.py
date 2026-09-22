@@ -68,10 +68,22 @@ def main():
             assert set(p[hz]) == {"boris", "elb", "csg"}, p[hz]
     by_name = {p["name"]: p for p in L["players"]}
     aq = by_name["Alpha Quarterback"]
-    assert aq["mine"] and not aq["fa"], aq
+    assert aq["mine"] and aq["fa"] is False, aq
     assert aq["ros"]["boris"] and aq["ros"]["elb"] and aq["ros"]["csg"], aq["ros"]
-    assert by_name["Golf Wideout"]["fa"], by_name["Golf Wideout"]
+    assert by_name["Golf Wideout"]["fa"] is True, by_name["Golf Wideout"]
+    assert all(p["fa"] in (True, False, None) for p in L["players"])
     ok(f"{len(L['players'])} players; mine/fa flags and both horizons present")
+
+    # A player known only to the FantasyPros rank caches (never in any ESPN
+    # engine CSV, not on my roster) has UNKNOWN roster status: fa must be JSON
+    # null (Python None), never false, and the row still builds with empty
+    # engine columns (the board renders those as dashes).
+    dq = by_name["Delta Quarterback"]
+    assert dq["fa"] is None and not dq["mine"], dq
+    for hz in ("week", "ros"):
+        assert dq[hz]["elb"] is None and dq[hz]["csg"] is None, dq[hz]
+    assert dq["ros"]["boris"], dq["ros"]
+    ok("FP-only player: fa is null (unknown), engine columns empty, row present")
 
     with open(dest) as f:
         html = f.read()
