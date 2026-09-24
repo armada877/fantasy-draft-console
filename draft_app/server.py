@@ -330,14 +330,19 @@ ROOT_DIR = os.path.abspath(os.path.join(HERE, os.pardir))
 PIPELINE = next((p for p in (os.path.join(HERE, "pipeline.py"),
                              os.path.join(ROOT_DIR, "pipeline.py"))
                  if os.path.exists(p)), None)
-REFRESH_STAGES = ("pull", "vbd-boards", "csg-boards", "board")
-_refresh = {"running": False, "started": None, "finished": None, "ok": None, "log": ""}
+# full = everything (ESPN pools + ROS sums + FantasyPros ranks), ~1-2 min.
+# sync = fast ESPN state only (rosters/lineups/meta/weekly pts; the pipeline's
+#        `sync` stage chains the offline board rebuild itself), ~15 s.
+REFRESH_MODES = {"full": ("pull", "vbd-boards", "csg-boards", "board"),
+                 "sync": ("sync",)}
+_refresh = {"running": False, "mode": None, "started": None, "finished": None,
+            "ok": None, "log": ""}
 _refresh_lock = threading.Lock()
 
 
-def _run_refresh():
+def _run_refresh(mode: str):
     try:
-        p = subprocess.run([sys.executable, PIPELINE, *REFRESH_STAGES],
+        p = subprocess.run([sys.executable, PIPELINE, *REFRESH_MODES[mode]],
                            cwd=os.path.dirname(PIPELINE),
                            capture_output=True, text=True, timeout=1800)
         ok, log = p.returncode == 0, (p.stdout + "\n" + p.stderr)[-4000:]
@@ -349,17 +354,26 @@ def _run_refresh():
 
 
 @app.post("/api/refresh")
-async def refresh_start():
+async def refresh_start(req: Request):
     if PIPELINE is None:
         return JSONResponse({"error": "refresh unavailable: pipeline not in this deploy"},
                             status_code=501)
+    try:
+        body = await req.json()
+    except Exception:
+        body = {}   # no/garbled body -> the default mode; a PRESENT bad mode is a 400
+    mode = body.get("mode", "full") if isinstance(body, dict) else None
+    if not isinstance(mode, str) or mode.strip().lower() not in REFRESH_MODES:
+        return JSONResponse({"error": f"unknown mode {mode!r}"}, status_code=400)
+    mode = mode.strip().lower()
     with _refresh_lock:
         if _refresh["running"]:
-            return JSONResponse({"status": "already-running",
+            return JSONResponse({"status": "already-running", "mode": _refresh["mode"],
                                  "started": _refresh["started"]}, status_code=409)
-        _refresh.update(running=True, started=time.time(), finished=None, ok=None, log="")
-    threading.Thread(target=_run_refresh, daemon=True).start()
-    return {"status": "started"}
+        _refresh.update(running=True, mode=mode, started=time.time(),
+                        finished=None, ok=None, log="")
+    threading.Thread(target=_run_refresh, args=(mode,), daemon=True).start()
+    return {"status": "started", "mode": mode}
 
 
 @app.get("/api/refresh/status")

@@ -354,6 +354,84 @@ def cmd_build(args) -> int:
     return 0
 
 
+# ── sync (network, fast) ─────────────────────────────────────────────────────
+def cmd_sync(args) -> int:
+    """Fast ESPN state sync: rosters, lineup slots, meta, this-week projections.
+
+    The fast-moving state (who's rostered, what's set in the lineup, weekly
+    numbers) refreshes in a few calls per league; the slow-moving forecasts —
+    rest-of-season totals and FantasyPros ranks — are reused from cache and only
+    move on a full `pull`. Roster ROS points are re-matched against the cached
+    ROS csv by normalized name (fallback: the previous snapshot's value).
+    """
+    from . import espn
+    root = repo_root()
+    season, leagues = load_boards(Path(args.config), args.league)
+    data_dir = Path(args.data_dir)
+    espn_dir = data_dir / "espn"
+    espn_dir.mkdir(parents=True, exist_ok=True)
+    cookie = espn.auth_cookie()
+    synced = 0
+
+    for key, lg in leagues.items():
+        cfg = load_league(root / lg["yaml"])
+        # ALL network first, ALL writes last: an ESPN failure mid-league must leave
+        # that league's dat/espn files exactly as they were, and move on.
+        try:
+            info = espn.league_settings(lg["league_id"], season, cookie)
+            week = args.week or info["current_week"]
+            ros_csv = espn_dir / f"{key}-ros-from-{week}.csv"
+            if not ros_csv.exists():
+                # Week rolled over (or never pulled): the cached ROS totals belong
+                # to another week. A half-synced league would break the board.
+                print(f"[{key}] SKIP - no cached {ros_csv.name} for ESPN week {week}; "
+                      f"run the full refresh (`python3 pipeline.py week`) first")
+                continue
+            wk_pool = espn.player_pool(lg["league_id"], season, week, cookie)
+            team = espn.team_roster(lg["league_id"], season, lg["team_id"], cookie)
+        except (espn.EspnError, OSError) as e:
+            print(f"[{key}] SKIP - ESPN error, nothing written for this league: {e}")
+            continue
+        final_week = int(info.get("final_week")
+                         or cfg.vbd_options.get("final_week") or 17)
+        write_pool_csv(espn_dir / f"{key}-week-{week}.csv", wk_pool)
+        wk_by = {p["id"]: p["points"] for p in wk_pool}
+
+        ros_by = {}
+        with ros_csv.open() as f:
+            for row in csv.DictReader(f):
+                k2 = (norm_name(row["player"]), row["pos"])
+                if k2 in ros_by:
+                    print(f"[{key}] note: duplicate normalized name in {ros_csv.name}: "
+                          f"{row['player']} — last row wins")
+                ros_by[k2] = float(row["points"])
+        prev = {}
+        roster_p = espn_dir / f"{key}-roster.json"
+        if roster_p.exists():
+            for r0 in json.loads(roster_p.read_text()):
+                prev[(norm_name(r0["name"]), r0["pos"])] = r0.get("ros", 0.0)
+
+        roster = []
+        for r in team:
+            k2 = (norm_name(r["name"]), r["pos"])
+            roster.append({"name": r["name"], "pos": r["pos"],
+                           "wk": wk_by.get(r["id"], 0.0),
+                           "ros": ros_by.get(k2, prev.get(k2, 0.0)),
+                           "injury": norm_injury(r["injury"]),
+                           "slot": r.get("slot", "")})
+        roster.sort(key=lambda r: -r["ros"])
+        roster_p.write_text(json.dumps(roster, indent=1) + "\n")
+        meta = {"week": week, "final_week": final_week,
+                "team": info["my_teams"].get(int(lg["team_id"]), ""),
+                "league_name": info["name"], "pulled": _now()}
+        (espn_dir / f"{key}-meta.json").write_text(json.dumps(meta, indent=1) + "\n")
+        set_now = sum(1 for r in roster if r["slot"] not in ("", "BE", "IR"))
+        print(f"[{key}] synced: {len(roster)} rostered, {set_now} set in lineup, "
+              f"week {week} projections refreshed (ROS totals + ranks from cache)")
+        synced += 1
+    return 0 if synced or not leagues else 1
+
+
 # ── snapshot store (Supabase) ────────────────────────────────────────────────
 SUPABASE_KEYS = ("SUPABASE_URL", "SUPABASE_API_KEY", "BOARD_DB_SECRET")
 
@@ -411,6 +489,11 @@ def main(argv: list[str] | None = None) -> int:
     common(pp)
     pp.add_argument("--week", type=int, default=None, help="Default: current ESPN week.")
 
+    sp = sub.add_parser("sync", help="Fast ESPN sync: rosters/lineups/meta/weekly "
+                                     "projections; ROS + ranks stay cached.")
+    common(sp)
+    sp.add_argument("--week", type=int, default=None, help="Default: current ESPN week.")
+
     bp = sub.add_parser("build", help="Assemble viz-data.json and inject board.html.")
     common(bp)
     bp.add_argument("--out-dir", default=str(root / "out"))
@@ -423,7 +506,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="Skip persisting the snapshot to Supabase.")
 
     args = ap.parse_args(argv)
-    return cmd_pull(args) if args.cmd == "pull" else cmd_build(args)
+    return {"pull": cmd_pull, "sync": cmd_sync, "build": cmd_build}[args.cmd](args)
 
 
 if __name__ == "__main__":

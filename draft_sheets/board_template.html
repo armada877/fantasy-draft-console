@@ -140,8 +140,11 @@ tr:hover td{background:var(--card2)}
     <div class="asof" id="asof">
       <div class="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></div>
       <ul class="asof-src mono" id="asof-src"></ul>
-      <button id="refreshbtn" class="refreshbtn" type="button">Refresh data</button>
-      <div class="asof-hint">or: <span class="mono">python3 pipeline.py week</span></div>
+      <button id="syncbtn" class="refreshbtn" type="button" data-mode="sync"
+              title="Fast: rosters, lineup slots, this-week projections (~15s). ROS totals and consensus ranks stay cached.">Sync lineup</button>
+      <button id="refreshbtn" class="refreshbtn" type="button" data-mode="full"
+              title="Everything: ESPN pools + rest-of-season sums + FantasyPros ranks (~2 min).">Full refresh</button>
+      <div class="asof-hint">or: <span class="mono">python3 pipeline.py sync|week</span></div>
     </div>
   </div>
   <p class="sub">The same data run through three ported methodologies:
@@ -484,31 +487,42 @@ async function adoptLatest(){
 }
 adoptLatest();
 
-// Refresh button: kick the server-side pipeline run, poll until it lands,
-// then swap in the new data. Needs the deploy to carry the pipeline (501 if not).
-const rbtn = $("#refreshbtn");
+// Refresh buttons: kick the server-side pipeline run (sync = fast ESPN state,
+// full = everything), poll until it lands, then swap in the new data.
+// Needs the deploy to carry the pipeline (501 if not).
+const REFRESH_BTNS = [...document.querySelectorAll("button[data-mode]")];
+const BTN_LABEL = {sync: "Sync lineup", full: "Full refresh"};
+const btnFor = mode => REFRESH_BTNS.find(b => b.dataset.mode === mode) || REFRESH_BTNS[0];
+function refreshIdle(){
+  REFRESH_BTNS.forEach(b => { b.disabled = false; b.textContent = BTN_LABEL[b.dataset.mode]; });
+}
 async function pollRefresh(){
   let s;
   try { s = await (await fetch("/api/refresh/status", {cache: "no-store"})).json(); }
   catch (e) { setTimeout(pollRefresh, 8000); return; }
   if (s.running) {
-    const mins = ((Date.now()/1000 - s.started) / 60).toFixed(1);
-    rbtn.textContent = `Refreshing… ${mins} min`;
-    setTimeout(pollRefresh, 5000);
+    REFRESH_BTNS.forEach(b => b.disabled = true);
+    const secs = Math.round(Date.now()/1000 - s.started);
+    btnFor(s.mode).textContent =
+      (s.mode === "sync" ? "Syncing… " : "Refreshing… ") +
+      (secs < 90 ? `${secs}s` : `${(secs/60).toFixed(1)} min`);
+    setTimeout(pollRefresh, s.mode === "sync" ? 2500 : 5000);
     return;
   }
-  rbtn.disabled = false;
-  if (s.ok === false) { rbtn.textContent = "Refresh failed — retry"; return; }
-  rbtn.textContent = "Refresh data";
+  refreshIdle();
+  if (s.ok === false) { btnFor(s.mode).textContent = BTN_LABEL[s.mode] + " — failed, retry"; return; }
   await adoptLatest();
 }
-if (rbtn) rbtn.onclick = async () => {
-  rbtn.disabled = true;
-  rbtn.textContent = "Starting…";
+REFRESH_BTNS.forEach(btn => btn.onclick = async () => {
+  REFRESH_BTNS.forEach(b => b.disabled = true);
+  btn.textContent = "Starting…";
   let r;
-  try { r = await fetch("/api/refresh", {method: "POST"}); }
-  catch (e) { rbtn.disabled = false; rbtn.textContent = "Refresh data (server offline)"; return; }
-  if (r.status === 501) { rbtn.textContent = "Refresh unavailable in this deploy"; return; }
+  try {
+    r = await fetch("/api/refresh", {method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({mode: btn.dataset.mode})});
+  } catch (e) { refreshIdle(); btn.textContent = BTN_LABEL[btn.dataset.mode] + " (server offline)"; return; }
+  if (r.status === 501) { btn.textContent = "Unavailable in this deploy"; return; }
   pollRefresh();   // 409 (already running) just joins the poll
-};
+});
 </script>

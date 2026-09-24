@@ -13,6 +13,7 @@ Usage:
     python3 pipeline.py build inject        # rebuild the draft console from current data only
     python3 pipeline.py scrape calibrate build inject   # full draft refresh from ESPN
     python3 pipeline.py week                # weekly manage refresh: pull -> ... -> board
+    python3 pipeline.py sync                # fast refresh: rosters/lineups/weekly pts only
     python3 pipeline.py board               # re-render the manage board from cached data
     python3 pipeline.py week --league 2kdome            # one league only
 
@@ -38,7 +39,7 @@ PY = sys.executable
 DRAFT_STAGES = ("scrape", "calibrate", "csg", "simulate", "build", "inject", "all")
 # Manage (in-season) stages — the fftiers board. Each fans out over every league in
 # config/boards.json unless --league narrows it.
-BOARD_STAGES = ("pull", "tiers", "vbd-boards", "csg-boards", "board", "week")
+BOARD_STAGES = ("pull", "sync", "tiers", "vbd-boards", "csg-boards", "board", "week")
 STAGES = DRAFT_STAGES + BOARD_STAGES
 
 TEMPLATE = os.path.join(ROOT, "draft_sheets", "draft_tool_template.html")
@@ -224,6 +225,22 @@ def board(args):
     run(venv_py(), "-m", "fftiers.board", "build", *_league_args(args))
 
 
+def sync(args):
+    """The fast refresh: live rosters/lineups/weekly projections, cached forecasts.
+
+    Seconds instead of minutes — ROS totals and FantasyPros ranks stay as-is
+    (run `week` for those). This is the check-my-lineup-against-ESPN loop.
+    """
+    if boards_leagues(args) is None:
+        return
+    run(venv_py(), "-m", "fftiers.board", "sync", *_league_args(args))
+    vbd_boards(args)
+    csg_boards(args)
+    league, args.league = getattr(args, "league", None), None
+    board(args)
+    args.league = league
+
+
 def week(args):
     """The weekly manage refresh: everything from live data to a served board."""
     pull(args)
@@ -240,7 +257,7 @@ def week(args):
 
 DISPATCH = {"scrape": scrape, "calibrate": calibrate, "csg": csg, "simulate": simulate,
             "build": build, "inject": inject, "all": do_all,
-            "pull": pull, "tiers": tiers, "vbd-boards": vbd_boards,
+            "pull": pull, "sync": sync, "tiers": tiers, "vbd-boards": vbd_boards,
             "csg-boards": csg_boards, "board": board, "week": week}
 
 
