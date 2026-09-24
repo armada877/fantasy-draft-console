@@ -70,6 +70,8 @@ th{position:sticky;top:0;background:var(--card);z-index:2;text-align:left;
   font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);
   padding:10px 10px;border-bottom:1px solid var(--line)}
 th.num,td.num{text-align:right}
+th[data-sort]{cursor:pointer;user-select:none}
+th[data-sort]:hover{color:var(--ink)}
 th[data-tip]{cursor:help;text-decoration:underline dotted var(--ink3);text-underline-offset:3px}
 td{padding:6px 10px;border-bottom:1px solid var(--line);font-size:13.5px}
 tr:last-child td{border-bottom:0}
@@ -190,6 +192,7 @@ let A, HZ, WEEKS_LEFT;
 const POSN = ["ALL","FLEX","QB","RB","WR","TE"];
 const FLEX_POS = ["RB","WR","TE"];
 let league = null, pos = "ALL", hz = "ros", scope = "all";
+let sortKey = null, sortDir = "desc";   // null = the view's default order
 const SCOPES = [{key:"all", label:"Everyone"}, {key:"minefa", label:"Mine + FA"}];
 
 // The page boots from the baked-in DATA, then /api/board-data may hand it a newer
@@ -206,7 +209,7 @@ function bindData(d){
 const $ = s => document.querySelector(s);
 
 const COLTIPS = {
-  rank: "Row order. In position views this is ECR: the player's expert-consensus rank at this position and horizon. In ALL/FLEX views, # ranks by mean VBD across the two engines.",
+  rank: "Row order. In position views this is ECR: the player's expert-consensus rank at this position and horizon. In ALL/FLEX views, # ranks by mean VBD across the two engines. Click any numeric column header to sort by it (click again to flip); click this column to restore the default order.",
   player: "MINE = on my roster in this league. FA = currently on waivers here (drives CSG's scarcity factor).",
   pts: "",  // filled by bindData (depends on the current week)
   btier: "Boris Chen method: Gaussian-mixture clustering of expert ranks. Players sharing a tier are effectively interchangeable; the gap between tiers is real. Says nothing about size of the edge.",
@@ -267,23 +270,43 @@ function render(){
       .filter(p => H(p).boris || (H(p).elb && H(p).elb.vbd > 0) || (H(p).csg && H(p).csg.vbd > 0));
   }
   if (scope === "minefa") shown = shown.filter(p => p.mine || p.fa);
+  // Column sorting: any numeric column, toggled by clicking its header. Rows with
+  // no value in that column sink to the bottom regardless of direction.
+  const SORT_VAL = {
+    pts:  p => pts(p),
+    cons: p => H(p).boris?.ecr ?? null,
+    evbd: p => H(p).elb?.vbd ?? null,
+    cvbd: p => H(p).csg?.vbd ?? null,
+    cadj: p => (H(p).csg && H(p).csg.vbd > 0 ? H(p).csg.adj : null),
+  };
+  if (sortKey && SORT_VAL[sortKey]) {
+    const v = SORT_VAL[sortKey];
+    shown = [...shown].sort((a, b) => {
+      const va = v(a), vb = v(b);
+      if (va == null) return vb == null ? 0 : 1;
+      if (vb == null) return -1;
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+  }
   const maxVbd = Math.max(1, ...shown.map(p => Math.max(H(p).elb?.vbd ?? 0, H(p).csg?.vbd ?? 0)));
   const maxBoris = Math.max(1, ...shown.map(p => H(p).boris?.tier ?? 1));
   const maxCsg  = Math.max(1, ...shown.map(p => H(p).csg && H(p).csg.vbd>0 ? +String(H(p).csg.tier).replace(/\D+/g,"") : 1));
 
   const ptsHead = ros ? "Proj pts (ROS)" : "Proj pts (wk)";
+  const mark = k => sortKey === k ? (sortDir === "asc" ? " ▴" : " ▾") : "";
   let html = `<thead><tr>
-    <th class="num" data-tip="rank">${all ? "#" : "ECR"}</th><th data-tip="player">Player</th>
-    <th class="num" data-tip="pts">${ptsHead}</th>
-    <th data-tip="btier">Boris tier</th><th class="ecr" data-tip="cons">Consensus</th>
-    <th data-tip="etier">Elbo tier</th><th class="cellbar" data-tip="evbd">elboberto VBD</th>
-    <th data-tip="ctier">CSG tier</th><th class="cellbar" data-tip="cvbd">CSG VBD</th>
-    <th class="num" data-tip="cadj">CSG scarcity-adj</th></tr></thead><tbody>`;
+    <th class="num" data-sort="rank" data-tip="rank">${all ? "#" : "ECR"}</th><th data-tip="player">Player</th>
+    <th class="num" data-sort="pts" data-tip="pts">${ptsHead}${mark("pts")}</th>
+    <th data-tip="btier">Boris tier</th><th class="ecr" data-sort="cons" data-tip="cons">Consensus${mark("cons")}</th>
+    <th data-tip="etier">Elbo tier</th><th class="cellbar" data-sort="evbd" data-tip="evbd">elboberto VBD${mark("evbd")}</th>
+    <th data-tip="ctier">CSG tier</th><th class="cellbar" data-sort="cvbd" data-tip="cvbd">CSG VBD${mark("cvbd")}</th>
+    <th class="num" data-sort="cadj" data-tip="cadj">CSG scarcity-adj${mark("cadj")}</th></tr></thead><tbody>`;
   let prevTier = null;
   shown.forEach((p, i) => {
     const h = H(p);
     const bt = h.boris?.tier ?? null;
-    const brk = !all && bt != null && prevTier != null && bt !== prevTier;
+    // tier-break rules only mean something in the default consensus order
+    const brk = !all && !sortKey && bt != null && prevTier != null && bt !== prevTier;
     if (bt != null) prevTier = bt;
     const et = h.elb && h.elb.vbd > 0 ? h.elb.tier : null;
     const ctn = h.csg && h.csg.vbd > 0 ? +String(h.csg.tier).replace(/\D+/g,"") : null;
@@ -328,6 +351,15 @@ function render(){
       tip.style.top  = Math.min(e.clientY + 14, innerHeight - ht - 10) + "px";
     });
     th.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+  document.querySelectorAll("#board th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.sort;
+      if (k === "rank") sortKey = null;                    // back to the view's default order
+      else if (sortKey === k) sortDir = sortDir === "desc" ? "asc" : "desc";
+      else { sortKey = k; sortDir = k === "cons" ? "asc" : "desc"; }
+      render();
+    });
   });
   document.querySelectorAll("#board tbody tr").forEach(tr => {
     const p = shown[+tr.dataset.i];
