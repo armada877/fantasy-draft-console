@@ -4,62 +4,71 @@
   "pos": "QB",
   "wk": 22.0,
   "ros": 330.0,
-  "injury": ""
+  "injury": "",
+  "slot": "QB"
  },
  {
   "name": "Alpha Runner",
   "pos": "RB",
   "wk": 19.0,
   "ros": 285.0,
-  "injury": ""
+  "injury": "",
+  "slot": "RB"
  },
  {
   "name": "Bravo Runner",
   "pos": "RB",
   "wk": 16.5,
   "ros": 247.5,
-  "injury": ""
+  "injury": "",
+  "slot": "BE"
  },
  {
   "name": "Alpha Wideout",
   "pos": "WR",
   "wk": 17.0,
   "ros": 255.0,
-  "injury": ""
+  "injury": "",
+  "slot": "WR"
  },
  {
   "name": "Bravo Wideout",
   "pos": "WR",
   "wk": 14.5,
   "ros": 217.5,
-  "injury": "Q"
+  "injury": "Q",
+  "slot": "BE"
  },
  {
   "name": "Charlie Wideout",
   "pos": "WR",
   "wk": 12.0,
   "ros": 180.0,
-  "injury": ""
+  "injury": "",
+  "slot": "WR"
  },
  {
   "name": "Alpha Tightend",
   "pos": "TE",
   "wk": 12.0,
   "ros": 180.0,
-  "injury": ""
+  "injury": "",
+  "slot": "TE"
  },
  {
   "name": "Alpha Kicker",
   "pos": "K",
   "wk": 8.0,
   "ros": 120.0,
-  "injury": ""
+  "injury": "",
+  "slot": "K"
  },
  {
   "name": "Alpha Defense",
   "pos": "DST",
   "wk": 6.0,
   "ros": 90.0,
-  "injury": ""
+  "injury": "",
+  "slot": "DST"
  }
 ]

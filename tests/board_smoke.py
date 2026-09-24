@@ -57,7 +57,11 @@ def main():
     assert L["label"] == "Example League" and L["size"] == 12, (L["label"], L["size"])
     assert L["scoring"] == "standard" and "FLEX" in L["lineup"], (L["scoring"], L["lineup"])
     assert ["QB", 1] in L["slots"] and not any(s[0] in ("BENCH", "IR") for s in L["slots"]), L["slots"]
-    assert L["roster"] and len(L["roster"][0]) == 5, L["roster"][:1]
+    # [name, pos, wk, ros, injury, current ESPN slot] — slot drives the lineup
+    # card's START/SIT flags vs what's actually set on ESPN.
+    assert L["roster"] and all(len(r) == 6 for r in L["roster"]), L["roster"][:1]
+    assert any(r[5] in ("BE", "IR") for r in L["roster"]), \
+        "fixture roster should include a currently-benched player"
     ok(f"league shape: {L['label']} / {L['size']} tm / {L['scoring']} / {L['lineup']}")
 
     assert L["players"], "no players built"

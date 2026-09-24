@@ -269,7 +269,10 @@ def ros_pool(league_id: int, season: int, from_week: int, final_week: int,
 
 def team_roster(league_id: int, season: int, team_id: int,
                 cookie: str | None = None) -> list[dict]:
-    """One team's roster entries, projections not attached: [{id,name,pos,injury}]."""
+    """One team's roster entries, projections not attached: [{id,name,pos,injury,slot}].
+
+    `slot` is the CURRENTLY SET lineup slot on ESPN ("QB", "FLEX", "BE", "IR", ...)
+    — what the manager has actually clicked in, distinct from optimal."""
     cookie = cookie or auth_cookie()
     data = fetch(league_url(league_id, season, ["mRoster"]), cookie)
     out = []
@@ -280,7 +283,8 @@ def team_roster(league_id: int, season: int, team_id: int,
             pl = (e.get("playerPoolEntry") or {}).get("player") or {}
             out.append({"id": pl.get("id"), "name": pl.get("fullName") or "",
                         "pos": POSITION_NAMES.get(int(pl.get("defaultPositionId") or 0), "?"),
-                        "injury": pl.get("injuryStatus") or ""})
+                        "injury": pl.get("injuryStatus") or "",
+                        "slot": SLOT_NAMES.get(int(e.get("lineupSlotId", -1)), "")})
     return out
 
 

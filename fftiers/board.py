@@ -138,7 +138,7 @@ def cmd_pull(args) -> int:
         ros_by = {p["id"]: p["points"] for p in ros_list}
         roster = [{"name": r["name"], "pos": r["pos"],
                    "wk": wk_by.get(r["id"], 0.0), "ros": ros_by.get(r["id"], 0.0),
-                   "injury": norm_injury(r["injury"])}
+                   "injury": norm_injury(r["injury"]), "slot": r.get("slot", "")}
                   for r in espn.team_roster(lg["league_id"], season, lg["team_id"], cookie)]
         roster.sort(key=lambda r: -r["ros"])
         (espn_dir / f"{key}-roster.json").write_text(json.dumps(roster, indent=1) + "\n")
@@ -267,7 +267,8 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
         "lineup": "-".join(("" if n == 1 else str(n)) + s for s, n in slots),
         "team": meta.get("team", ""),
         "slots": slots,
-        "roster": [[r["name"], r["pos"], r["wk"], r["ros"], r["injury"]] for r in roster],
+        "roster": [[r["name"], r["pos"], r["wk"], r["ros"], r["injury"], r.get("slot", "")]
+                   for r in roster],
         "players": players,
     }
 
