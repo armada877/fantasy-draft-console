@@ -28,20 +28,20 @@
 body{margin:0;background:var(--ground);color:var(--ink);
   font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;}
 .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
-.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
-header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 20px 60px}
+header h1{margin:0;font-size:21px;font-weight:800;letter-spacing:-.015em}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:44px}
+.mastrow{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line)}
+.mastleft{display:flex;align-items:flex-end;gap:26px}
+.mastleft h1{padding-bottom:9px}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
 .sub{color:var(--ink2);margin:6px 0 0;max-width:72ch}
-.headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
-.asof{background:var(--card);border:1px solid var(--line);border-radius:10px;
-  padding:10px 14px;min-width:250px;max-width:330px}
-.asof-line{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink)}
+.asof{display:flex;align-items:center;gap:10px;padding-bottom:6px}
+.asof-line{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);cursor:default}
 .freshdot{width:9px;height:9px;border-radius:50%;flex:none}
 .freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
-.asof-src{list-style:none;margin:6px 0 8px;padding:0;font-size:11px;color:var(--ink3)}
-.asof-src li{padding:1px 0}
 /* ── Account switcher: which team you are right now ── */
-.headright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .account{position:relative}
 .acct-chip{display:flex;align-items:center;gap:10px;font:inherit;text-align:left;
   background:var(--card);border:1px solid var(--line);border-radius:10px;
@@ -78,7 +78,7 @@ header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wra
   font-size:10.5px;color:var(--ink3)}
 
 /* ── Section tabs: navigation, not a lens — a different species from .seg ── */
-.sectiontabs{display:flex;gap:24px;margin:16px 0 0;border-bottom:1px solid var(--line)}
+.sectiontabs{display:flex;gap:22px}
 .sectiontabs button{border:0;background:transparent;font:inherit;font-size:13.5px;
   font-weight:600;color:var(--ink3);padding:0 2px 9px;cursor:pointer;
   border-bottom:2px solid transparent;margin-bottom:-1px}
@@ -126,7 +126,7 @@ body[data-view="board"] #wireview{display:none}
   .wiresources{position:static}
   #wire-srcs{max-height:180px}
 }
-.refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;margin:2px 0 6px;
+.refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;
   border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
 .refreshbtn:hover:not(:disabled){border-color:#9aa3b2}
 .refreshbtn:disabled{opacity:.55;cursor:default}
@@ -135,7 +135,7 @@ body[data-view="board"] #wireview{display:none}
 .modenav .on{color:var(--ink)}
 .modenav a{color:var(--ink3);text-decoration:none}
 .modenav a:hover{color:var(--accent)}
-.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0 6px}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:14px 0 6px}
 .seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
 .seg button{border:0;background:transparent;color:var(--ink2);font:inherit;font-weight:600;
   padding:7px 14px;border-radius:6px;cursor:pointer}
@@ -185,7 +185,7 @@ tr:hover td{background:var(--card2)}
 .lu-total{font-size:22px;font-weight:750}
 .lu-total small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;
   text-transform:uppercase;color:var(--ink3);text-align:right}
-.lu-grid{display:grid;grid-template-columns:minmax(340px,1.1fr) 1fr;gap:8px 28px;margin-top:12px}
+.lu-grid{display:grid;grid-template-columns:minmax(320px,1.05fr) 1fr;gap:6px 26px;margin-top:8px}
 @media (max-width:760px){.lu-grid{grid-template-columns:1fr}}
 .lu-table{min-width:0;width:100%}
 .lu-table td{padding:4.5px 8px;font-size:13.5px}
@@ -215,16 +215,8 @@ tr:hover td{background:var(--card2)}
 </style>
 <div class="wrap">
 <header id="pagehead">
-  <div class="headrow">
-    <div>
-      <nav class="modenav" aria-label="Console mode"><span class="on">Manage</span><a href="/draft">Draft</a></nav>
-      <h1 id="mast-title">Boris, Elbo &amp; CSG</h1>
-      <nav class="sectiontabs" id="viewseg" aria-label="Section">
-        <button type="button" data-view="board" class="on">Board</button>
-        <button type="button" data-view="wire">The Wire</button>
-      </nav>
-    </div>
-    <div class="headright">
+  <div class="topbar">
+    <nav class="modenav" aria-label="Console mode"><span class="on">Manage</span><a href="/draft">Draft</a></nav>
     <div class="account" id="account">
       <button class="acct-chip" id="acct-chip" type="button"
               aria-haspopup="menu" aria-expanded="false" aria-label="Switch team">
@@ -236,14 +228,21 @@ tr:hover td{background:var(--card2)}
       </button>
       <div class="acct-menu" id="acct-menu" role="menu" hidden></div>
     </div>
+  </div>
+  <div class="mastrow">
+    <div class="mastleft">
+      <h1 id="mast-title">Boris, Elbo &amp; CSG</h1>
+      <nav class="sectiontabs" id="viewseg" aria-label="Section">
+        <button type="button" data-view="board" class="on">Board</button>
+        <button type="button" data-view="wire">The Wire</button>
+      </nav>
+    </div>
     <div class="asof" id="asof">
-      <div class="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></div>
-      <ul class="asof-src mono" id="asof-src"></ul>
+      <span class="asof-line" id="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></span>
       <button id="syncbtn" class="refreshbtn" type="button" data-mode="sync"
               title="Fast: rosters, lineup slots, this-week projections (~15s). ROS totals and consensus ranks stay cached.">Sync lineup</button>
       <button id="refreshbtn" class="refreshbtn" type="button" data-mode="full"
               title="Everything: ESPN pools + rest-of-season sums + FantasyPros ranks (~2 min).">Full refresh</button>
-    </div>
     </div>
   </div>
 </header>
@@ -532,8 +531,7 @@ function renderLineup(){
   $("#lu-total").innerHTML = `<small>projected total</small>${total.toFixed(1)}${diffLine}`;
   $("#lu-starters").innerHTML = rows.map(r =>
     `<tr><td class="slot ${r.slot === "FLEX" ? "flexslot" : ""}">${r.slot}</td>
-     <td class="pname">${r.name}${r.inj ? `<span class="inj">${r.inj}</span>` : ""}${startFlag(r) ? `<span class="inj swap" title="On your ESPN bench right now \u2014 the optimal lineup starts him">START</span>` : ""}</td>
-     <td class="ecr">${r.p}${r.espn ? " \u00b7 espn" : ""}</td>
+     <td class="pname">${r.name}<span class="ecr">${r.slot === "FLEX" ? " " + r.p : ""}${r.espn ? " \u00b7 espn" : ""}</span>${r.inj ? `<span class="inj">${r.inj}</span>` : ""}${startFlag(r) ? `<span class="inj swap" title="On your ESPN bench right now \u2014 the optimal lineup starts him">START</span>` : ""}</td>
      <td class="num mono pts">${(r.wk ?? 0).toFixed(1)}</td></tr>`).join("");
   const bench = roster.filter(r => !used.has(r.name)).sort((a,b) => b.wk - a.wk);
   $("#lu-bench").innerHTML = `<h3>Bench &middot; this week</h3><ul>` + bench.map(r =>
@@ -733,10 +731,10 @@ function renderAsof(){
     const dt = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + "T12:00:00") : new Date(s);
     return dt.toLocaleDateString(undefined, {month:"short", day:"numeric"});
   };
-  $("#asof-text").textContent = `Week ${a.week} data \u00b7 built ${dfmt(built)}` +
+  $("#asof-text").textContent = `Week ${a.week} \u00b7 ${dfmt(built)}` +
     (days >= 3 ? ` (${Math.floor(days)}d old)` : "");
-  $("#asof-src").innerHTML = Object.entries(a.sources).map(([k, v]) =>
-    `<li>${k}: ${dfmt(v)}</li>`).join("");
+  $("#asof-line").title = Object.entries(a.sources)
+    .map(([k, v]) => `${k}: ${dfmt(v)}`).join("\n");
 }
 // remember which team you were: ?league beats the saved choice beats the first league
 try {
