@@ -90,7 +90,6 @@ header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wra
 body[data-view="wire"] .boardonly{display:none}
 body[data-view="board"] .wireonly{display:none}
 body[data-view="board"] #wireview{display:none}
-.wire-sub{max-width:640px}
 .wiregrid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start;margin-top:14px}
 .wiresources{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
   border-radius:12px;padding:14px 0 8px}
@@ -131,7 +130,6 @@ body[data-view="board"] #wireview{display:none}
   border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
 .refreshbtn:hover:not(:disabled){border-color:#9aa3b2}
 .refreshbtn:disabled{opacity:.55;cursor:default}
-.asof-hint{font-size:11px;color:var(--ink3);margin-top:6px;max-width:34ch}
 .modenav{display:flex;gap:16px;font-size:11px;font-weight:700;letter-spacing:.12em;
   text-transform:uppercase;margin:0 0 10px}
 .modenav .on{color:var(--ink)}
@@ -220,7 +218,6 @@ tr:hover td{background:var(--card2)}
   <div class="headrow">
     <div>
       <nav class="modenav" aria-label="Console mode"><span class="on">Manage</span><a href="/draft">Draft</a></nav>
-      <div class="eyebrow" id="mast-eyebrow">One player &middot; three valuation methods &middot; two horizons</div>
       <h1 id="mast-title">Boris, Elbo &amp; CSG</h1>
       <nav class="sectiontabs" id="viewseg" aria-label="Section">
         <button type="button" data-view="board" class="on">Board</button>
@@ -246,7 +243,6 @@ tr:hover td{background:var(--card2)}
               title="Fast: rosters, lineup slots, this-week projections (~15s). ROS totals and consensus ranks stay cached.">Sync lineup</button>
       <button id="refreshbtn" class="refreshbtn" type="button" data-mode="full"
               title="Everything: ESPN pools + rest-of-season sums + FantasyPros ranks (~2 min).">Full refresh</button>
-      <div class="asof-hint">or: <span class="mono">python3 pipeline.py sync|week</span></div>
     </div>
     </div>
   </div>
@@ -260,15 +256,6 @@ tr:hover td{background:var(--card2)}
     <button type="button" data-wscope="all" class="on">All posts</button>
     <button type="button" data-wscope="mine">My guys</button>
   </div>
-</div>
-
-<div class="legend boardonly">
-  <div class="m"><b><span class="dot" style="background:var(--ink3)"></span>Boris tier</b>
-    <span>GMM cluster over expert consensus (avg &plusmn; std per player). Rank-space: says who's interchangeable, not how much better.</span></div>
-  <div class="m"><b><span class="dot" style="background:var(--elb)"></span>elboberto &mdash; VBD</b>
-    <span>Points above the last starter / last rostered player; baselines from lineup seat counts</span></div>
-  <div class="m"><b><span class="dot" style="background:var(--csg)"></span>CSG &mdash; VBD</b>
-    <span>Same idea, baselines from historical games-played depth; scarcity-adjusted value alongside</span></div>
 </div>
 
 <section class="lineupcard boardonly">
@@ -289,8 +276,6 @@ tr:hover td{background:var(--card2)}
 <p class="note boardonly" id="footnote"></p>
 
 <section id="wireview">
-  <p class="sub wire-sub">Posts naming a player on <b>this league's roster</b> carry a
-    <span class="badge mine">MY GUY</span> flag; click a source to read one voice.</p>
   <div class="wiregrid">
     <aside class="wiresources">
       <div class="eyebrow">Sources <span class="ecr" id="wire-note"></span></div>
@@ -451,13 +436,8 @@ function render(){
   html += "</tbody>";
   $("#board").innerHTML = html;
   $("#footnote").textContent =
-    `${L.label}: ${L.size} teams, ${L.scoring}, lineup ${L.lineup}. ` +
-    (all ? `${pos} view ranks ${pos === "FLEX" ? "flex-eligible players (RB/WR/TE)" : "every position"} on one axis by mean VBD across the two engines &mdash; the apples-to-apples comparison. ` : ``) +
-    (ros ? `ROS horizon: points are projected totals for weeks ${A.week}-${A.final_week}; VBD is points above the replacement level this league's size and lineup imply; +x.x/wk is that edge per week. Two players are a fair swap when their VBDs match; a waiver add is worth FAAB in proportion to its VBD gap over the player it replaces. `
-         : `Weekly horizon: points are this week's projection; VBD is this week's edge over the weekly replacement level &mdash; the start/sit and streaming lens. `) +
-    `CSG scarcity-adj multiplies VBD by how much of the position's remaining value is already rostered here. ` +
-    (scope === "minefa" ? `Scope: only my roster and current free agents \u2014 the add/drop decision set. ` : ``) +
-    `Rows with no positive value under any engine are hidden. Sources: FantasyPros consensus + points, rosters as of Week ${A.week}. K/DST excluded.`;
+    `Sources: FantasyPros consensus + ESPN league projections, week ${A.week}. ` +
+    `K/DST and rows with no positive value are hidden.`;
 
   const tip = $("#tip");
   document.querySelectorAll("#board th[data-tip]").forEach(th => {
@@ -558,8 +538,7 @@ function renderLineup(){
   const bench = roster.filter(r => !used.has(r.name)).sort((a,b) => b.wk - a.wk);
   $("#lu-bench").innerHTML = `<h3>Bench &middot; this week</h3><ul>` + bench.map(r =>
     `<li><span class="mono">${(r.wk ?? 0).toFixed(1)}</span> &nbsp;${r.name} <span class="ecr">${r.p}</span>${r.inj ? `<span class="inj">${r.inj}</span>` : ""}${haveSlots && r.setNow === true ? `<span class="inj swap" title="Currently in your ESPN lineup \u2014 the optimal lineup benches him">SIT</span>` : ""}</li>`).join("") + `</ul>` +
-    `<p class="ecr" style="margin:8px 0 0">Points = the board's this-week consensus numbers; rows marked espn (K/DST, injured) use ESPN league projections, which the consensus boards don't cover.` +
-    (haveSlots ? ` START/SIT pills mark where this optimal lineup differs from what's currently set on ESPN.` : ``) + `</p>`;
+    ``;
 }
 // ── The Wire: paginated reporter feed (/api/feed → Bluesky public API) ────────
 const WIRE = {posts: [], total: 0, sources: 0, errors: 0};
@@ -592,16 +571,10 @@ function rosterMatcher(){
 }
 let view = new URLSearchParams(location.search).get("view") === "wire" ? "wire" : "board";
 let wireScope = "all", wireSrc = null;   // null = every source
-const MASTHEAD = {
-  board: {eyebrow: "One player · three valuation methods · two horizons",
-          title: "Boris, Elbo & CSG"},
-  wire:  {eyebrow: "Fifteen curated voices · via Bluesky · newest first",
-          title: "The Wire"},
-};
+const MASTHEAD = {board: "Boris, Elbo & CSG", wire: "The Wire"};
 function applyView(){
   document.body.dataset.view = view;
-  $("#mast-eyebrow").textContent = MASTHEAD[view].eyebrow;
-  $("#mast-title").textContent = MASTHEAD[view].title;
+  $("#mast-title").textContent = MASTHEAD[view];
   document.querySelectorAll("#viewseg button").forEach(b =>
     b.classList.toggle("on", b.dataset.view === view));
   const q = new URLSearchParams(location.search);
@@ -730,7 +703,7 @@ function renderAccount(){
         <span class="l">${esc(lg.label)} · ${lg.size} tm · ${esc(lg.scoring)}</span></span>
       <span class="acct-row-st"><span class="pts mono">${s.total.toFixed(1)}</span>${st}</span>
       <span class="check">${k === league ? "✓" : ""}</span></button>`;
-  }).join("") + `<div class="foot">Teams come from config/boards.json — one row per league you're in.</div>`;
+  }).join("");
   document.querySelectorAll("#acct-menu button[data-league]").forEach(b =>
     b.onclick = () => setLeague(b.dataset.league));
 }
@@ -750,7 +723,7 @@ render = function(){ _render(); renderLineup(); renderWire(); renderAccount(); }
 function renderAsof(){
   const a = DATA.asof;
   $("#lu-eyebrow").innerHTML =
-    `Optimal lineup &middot; week ${a.week} &middot; same points as the board`;
+    `Optimal lineup &middot; week ${a.week}`;
   const built = new Date(a.built);
   const days = (Date.now() - built.getTime()) / 864e5;
   const dot = $("#freshdot");
