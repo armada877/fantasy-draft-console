@@ -1,0 +1,20 @@
+{
+  "_comment": "The Wire's curated sources: NFL/fantasy reporters on Bluesky, fetched via the public API (no key). Surveyed 2026-09-24 by followers x posting activity. Edit freely; handle = the account's Bluesky handle. Dormant big names are cheap to keep - they cost one API call and light up if the account reactivates.",
+  "accounts": [
+    {"handle": "rapsheet.bsky.social",        "name": "Ian Rapoport"},
+    {"handle": "tompelissero.bsky.social",    "name": "Tom Pelissero"},
+    {"handle": "natetice.bsky.social",        "name": "Nate Tice"},
+    {"handle": "jourdanrodrigue.bsky.social", "name": "Jourdan Rodrigue"},
+    {"handle": "lateroundqb.bsky.social",     "name": "JJ Zachariason"},
+    {"handle": "aaronwilsonnfl.bsky.social",  "name": "Aaron Wilson"},
+    {"handle": "rotoworld-fb.bsky.social",    "name": "Rotoworld Football"},
+    {"handle": "andybehrens.bsky.social",     "name": "Andy Behrens"},
+    {"handle": "pianow.bsky.social",          "name": "Scott Pianowski"},
+    {"handle": "justinboone.bsky.social",     "name": "Justin Boone"},
+    {"handle": "bengretch.bsky.social",       "name": "Ben Gretch"},
+    {"handle": "lordreebs.bsky.social",       "name": "Rich Hribar"},
+    {"handle": "mattharmon.bsky.social",      "name": "Matt Harmon"},
+    {"handle": "fieldyates.bsky.social",      "name": "Field Yates"},
+    {"handle": "matthewberrytmr.bsky.social", "name": "Matthew Berry"}
+  ]
+}

@@ -40,6 +40,17 @@ header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wra
 .freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
 .asof-src{list-style:none;margin:6px 0 8px;padding:0;font-size:11px;color:var(--ink3)}
 .asof-src li{padding:1px 0}
+.wire{margin-top:18px}
+.wire-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.wire-title{margin:2px 0 10px;font-size:15px}
+#wire-list{list-style:none;margin:0;padding:0}
+#wire-list li{padding:8px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.45}
+#wire-list li.myguy{border-left:3px solid var(--accent);padding-left:10px;margin-left:-13px}
+.wire-meta{font-size:11px;color:var(--ink3);margin-bottom:2px}
+.wire-meta a{color:inherit}
+.wire-meta .who{font-weight:700;color:var(--ink2)}
+.wire-text{white-space:pre-wrap;word-break:break-word}
+.wire-foot{display:flex;align-items:center;gap:14px;margin-top:10px}
 .refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;margin:2px 0 6px;
   border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
 .refreshbtn:hover:not(:disabled){border-color:#9aa3b2}
@@ -190,6 +201,20 @@ tr:hover td{background:var(--card2)}
 
 <div class="boardbox"><table id="board" aria-label="Player valuation board"></table></div>
 <p class="note" id="footnote"></p>
+
+<section class="lineupcard wire" id="wirecard" style="display:none">
+  <div class="wire-head">
+    <div><span class="eyebrow">The Wire</span>
+      <h2 class="wire-title">Reporter feed <span class="ecr">· via Bluesky · newest first</span></h2></div>
+    <span class="ecr" id="wire-note"></span>
+  </div>
+  <ul id="wire-list"></ul>
+  <div class="wire-foot">
+    <button id="wire-more" class="refreshbtn" type="button">Load more</button>
+    <span class="ecr">Posts naming a player on this league's roster are flagged
+      <span class="badge mine">MY GUY</span> — switches with the league tab.</span>
+  </div>
+</section>
 </div>
 <div id="tip" role="tooltip"></div>
 
@@ -443,8 +468,68 @@ function renderLineup(){
     `<p class="ecr" style="margin:8px 0 0">Points = the board's this-week consensus numbers; rows marked espn (K/DST, injured) use ESPN league projections, which the consensus boards don't cover.` +
     (haveSlots ? ` START/SIT pills mark where this optimal lineup differs from what's currently set on ESPN.` : ``) + `</p>`;
 }
+// ── The Wire: paginated reporter feed (/api/feed → Bluesky public API) ────────
+const WIRE = {posts: [], total: 0, sources: 0, errors: 0};
+const esc = s => s.replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function timeAgo(iso){
+  const m = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (!isFinite(m)) return "";
+  if (m < 60) return `${Math.max(1, Math.round(m))}m`;
+  if (m < 36 * 60) return `${Math.round(m/60)}h`;
+  return `${Math.round(m/1440)}d`;
+}
+function rosterMatcher(){
+  // full names (case-insensitive) plus distinctive last names from THIS league's
+  // roster. A last name only counts when NOT followed by another capitalized name
+  // — "Tucker Kraft" must not light up because Tre Tucker is rostered.
+  const rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const fulls = new Set(), lasts = new Set();
+  for (const [name] of (DATA.leagues[league]?.roster || [])){
+    fulls.add(rx(name));
+    const words = name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i, "").split(" ");
+    const last = words.slice(-1)[0].replace(/[^A-Za-z'-]/g, "");
+    if (last.length > 3) lasts.add(rx(last));
+  }
+  if (!fulls.size) return null;
+  const reFull = new RegExp(`\\b(${[...fulls].join("|")})\\b`, "i");
+  const reLast = lasts.size
+    ? new RegExp(`\\b(${[...lasts].join("|")})\\b(?!\\s+[A-Z][a-z])`) : null;
+  return t => reFull.test(t) || (reLast && reLast.test(t));
+}
+function renderWire(){
+  if (!WIRE.posts.length) return;
+  $("#wirecard").style.display = "";
+  const match = rosterMatcher();
+  $("#wire-list").innerHTML = WIRE.posts.map(p => {
+    const mine = match && match(p.text);
+    return `<li class="${mine ? "myguy" : ""}">
+      <div class="wire-meta"><span class="who">${esc(p.name)}</span>
+        · <a href="${esc(p.url)}" target="_blank" rel="noopener">${timeAgo(p.at)}</a>
+        ${mine ? '<span class="badge mine">MY GUY</span>' : ""}</div>
+      <div class="wire-text">${esc(p.text)}</div></li>`;
+  }).join("");
+  const more = WIRE.posts.length < WIRE.total;
+  $("#wire-more").style.display = more ? "" : "none";
+  $("#wire-more").textContent = `Load more (${WIRE.posts.length} of ${WIRE.total})`;
+  $("#wire-note").textContent = `${WIRE.sources - WIRE.errors} of ${WIRE.sources} sources` +
+    (WIRE.errors ? ` (${WIRE.errors} unreachable)` : "");
+}
+async function loadWire(){
+  try {
+    const r = await fetch(`/api/feed?offset=${WIRE.posts.length}&limit=25`, {cache: "no-store"});
+    if (!r.ok) return;
+    const j = await r.json();
+    WIRE.total = j.total; WIRE.sources = j.sources; WIRE.errors = j.source_errors;
+    WIRE.posts.push(...j.posts);
+    renderWire();
+  } catch (e) { /* offline / static copy — the card stays hidden */ }
+}
+$("#wire-more").onclick = loadWire;
+loadWire();
+
 const _render = render;
-render = function(){ _render(); renderLineup(); };
+render = function(){ _render(); renderLineup(); renderWire(); };
 function renderAsof(){
   const a = DATA.asof;
   $("#lu-eyebrow").innerHTML =

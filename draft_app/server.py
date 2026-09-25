@@ -318,6 +318,89 @@ async def manage_board():
                  "Manage board", "python3 pipeline.py week")
 
 
+# ── The Wire: curated reporter feed via Bluesky's public API ─────────────────
+# Sources live in fftiers/data/bsky_reporters.json (tracked, user-editable).
+# No key: public.api.bsky.app serves public author feeds anonymously. Fetched
+# fan-out on demand, merged newest-first, cached in-process; /api/feed paginates
+# the merged list by offset so the page's "Load more" is a slice, not a refetch.
+REPORTERS_FILE = next(
+    (p for p in (os.path.join(HERE, "fftiers", "data", "bsky_reporters.json"),
+                 os.path.join(HERE, os.pardir, "fftiers", "data", "bsky_reporters.json"))
+     if os.path.exists(p)), None)
+BSKY_FEED = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed"
+FEED_TTL = 300          # seconds; reporters don't out-post a 5-minute cache
+FEED_PER_AUTHOR = 20
+_feed_cache = {"at": 0.0, "posts": [], "sources": 0, "errors": 0}
+_feed_lock = threading.Lock()
+
+
+def _fetch_author_posts(account: dict) -> list[dict]:
+    import urllib.parse
+    url = BSKY_FEED + "?" + urllib.parse.urlencode(
+        {"actor": account["handle"], "limit": FEED_PER_AUTHOR,
+         "filter": "posts_no_replies"})
+    req = urllib.request.Request(url, headers={"User-Agent": "fantasy-console/1.0"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        feed = json.load(r).get("feed") or []
+    posts = []
+    for item in feed:
+        if item.get("reason"):
+            continue   # repost of someone else — skip; keeps the feed original-voice
+        post = item.get("post") or {}
+        rec = post.get("record") or {}
+        text = (rec.get("text") or "").strip()
+        if not text:
+            continue
+        rkey = (post.get("uri") or "").rsplit("/", 1)[-1]
+        posts.append({"name": account["name"], "handle": account["handle"],
+                      "text": text, "at": rec.get("createdAt") or "",
+                      "url": f"https://bsky.app/profile/{account['handle']}/post/{rkey}"})
+    return posts
+
+
+def _load_wire():
+    from concurrent.futures import ThreadPoolExecutor
+    accounts = json.load(open(REPORTERS_FILE, encoding="utf-8"))["accounts"]
+    posts, errors = [], 0
+
+    def one(acct):
+        try:
+            return _fetch_author_posts(acct)
+        except Exception:
+            return None
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for res in ex.map(one, accounts):
+            if res is None:
+                errors += 1
+            else:
+                posts.extend(res)
+    posts.sort(key=lambda p: p["at"], reverse=True)
+    return posts, len(accounts), errors
+
+
+@app.get("/api/feed")
+def wire_feed(offset: int = 0, limit: int = 25):  # sync: runs in the threadpool
+    if REPORTERS_FILE is None:
+        return JSONResponse({"error": "no reporter list in this deploy"}, status_code=404)
+    offset, limit = max(0, offset), min(max(1, limit), 100)
+    now = time.time()
+    with _feed_lock:
+        if not _feed_cache["posts"] or now - _feed_cache["at"] > FEED_TTL:
+            try:
+                posts, nsrc, errors = _load_wire()
+                _feed_cache.update(at=now, posts=posts, sources=nsrc, errors=errors)
+            except Exception as e:
+                if not _feed_cache["posts"]:
+                    return JSONResponse({"error": f"feed unavailable: {e}"}, status_code=502)
+                # stale cache beats an error page
+        posts = _feed_cache["posts"]
+        return JSONResponse({
+            "total": len(posts), "offset": offset,
+            "sources": _feed_cache["sources"], "source_errors": _feed_cache["errors"],
+            "fetched_at": _feed_cache["at"],
+            "posts": posts[offset:offset + limit]})
+
+
 # ── Refresh from the website ─────────────────────────────────────────────────
 # POST /api/refresh runs the manage pipeline (pull → vbd/csg boards → build+push)
 # in a background thread; the page polls /api/refresh/status and hot-swaps the new
