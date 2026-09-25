@@ -1,16 +1,11 @@
 {
-  "_blessed": {
-    "date": "2026-09-14",
-    "pre_draft_snapshot": "scraping/raw/2026/league_full.pre_draft_2026-09-08.json",
-    "reason": "Re-blessed after WS-1 refreshed scraping/raw/2026/league_full.json. The previous golden was built from a STALE 8-Sep pre-draft snapshot (drafted:false, 0 picks, bench 6). The live league has drafted:true, 168 picks and bench 5. Verified semantic delta is exactly: bench 6->5, plus +$1 worth on 13 of 264 players (a smaller bench enlarges the per-slot discretionary pool). WS-1's code proven neutral: restoring the pre-draft snapshot reproduces the OLD golden byte-identically."
-  },
   "draft_app/static/data.json": {
     "bytes": 43820,
     "sha256": "a7b29ad229ed229f509f35deef5e07ae6c133976cbfe255aab9c92b22aace375"
   },
   "draft_app/static/index.html": {
-    "bytes": 143317,
-    "sha256": "3a5b744fd2afa54de575edd17bf5368be0253e53cc3905dd604253433447ad72"
+    "bytes": 143500,
+    "sha256": "a87210dea624d4d400c6ae02cd166218f4a8bc42d8f31edfb6a12c26eccf88fa"
   },
   "draft_sheets/tool_data.json": {
     "bytes": 43820,

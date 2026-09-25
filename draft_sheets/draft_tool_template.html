@@ -87,6 +87,8 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 .brand{display:flex;flex-direction:column;justify-content:center;padding-right:6px;margin-right:2px}
 .brand .t{font-size:15px;font-weight:750;letter-spacing:.04em}
 .brand .s{font-size:9.5px;text-transform:uppercase;letter-spacing:.22em;color:var(--faint);margin-top:2px}
+.brand .s a{color:var(--faint);text-decoration:none}
+.brand .s a:hover{color:var(--accent)}
 .vital{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 14px;
   min-width:0;display:flex;flex-direction:column;justify-content:center}
 .vital .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
@@ -493,7 +495,7 @@ td.edge-cell{position:relative}
  <div class="app-main">
   <div class="dock" id="dock">
     <div class="vitals">
-      <div class="brand"><div class="t" id="brand-t">Auction Draft</div><div class="s">Live Auction Console</div></div>
+      <div class="brand"><div class="t" id="brand-t">Auction Draft</div><div class="s">Live Auction Console &middot; <a href="/manage" title="In-season board: tiers, VBD, the wire">Manage &rarr;</a></div></div>
       <div class="vital"><div class="k">Remaining budget</div><div class="v mono" id="s-budget">$200</div></div>
       <div class="vital"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="note">reserves $1 / open slot</div></div>
       <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>

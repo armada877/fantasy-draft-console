@@ -40,6 +40,15 @@ header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wra
 .freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
 .asof-src{list-style:none;margin:6px 0 8px;padding:0;font-size:11px;color:var(--ink3)}
 .asof-src li{padding:1px 0}
+/* ── Section tabs: navigation, not a lens — a different species from .seg ── */
+.sectiontabs{display:flex;gap:24px;margin:16px 0 0;border-bottom:1px solid var(--line)}
+.sectiontabs button{border:0;background:transparent;font:inherit;font-size:13.5px;
+  font-weight:600;color:var(--ink3);padding:0 2px 9px;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.sectiontabs button:hover{color:var(--ink2)}
+.sectiontabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.sectiontabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
 /* ── The Wire: its own section, switched via #viewseg ── */
 body[data-view="wire"] .boardonly{display:none}
 body[data-view="board"] .wireonly{display:none}
@@ -175,8 +184,12 @@ tr:hover td{background:var(--card2)}
   <div class="headrow">
     <div>
       <nav class="modenav" aria-label="Console mode"><span class="on">Manage</span><a href="/draft">Draft</a></nav>
-      <div class="eyebrow">One player &middot; three valuation methods &middot; two horizons</div>
-      <h1>Boris, Elbo &amp; CSG</h1>
+      <div class="eyebrow" id="mast-eyebrow">One player &middot; three valuation methods &middot; two horizons</div>
+      <h1 id="mast-title">Boris, Elbo &amp; CSG</h1>
+      <nav class="sectiontabs" id="viewseg" aria-label="Section">
+        <button type="button" data-view="board" class="on">Board</button>
+        <button type="button" data-view="wire">The Wire</button>
+      </nav>
     </div>
     <div class="asof" id="asof">
       <div class="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></div>
@@ -188,21 +201,9 @@ tr:hover td{background:var(--card2)}
       <div class="asof-hint">or: <span class="mono">python3 pipeline.py sync|week</span></div>
     </div>
   </div>
-  <p class="sub boardonly">The same data run through three ported methodologies:
-  <b>Boris Chen</b> (Gaussian-mixture tiers over expert-consensus ranks),
-  <b>elboberto</b> (VBD vs. seat-count baselines), and the
-  <b>CSG sheet</b> (VBD vs. games-played baselines, scarcity-adjusted) &mdash;
-  at either horizon: <b>this week</b> (start/sit) or <b>rest of season</b> (trades &amp; waivers).
-  The common unit is <b>projected points</b> and <b>points above replacement (VBD)</b>,
-  comparable across players and positions. Both VBD bars share one axis;
-  heavy rules mark Boris tier breaks.</p>
 </header>
 
 <div class="controls">
-  <div class="seg" id="viewseg" role="tablist" aria-label="Section">
-    <button type="button" data-view="board" class="on">Board</button>
-    <button type="button" data-view="wire">The Wire</button>
-  </div>
   <div class="seg" id="leagueseg" role="tablist" aria-label="League"></div>
   <div class="seg boardonly" id="hseg" role="tablist" aria-label="Horizon"></div>
   <div class="seg postabs boardonly" id="posseg" role="tablist" aria-label="Position"></div>
@@ -211,7 +212,6 @@ tr:hover td{background:var(--card2)}
     <button type="button" data-wscope="all" class="on">All posts</button>
     <button type="button" data-wscope="mine">My guys</button>
   </div>
-  <div class="leaguemeta mono boardonly" id="meta"></div>
 </div>
 
 <div class="legend boardonly">
@@ -241,10 +241,8 @@ tr:hover td{background:var(--card2)}
 <p class="note boardonly" id="footnote"></p>
 
 <section id="wireview">
-  <p class="sub wire-sub">Fifteen curated reporters and feeds, straight from Bluesky, newest first.
-    Posts naming a player on <b>this league's roster</b> carry a
-    <span class="badge mine">MY GUY</span> flag — it follows the league tab.
-    Click a source to read only that voice.</p>
+  <p class="sub wire-sub">Posts naming a player on <b>this league's roster</b> carry a
+    <span class="badge mine">MY GUY</span> flag; click a source to read one voice.</p>
   <div class="wiregrid">
     <aside class="wiresources">
       <div class="eyebrow">Sources <span class="ecr" id="wire-note"></span></div>
@@ -328,7 +326,6 @@ function render(){
   seg($("#hseg"), HZ, hz, h => { hz = h; render(); }, true);
   seg($("#posseg"), POSN, pos, p => { pos = p; render(); });
   seg($("#scopeseg"), SCOPES, scope, s => { scope = s; render(); });
-  $("#meta").textContent = L.lineup;
 
   const H = p => p[hz] ?? {};
   const pts = p => H(p).csg?.pts ?? H(p).elb?.pts ?? null;
@@ -543,8 +540,16 @@ function rosterMatcher(){
 }
 let view = new URLSearchParams(location.search).get("view") === "wire" ? "wire" : "board";
 let wireScope = "all", wireSrc = null;   // null = every source
+const MASTHEAD = {
+  board: {eyebrow: "One player · three valuation methods · two horizons",
+          title: "Boris, Elbo & CSG"},
+  wire:  {eyebrow: "Fifteen curated voices · via Bluesky · newest first",
+          title: "The Wire"},
+};
 function applyView(){
   document.body.dataset.view = view;
+  $("#mast-eyebrow").textContent = MASTHEAD[view].eyebrow;
+  $("#mast-title").textContent = MASTHEAD[view].title;
   document.querySelectorAll("#viewseg button").forEach(b =>
     b.classList.toggle("on", b.dataset.view === view));
   const q = new URLSearchParams(location.search);
