@@ -40,17 +40,47 @@ header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wra
 .freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
 .asof-src{list-style:none;margin:6px 0 8px;padding:0;font-size:11px;color:var(--ink3)}
 .asof-src li{padding:1px 0}
-.wire{margin-top:18px}
-.wire-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.wire-title{margin:2px 0 10px;font-size:15px}
+/* ── The Wire: its own section, switched via #viewseg ── */
+body[data-view="wire"] .boardonly{display:none}
+body[data-view="board"] .wireonly{display:none}
+body[data-view="board"] #wireview{display:none}
+.wire-sub{max-width:640px}
+.wiregrid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start;margin-top:14px}
+.wiresources{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px 0 8px}
+.wiresources .eyebrow{padding:0 14px 8px;display:flex;justify-content:space-between;
+  align-items:baseline;gap:8px}
+#wire-srcs{list-style:none;margin:0;padding:0;max-height:70vh;overflow-y:auto}
+#wire-srcs button{display:block;width:100%;border:0;background:transparent;color:var(--ink2);
+  font:inherit;font-size:12.5px;text-align:left;padding:5px 14px;cursor:pointer;
+  border-left:3px solid transparent}
+#wire-srcs button:hover{color:var(--ink)}
+#wire-srcs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#wire-srcs li.on button{border-left-color:var(--accent);color:var(--ink);font-weight:700;
+  background:var(--card2)}
+.src-row{display:flex;align-items:center;gap:8px}
+.src-row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-row .ct{font-size:10.5px;color:var(--ink3);min-width:2ch;text-align:right}
+.src-bar{display:block;height:3px;border-radius:2px;background:var(--accent);opacity:.45;
+  margin-top:3px;min-width:2px}
+.wirefeed{min-width:0}
 #wire-list{list-style:none;margin:0;padding:0}
-#wire-list li{padding:8px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.45}
-#wire-list li.myguy{border-left:3px solid var(--accent);padding-left:10px;margin-left:-13px}
-.wire-meta{font-size:11px;color:var(--ink3);margin-bottom:2px}
+#wire-list li.day{border:0;padding:18px 0 4px}
+#wire-list li.day .eyebrow{display:flex;align-items:center;gap:10px}
+#wire-list li.day .eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+#wire-list li.post{padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.5}
+#wire-list li.day + li.post{border-top:0}
+#wire-list li.post.myguy{border-left:3px solid var(--accent);padding-left:11px;margin-left:-14px}
+.wire-meta{font-size:11px;color:var(--ink3);margin-bottom:2px;display:flex;align-items:baseline;gap:7px}
 .wire-meta a{color:inherit}
-.wire-meta .who{font-weight:700;color:var(--ink2)}
+.wire-meta .who{font-weight:700;color:var(--ink2);font-size:11.5px}
 .wire-text{white-space:pre-wrap;word-break:break-word}
-.wire-foot{display:flex;align-items:center;gap:14px;margin-top:10px}
+.wire-foot{display:flex;align-items:center;gap:14px;margin-top:12px}
+@media (max-width:820px){
+  .wiregrid{grid-template-columns:1fr}
+  .wiresources{position:static}
+  #wire-srcs{max-height:180px}
+}
 .refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;margin:2px 0 6px;
   border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
 .refreshbtn:hover:not(:disabled){border-color:#9aa3b2}
@@ -158,7 +188,7 @@ tr:hover td{background:var(--card2)}
       <div class="asof-hint">or: <span class="mono">python3 pipeline.py sync|week</span></div>
     </div>
   </div>
-  <p class="sub">The same data run through three ported methodologies:
+  <p class="sub boardonly">The same data run through three ported methodologies:
   <b>Boris Chen</b> (Gaussian-mixture tiers over expert-consensus ranks),
   <b>elboberto</b> (VBD vs. seat-count baselines), and the
   <b>CSG sheet</b> (VBD vs. games-played baselines, scarcity-adjusted) &mdash;
@@ -169,14 +199,22 @@ tr:hover td{background:var(--card2)}
 </header>
 
 <div class="controls">
+  <div class="seg" id="viewseg" role="tablist" aria-label="Section">
+    <button type="button" data-view="board" class="on">Board</button>
+    <button type="button" data-view="wire">The Wire</button>
+  </div>
   <div class="seg" id="leagueseg" role="tablist" aria-label="League"></div>
-  <div class="seg" id="hseg" role="tablist" aria-label="Horizon"></div>
-  <div class="seg postabs" id="posseg" role="tablist" aria-label="Position"></div>
-  <div class="seg" id="scopeseg" role="tablist" aria-label="Scope"></div>
-  <div class="leaguemeta mono" id="meta"></div>
+  <div class="seg boardonly" id="hseg" role="tablist" aria-label="Horizon"></div>
+  <div class="seg postabs boardonly" id="posseg" role="tablist" aria-label="Position"></div>
+  <div class="seg boardonly" id="scopeseg" role="tablist" aria-label="Scope"></div>
+  <div class="seg wireonly" id="wirescopeseg" role="tablist" aria-label="Wire scope">
+    <button type="button" data-wscope="all" class="on">All posts</button>
+    <button type="button" data-wscope="mine">My guys</button>
+  </div>
+  <div class="leaguemeta mono boardonly" id="meta"></div>
 </div>
 
-<div class="legend">
+<div class="legend boardonly">
   <div class="m"><b><span class="dot" style="background:var(--ink3)"></span>Boris tier</b>
     <span>GMM cluster over expert consensus (avg &plusmn; std per player). Rank-space: says who's interchangeable, not how much better.</span></div>
   <div class="m"><b><span class="dot" style="background:var(--elb)"></span>elboberto &mdash; VBD</b>
@@ -185,7 +223,7 @@ tr:hover td{background:var(--card2)}
     <span>Same idea, baselines from historical games-played depth; scarcity-adjusted value alongside</span></div>
 </div>
 
-<section class="lineupcard">
+<section class="lineupcard boardonly">
   <div class="lu-head">
     <div>
       <div class="eyebrow" id="lu-eyebrow"></div>
@@ -199,20 +237,26 @@ tr:hover td{background:var(--card2)}
   </div>
 </section>
 
-<div class="boardbox"><table id="board" aria-label="Player valuation board"></table></div>
-<p class="note" id="footnote"></p>
+<div class="boardbox boardonly"><table id="board" aria-label="Player valuation board"></table></div>
+<p class="note boardonly" id="footnote"></p>
 
-<section class="lineupcard wire" id="wirecard" style="display:none">
-  <div class="wire-head">
-    <div><span class="eyebrow">The Wire</span>
-      <h2 class="wire-title">Reporter feed <span class="ecr">· via Bluesky · newest first</span></h2></div>
-    <span class="ecr" id="wire-note"></span>
-  </div>
-  <ul id="wire-list"></ul>
-  <div class="wire-foot">
-    <button id="wire-more" class="refreshbtn" type="button">Load more</button>
-    <span class="ecr">Posts naming a player on this league's roster are flagged
-      <span class="badge mine">MY GUY</span> — switches with the league tab.</span>
+<section id="wireview">
+  <p class="sub wire-sub">Fifteen curated reporters and feeds, straight from Bluesky, newest first.
+    Posts naming a player on <b>this league's roster</b> carry a
+    <span class="badge mine">MY GUY</span> flag — it follows the league tab.
+    Click a source to read only that voice.</p>
+  <div class="wiregrid">
+    <aside class="wiresources">
+      <div class="eyebrow">Sources <span class="ecr" id="wire-note"></span></div>
+      <ul id="wire-srcs"></ul>
+    </aside>
+    <div class="wirefeed">
+      <ul id="wire-list"></ul>
+      <div class="wire-foot">
+        <button id="wire-more" class="refreshbtn" type="button">Load more</button>
+        <span class="ecr" id="wire-empty"></span>
+      </div>
+    </div>
   </div>
 </section>
 </div>
@@ -497,35 +541,99 @@ function rosterMatcher(){
     ? new RegExp(`\\b(${[...lasts].join("|")})\\b(?!\\s+[A-Z][a-z])`) : null;
   return t => reFull.test(t) || (reLast && reLast.test(t));
 }
+let view = new URLSearchParams(location.search).get("view") === "wire" ? "wire" : "board";
+let wireScope = "all", wireSrc = null;   // null = every source
+function applyView(){
+  document.body.dataset.view = view;
+  document.querySelectorAll("#viewseg button").forEach(b =>
+    b.classList.toggle("on", b.dataset.view === view));
+  const q = new URLSearchParams(location.search);
+  view === "wire" ? q.set("view", "wire") : q.delete("view");
+  history.replaceState(null, "", location.pathname + (q.size ? "?" + q : ""));
+}
+document.querySelectorAll("#viewseg button").forEach(b =>
+  b.onclick = () => { view = b.dataset.view; applyView(); renderWire(); });
+document.querySelectorAll("#wirescopeseg button").forEach(b =>
+  b.onclick = () => {
+    wireScope = b.dataset.wscope;
+    document.querySelectorAll("#wirescopeseg button").forEach(x =>
+      x.classList.toggle("on", x === b));
+    renderWire();
+  });
+
+function dayLabel(iso){
+  const d = new Date(iso), now = new Date();
+  const day = x => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  if (day(d) === day(now)) return "Today";
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (day(d) === day(y)) return "Yesterday";
+  return d.toLocaleDateString(undefined, {weekday: "short", month: "short", day: "numeric"});
+}
 function renderWire(){
-  if (!WIRE.posts.length) return;
-  $("#wirecard").style.display = "";
+  if (view !== "wire" || !WIRE.posts.length) return;
   const match = rosterMatcher();
-  $("#wire-list").innerHTML = WIRE.posts.map(p => {
-    const mine = match && match(p.text);
-    return `<li class="${mine ? "myguy" : ""}">
+  const flagged = WIRE.posts.map(p => ({...p, mine: !!(match && match(p.text))}));
+
+  // source rail: every configured source, ordered by loaded-post volume
+  const byName = {};
+  flagged.forEach(p => byName[p.name] = (byName[p.name] || 0) + 1);
+  const maxCt = Math.max(1, ...Object.values(byName));
+  const rows = [[null, `All sources`, flagged.length]]
+    .concat(Object.entries(byName).sort((a,b) => b[1]-a[1]).map(([n,c]) => [n, n, c]));
+  $("#wire-srcs").innerHTML = rows.map(([key, label, ct]) =>
+    `<li class="${(wireSrc ?? null) === key ? "on" : ""}"><button type="button" data-src="${esc(label)}">
+      <span class="src-row"><span class="n">${esc(label)}</span><span class="ct mono">${ct}</span></span>
+      ${key ? `<span class="src-bar" style="width:${Math.round(ct/maxCt*100)}%"></span>` : ""}
+    </button></li>`).join("");
+  document.querySelectorAll("#wire-srcs button").forEach(b =>
+    b.onclick = () => {
+      const k = b.dataset.src === "All sources" ? null : b.dataset.src;
+      wireSrc = wireSrc === k ? null : k;
+      renderWire();
+    });
+
+  const shown = flagged.filter(p => (!wireSrc || p.name === wireSrc)
+                                 && (wireScope !== "mine" || p.mine));
+  let lastDay = null, html = "";
+  for (const p of shown){
+    const dl = dayLabel(p.at);
+    if (dl !== lastDay){ html += `<li class="day"><span class="eyebrow">${dl}</span></li>`; lastDay = dl; }
+    html += `<li class="post ${p.mine ? "myguy" : ""}">
       <div class="wire-meta"><span class="who">${esc(p.name)}</span>
-        · <a href="${esc(p.url)}" target="_blank" rel="noopener">${timeAgo(p.at)}</a>
-        ${mine ? '<span class="badge mine">MY GUY</span>' : ""}</div>
+        <a href="${esc(p.url)}" target="_blank" rel="noopener" class="mono">${timeAgo(p.at)}</a>
+        ${p.mine ? '<span class="badge mine">MY GUY</span>' : ""}</div>
       <div class="wire-text">${esc(p.text)}</div></li>`;
-  }).join("");
+  }
+  $("#wire-list").innerHTML = html;
+  $("#wire-empty").textContent = shown.length ? "" :
+    (wireScope === "mine"
+      ? "No loaded posts mention this roster yet — load more, or the next refresh may bring some."
+      : "Nothing loaded from this source yet — try Load more.");
   const more = WIRE.posts.length < WIRE.total;
   $("#wire-more").style.display = more ? "" : "none";
-  $("#wire-more").textContent = `Load more (${WIRE.posts.length} of ${WIRE.total})`;
-  $("#wire-note").textContent = `${WIRE.sources - WIRE.errors} of ${WIRE.sources} sources` +
-    (WIRE.errors ? ` (${WIRE.errors} unreachable)` : "");
+  $("#wire-more").textContent = (wireSrc || wireScope === "mine")
+    ? `Load more (${shown.length} match · ${WIRE.posts.length} of ${WIRE.total} loaded)`
+    : `Load more (${WIRE.posts.length} of ${WIRE.total})`;
+  $("#wire-note").textContent = WIRE.errors ? `${WIRE.errors} unreachable` : "";
 }
 async function loadWire(){
   try {
     const r = await fetch(`/api/feed?offset=${WIRE.posts.length}&limit=25`, {cache: "no-store"});
-    if (!r.ok) return;
+    if (!r.ok) throw new Error(r.status);
     const j = await r.json();
     WIRE.total = j.total; WIRE.sources = j.sources; WIRE.errors = j.source_errors;
     WIRE.posts.push(...j.posts);
+    WIRE.dead = false;
     renderWire();
-  } catch (e) { /* offline / static copy — the card stays hidden */ }
+  } catch (e) {
+    WIRE.dead = true;   // offline / static copy — say so instead of an empty page
+    $("#wire-more").style.display = "none";
+    $("#wire-empty").textContent =
+      "The wire needs its server — open this board via the app (locally or deployed), not as a file.";
+  }
 }
 $("#wire-more").onclick = loadWire;
+applyView();
 loadWire();
 
 const _render = render;
