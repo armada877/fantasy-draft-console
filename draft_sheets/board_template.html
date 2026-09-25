@@ -40,6 +40,43 @@ header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wra
 .freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
 .asof-src{list-style:none;margin:6px 0 8px;padding:0;font-size:11px;color:var(--ink3)}
 .asof-src li{padding:1px 0}
+/* ── Account switcher: which team you are right now ── */
+.headright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.account{position:relative}
+.acct-chip{display:flex;align-items:center;gap:10px;font:inherit;text-align:left;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:7px 12px 7px 8px;cursor:pointer;color:inherit}
+.acct-chip:hover{border-color:#9aa3b2}
+.acct-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.acct-mono{width:28px;height:28px;border-radius:7px;background:var(--card2);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--ink2)}
+.acct-id{display:flex;flex-direction:column;line-height:1.25}
+.acct-team{font-size:13px;font-weight:700}
+.acct-league{font-size:10px;color:var(--ink3)}
+.acct-caret{color:var(--ink3);font-size:10px;margin-left:2px}
+.acct-alert{width:8px;height:8px;border-radius:50%;background:var(--csg);
+  position:absolute;top:-3px;right:-3px;border:2px solid var(--bg,#f6f7f9)}
+.acct-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:290px;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 10px 32px rgba(20,24,32,.14);padding:6px;}
+.acct-menu button{display:flex;width:100%;align-items:center;gap:10px;border:0;
+  background:transparent;font:inherit;text-align:left;padding:8px;border-radius:8px;
+  cursor:pointer;color:inherit}
+.acct-menu button:hover{background:var(--card2)}
+.acct-menu button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.acct-row-id{flex:1;display:flex;flex-direction:column;line-height:1.3;min-width:0}
+.acct-row-id .t{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-row-id .l{font-size:10.5px;color:var(--ink3)}
+.acct-row-st{text-align:right;line-height:1.3}
+.acct-row-st .pts{font-size:12px;font-weight:700}
+.acct-row-st .st{font-size:10px}
+.acct-row-st .st.ok{color:var(--ink3)}
+.acct-row-st .st.warn{color:var(--csg);font-weight:700}
+.acct-menu .check{width:14px;color:var(--accent);font-weight:800}
+.acct-menu .foot{border-top:1px solid var(--line);margin-top:5px;padding:8px 8px 4px;
+  font-size:10.5px;color:var(--ink3)}
+
 /* ── Section tabs: navigation, not a lens — a different species from .seg ── */
 .sectiontabs{display:flex;gap:24px;margin:16px 0 0;border-bottom:1px solid var(--line)}
 .sectiontabs button{border:0;background:transparent;font:inherit;font-size:13.5px;
@@ -108,7 +145,6 @@ body[data-view="board"] #wireview{display:none}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .seg button .shape{display:block;font-size:10.5px;font-weight:500;color:var(--ink3);letter-spacing:.02em}
 .postabs button{padding:6px 13px}
-.leaguemeta{font-size:13px;color:var(--ink2)}
 .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:16px 0 20px}
 .legend .m{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .legend .m b{display:flex;align-items:center;gap:8px;font-size:13.5px}
@@ -191,6 +227,18 @@ tr:hover td{background:var(--card2)}
         <button type="button" data-view="wire">The Wire</button>
       </nav>
     </div>
+    <div class="headright">
+    <div class="account" id="account">
+      <button class="acct-chip" id="acct-chip" type="button"
+              aria-haspopup="menu" aria-expanded="false" aria-label="Switch team">
+        <span class="acct-mono" id="acct-mono"></span>
+        <span class="acct-id"><span class="acct-team" id="acct-team"></span>
+          <span class="acct-league mono" id="acct-league"></span></span>
+        <span class="acct-caret">▾</span>
+        <span class="acct-alert" id="acct-alert" hidden title="Another team's lineup isn't set"></span>
+      </button>
+      <div class="acct-menu" id="acct-menu" role="menu" hidden></div>
+    </div>
     <div class="asof" id="asof">
       <div class="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></div>
       <ul class="asof-src mono" id="asof-src"></ul>
@@ -200,11 +248,11 @@ tr:hover td{background:var(--card2)}
               title="Everything: ESPN pools + rest-of-season sums + FantasyPros ranks (~2 min).">Full refresh</button>
       <div class="asof-hint">or: <span class="mono">python3 pipeline.py sync|week</span></div>
     </div>
+    </div>
   </div>
 </header>
 
 <div class="controls">
-  <div class="seg" id="leagueseg" role="tablist" aria-label="League"></div>
   <div class="seg boardonly" id="hseg" role="tablist" aria-label="Horizon"></div>
   <div class="seg postabs boardonly" id="posseg" role="tablist" aria-label="Position"></div>
   <div class="seg boardonly" id="scopeseg" role="tablist" aria-label="Scope"></div>
@@ -320,9 +368,6 @@ function fmt(n, d=1){ return n==null ? "\u2014" : (+n).toFixed(d); }
 function render(){
   const L = DATA.leagues[league];
   const ros = hz === "ros";
-  seg($("#leagueseg"), Object.entries(DATA.leagues).map(([k,v]) =>
-    ({key:k, label:v.label, shape:`${v.size} tm &middot; ${v.scoring}`})), league,
-    k => { league = k; render(); }, true);
   seg($("#hseg"), HZ, hz, h => { hz = h; render(); }, true);
   seg($("#posseg"), POSN, pos, p => { pos = p; render(); });
   seg($("#scopeseg"), SCOPES, scope, s => { scope = s; render(); });
@@ -457,8 +502,10 @@ function render(){
     tr.addEventListener("mouseleave", () => tip.style.display = "none");
   });
 }
-function renderLineup(){
-  const L = DATA.leagues[league];
+// Optimal lineup for one league: greedy slot fill by weekly projection, plus the
+// diff against what's CURRENTLY SET on ESPN. Shared by the lineup card and the
+// team switcher's per-team status rows.
+function computeLineup(L){
   const boardWk = name => {
     const q = L.players.find(x => x.name === name);
     return q?.week?.csg?.pts ?? q?.week?.elb?.pts ?? null;
@@ -488,12 +535,17 @@ function renderLineup(){
     cands.forEach(c => { used.add(c.name); rows.push({slot: "FLEX", ...c}); });
     for (let i = cands.length; i < n; i++) rows.push({slot: "FLEX", name: "(empty)", p: "", wk: 0, inj: ""});
   }
-  const total = rows.reduce((s, r) => s + (r.wk || 0), 0);
-  // Diff vs what's CURRENTLY SET on ESPN: an optimal starter who is benched there
-  // gets START; a bench player who is currently in the ESPN lineup gets SIT.
   const startFlag = r => haveSlots && r.setNow === false && r.name !== "(empty)";
+  return {roster, rows, used, haveSlots, startFlag,
+          total: rows.reduce((s, r) => s + (r.wk || 0), 0),
+          changes: rows.filter(startFlag).length};
+}
+
+function renderLineup(){
+  const L = DATA.leagues[league];
+  const {roster, rows, used, haveSlots, startFlag, total, changes} = computeLineup(L);
   $("#lu-title").textContent = L.team;
-  const nStarts = rows.filter(startFlag).length;
+  const nStarts = changes;
   const diffLine = !haveSlots ? "" : nStarts
     ? `<div class="lu-diff warn">\u26a0 ${nStarts} change${nStarts > 1 ? "s" : ""} vs your set ESPN lineup</div>`
     : `<div class="lu-diff ok">matches your set ESPN lineup \u2713</div>`;
@@ -641,8 +693,60 @@ $("#wire-more").onclick = loadWire;
 applyView();
 loadWire();
 
+// ── Account switcher: the dropdown is a status board across your teams ───────
+function setLeague(k){
+  if (!DATA.leagues[k] || k === league) { closeAcct(); return; }
+  league = k;
+  try { localStorage.setItem("fc.league", k); } catch (e) {}
+  closeAcct();
+  render();
+}
+function closeAcct(){
+  $("#acct-menu").hidden = true;
+  $("#acct-chip").setAttribute("aria-expanded", "false");
+}
+function monogram(team){
+  const w = (team || "?").split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] || "?") + (w[1]?.[0] || "")).toUpperCase();
+}
+function renderAccount(){
+  const L = DATA.leagues[league];
+  const status = {};
+  for (const [k, lg] of Object.entries(DATA.leagues)) status[k] = computeLineup(lg);
+  $("#acct-mono").textContent = monogram(L.team);
+  $("#acct-team").textContent = L.team || L.label;
+  $("#acct-league").textContent = `${L.label} · ${L.size} tm · ${L.scoring}`;
+  // the dot warns about teams you're NOT looking at
+  $("#acct-alert").hidden = !Object.entries(status)
+    .some(([k, s]) => k !== league && s.haveSlots && s.changes > 0);
+  $("#acct-menu").innerHTML = Object.entries(DATA.leagues).map(([k, lg]) => {
+    const s = status[k];
+    const st = !s.haveSlots ? "" : s.changes
+      ? `<span class="st warn">⚠ ${s.changes} to set</span>`
+      : `<span class="st ok">lineup set ✓</span>`;
+    return `<button type="button" role="menuitem" data-league="${esc(k)}">
+      <span class="acct-mono">${esc(monogram(lg.team))}</span>
+      <span class="acct-row-id"><span class="t">${esc(lg.team || lg.label)}</span>
+        <span class="l">${esc(lg.label)} · ${lg.size} tm · ${esc(lg.scoring)}</span></span>
+      <span class="acct-row-st"><span class="pts mono">${s.total.toFixed(1)}</span>${st}</span>
+      <span class="check">${k === league ? "✓" : ""}</span></button>`;
+  }).join("") + `<div class="foot">Teams come from config/boards.json — one row per league you're in.</div>`;
+  document.querySelectorAll("#acct-menu button[data-league]").forEach(b =>
+    b.onclick = () => setLeague(b.dataset.league));
+}
+$("#acct-chip").onclick = () => {
+  const menu = $("#acct-menu");
+  menu.hidden = !menu.hidden;
+  $("#acct-chip").setAttribute("aria-expanded", String(!menu.hidden));
+  if (!menu.hidden) menu.querySelector("button")?.focus();
+};
+document.addEventListener("click", e => {
+  if (!e.target.closest("#account")) closeAcct();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeAcct(); });
+
 const _render = render;
-render = function(){ _render(); renderLineup(); renderWire(); };
+render = function(){ _render(); renderLineup(); renderWire(); renderAccount(); };
 function renderAsof(){
   const a = DATA.asof;
   $("#lu-eyebrow").innerHTML =
@@ -661,6 +765,11 @@ function renderAsof(){
   $("#asof-src").innerHTML = Object.entries(a.sources).map(([k, v]) =>
     `<li>${k}: ${dfmt(v)}</li>`).join("");
 }
+// remember which team you were: ?league beats the saved choice beats the first league
+try {
+  league = new URLSearchParams(location.search).get("league")
+        || localStorage.getItem("fc.league") || null;
+} catch (e) {}
 bindData(DATA);
 renderAsof();
 render();
