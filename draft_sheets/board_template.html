@@ -1,4 +1,4 @@
-<title>Boris, Elbo &amp; CSG</title>
+<title>My Team</title>
 <style>
 :root{
   --ground:#f5f6f8; --card:#ffffff; --card2:#eef0f3; --line:#dde1e7;
@@ -109,6 +109,12 @@ body[data-view="board"] #wireview{display:none}
 .src-bar{display:block;height:3px;border-radius:2px;background:var(--accent);opacity:.45;
   margin-top:3px;min-width:2px}
 .wirefeed{min-width:0}
+@media (min-width:821px){
+  /* the feed scrolls; the page chrome stays put */
+  .wirefeed{max-height:calc(100vh - 200px);overflow-y:auto;padding-right:8px;
+    overscroll-behavior:contain}
+  #wire-srcs{max-height:calc(100vh - 260px)}
+}
 #wire-list{list-style:none;margin:0;padding:0}
 #wire-list li.day{border:0;padding:18px 0 4px}
 #wire-list li.day .eyebrow{display:flex;align-items:center;gap:10px}
@@ -231,7 +237,7 @@ tr:hover td{background:var(--card2)}
   </div>
   <div class="mastrow">
     <div class="mastleft">
-      <h1 id="mast-title">Boris, Elbo &amp; CSG</h1>
+      <h1 id="mast-title">My Team</h1>
       <nav class="sectiontabs" id="viewseg" aria-label="Section">
         <button type="button" data-view="board" class="on">Board</button>
         <button type="button" data-view="wire">The Wire</button>
@@ -569,7 +575,7 @@ function rosterMatcher(){
 }
 let view = new URLSearchParams(location.search).get("view") === "wire" ? "wire" : "board";
 let wireScope = "all", wireSrc = null;   // null = every source
-const MASTHEAD = {board: "Boris, Elbo & CSG", wire: "The Wire"};
+const MASTHEAD = {board: "My Team", wire: "The Wire"};
 function applyView(){
   document.body.dataset.view = view;
   $("#mast-title").textContent = MASTHEAD[view];

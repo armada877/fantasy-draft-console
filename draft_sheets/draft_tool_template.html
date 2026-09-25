@@ -87,8 +87,6 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 .brand{display:flex;flex-direction:column;justify-content:center;padding-right:6px;margin-right:2px}
 .brand .t{font-size:15px;font-weight:750;letter-spacing:.04em}
 .brand .s{font-size:9.5px;text-transform:uppercase;letter-spacing:.22em;color:var(--faint);margin-top:2px}
-.brand .s a{color:var(--faint);text-decoration:none}
-.brand .s a:hover{color:var(--accent)}
 .vital{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 14px;
   min-width:0;display:flex;flex-direction:column;justify-content:center}
 .vital .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
@@ -102,6 +100,8 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 .themebtn{align-self:center;background:var(--panel);border:1px solid var(--line);
   color:var(--muted);border-radius:9px;padding:0 13px;height:38px;font-size:16px}
 .themebtn:hover{color:var(--ink);border-color:var(--line2)}
+a.modelink{display:inline-flex;align-items:center;font-size:12px;font-weight:650;
+  text-decoration:none;white-space:nowrap}
 
 /* ============ HOW-TO-USE overlay — on demand, never occupying board space ============ */
 .helpwrap[hidden]{display:none}
@@ -495,12 +495,13 @@ td.edge-cell{position:relative}
  <div class="app-main">
   <div class="dock" id="dock">
     <div class="vitals">
-      <div class="brand"><div class="t" id="brand-t">Auction Draft</div><div class="s">Live Auction Console &middot; <a href="/manage" title="In-season board: tiers, VBD, the wire">Manage &rarr;</a></div></div>
+      <div class="brand"><div class="t" id="brand-t">Auction Draft</div><div class="s">Live Auction Console</div></div>
       <div class="vital"><div class="k">Remaining budget</div><div class="v mono" id="s-budget">$200</div></div>
       <div class="vital"><div class="k">Max bid</div><div class="v mono" id="s-maxbid">$189</div><div class="note">reserves $1 / open slot</div></div>
       <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
       <div class="vital"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="note" id="s-phase">pre-draft</div></div>
       <div class="dock-actions">
+        <a class="themebtn modelink" href="/manage" title="Switch to the in-season board">Manage &rarr;</a>
         <button class="themebtn" id="helpbtn" title="How to use this console" aria-label="How to use">?</button>
         <button class="themebtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
       </div>
