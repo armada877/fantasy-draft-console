@@ -188,6 +188,17 @@ Key conventions (do not regress):
   off-formula scoring is surfaced in `SCORING-NOTES.txt`, never silently ignored.
 - `fftiers/espn.py` and `scraping/scrape_league.py` are two separate ESPN clients (manage
   vs draft) with separate auth loaders reading the same cookie file. Known seam, accepted.
+- **The Trades tab** (third board section) is an evidence-based trade finder: FA-pooled
+  team value (`teamValue = rosLineup(roster ∪ top FAs)`, both sides, so deltas are
+  trade-only edge and pure waiver churn scores 0), win-win gate (myΔ>0.15, theirΔ≥0.3),
+  injured/consensus-unranked players and K/DST are never trade currency, forced drops of
+  boris top-12 players reject the candidate, dominance dedupe with negotiation ladders,
+  plus a custom offer evaluator (no filters, warnings instead). Inputs: every team's
+  roster (`pull`/`sync` write `dat/espn/{key}-teams.json`) and the week-over-week value
+  ledger (`out/board/history.json` → `prev_vbd`). Validated by adversarial QA, an
+  editorial judge (verdict: SOUND), and an empirical backtest whose reusable harness
+  lives in `league/backtest_trades/` (local) — rerun it as weeks accrue before trusting
+  threshold changes.
 
 ## Cross-season price normalization (read before touching any historical $)
 

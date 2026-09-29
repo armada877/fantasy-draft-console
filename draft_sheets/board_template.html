@@ -86,10 +86,12 @@ header h1{margin:0;font-size:21px;font-weight:800;letter-spacing:-.015em}
 .sectiontabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
 .sectiontabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* ── The Wire: its own section, switched via #viewseg ── */
-body[data-view="wire"] .boardonly{display:none}
-body[data-view="board"] .wireonly{display:none}
-body[data-view="board"] #wireview{display:none}
+/* ── Sections (Board / Wire / Trades), switched via #viewseg ── */
+body:not([data-view="board"]) .boardonly{display:none}
+body:not([data-view="wire"]) .wireonly{display:none}
+body:not([data-view="wire"]) #wireview{display:none}
+body:not([data-view="trades"]) .tradesonly{display:none}
+body:not([data-view="trades"]) #tradesview{display:none}
 .wiregrid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start;margin-top:14px}
 .wiresources{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
   border-radius:12px;padding:14px 0 8px}
@@ -131,6 +133,78 @@ body[data-view="board"] #wireview{display:none}
   .wiregrid{grid-template-columns:1fr}
   .wiresources{position:static}
   #wire-srcs{max-height:180px}
+}
+/* ── Trades: evidence-based trade finder — same two-column pattern as the Wire ── */
+.tradegrid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:26px;align-items:start;margin-top:14px}
+.tradepartners{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px 0 8px}
+.tradepartners .eyebrow{padding:0 14px 8px}
+#trade-partners{list-style:none;margin:0;padding:0;max-height:74vh;overflow-y:auto}
+#trade-partners button{display:block;width:100%;border:0;background:transparent;color:var(--ink2);
+  font:inherit;font-size:12.5px;text-align:left;padding:6px 14px;cursor:pointer;
+  border-left:3px solid transparent}
+#trade-partners button:hover{color:var(--ink)}
+#trade-partners button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#trade-partners li.on button{border-left-color:var(--accent);color:var(--ink);font-weight:700;
+  background:var(--card2)}
+#trade-partners li.none button{color:var(--ink3);cursor:default}
+.tp-row{display:flex;align-items:baseline;gap:8px}
+.tp-row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650}
+.tp-row .d{font-size:11px;min-width:4ch;text-align:right}
+.tp-need{display:block;font-size:10.5px;color:var(--ink3);margin-top:1px}
+.tradefeed{min-width:0}
+#trade-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:14px}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tcard-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:8px}
+.tcard-head .tpartner{font-weight:750;font-size:14.5px}
+.tcols{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;margin-top:10px}
+@media (max-width:640px){.tcols{grid-template-columns:1fr;gap:10px 0}}
+.tprow{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:13.5px}
+.tprow .n{font-weight:650;flex:1;min-width:0}
+.tprow .v{font-size:12px;color:var(--ink2);white-space:nowrap}
+.tdeltas{margin-top:10px;font-size:15px;font-weight:750}
+.tdeltas .them{color:var(--ink2);font-weight:600;font-size:13px}
+.tchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.tchip{font-size:10.5px;font-weight:700;letter-spacing:.03em;border:1px solid var(--line);
+  border-radius:5px;padding:2px 7px;color:var(--ink2);background:var(--card2);white-space:nowrap}
+.tchip.blue{color:var(--elb);border-color:var(--elb)}
+.tchip.orange{color:var(--csg);border-color:var(--csg)}
+.trebal{margin-top:8px;font-size:12px;color:var(--ink2)}
+.tladder{margin-top:8px;font-size:12px;color:var(--ink2);font-style:italic}
+.tswap{margin-top:8px;font-size:12px;color:var(--ink3)}
+/* the offer composer: evaluate a leaguemate's exact proposal */
+.tcomposer{margin:8px 0 16px}
+#tc-body{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;margin-top:10px}
+.tc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#tc-partner{font:inherit;font-size:13px;background:var(--card2);color:var(--ink);
+  border:1px solid var(--line);border-radius:7px;padding:6px 8px;max-width:280px}
+#tc-partner:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tc-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;margin-top:12px}
+@media (max-width:640px){.tc-cols{grid-template-columns:1fr;gap:12px 0}}
+.tc-list{list-style:none;margin:6px 0 0;padding:0;max-height:250px;overflow-y:auto;
+  border:1px solid var(--line);border-radius:8px}
+.tc-list button{display:flex;width:100%;gap:8px;align-items:baseline;border:0;
+  background:transparent;color:var(--ink2);font:inherit;font-size:12.5px;text-align:left;
+  padding:4px 10px;cursor:pointer}
+.tc-list button:hover{color:var(--ink);background:var(--card2)}
+.tc-list button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tc-list li.sel button{background:var(--card2);color:var(--ink);font-weight:650;
+  box-shadow:inset 3px 0 0 var(--accent)}
+.tc-list .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-list .v{font-size:11px;color:var(--ink3);white-space:nowrap}
+#tc-result{margin-top:12px}
+.tverdict{margin-top:10px;font-size:13.5px;font-weight:700}
+.tverdict.take{color:#1baf7a}
+.tverdict.side{color:var(--ink2)}
+.tverdict.decline{color:var(--csg)}
+.tchip.warn{color:var(--csg);border-color:var(--csg);background:transparent}
+.tc-editbtn{font-size:10.5px;padding:2px 8px}
+@media (max-width:820px){
+  .tradegrid{grid-template-columns:1fr}
+  .tradepartners{position:static}
+  #trade-partners{max-height:220px}
 }
 .refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;
   border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
@@ -241,6 +315,7 @@ tr:hover td{background:var(--card2)}
       <nav class="sectiontabs" id="viewseg" aria-label="Section">
         <button type="button" data-view="board" class="on">Board</button>
         <button type="button" data-view="wire">The Wire</button>
+        <button type="button" data-view="trades">Trades</button>
       </nav>
     </div>
     <div class="asof" id="asof">
@@ -292,6 +367,38 @@ tr:hover td{background:var(--card2)}
         <button id="wire-more" class="refreshbtn" type="button">Load more</button>
         <span class="ecr" id="wire-empty"></span>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="tradesview">
+  <p class="note" id="trade-sync" hidden>Opponent rosters arrive with the next refresh &mdash; run Sync.</p>
+  <div class="tradegrid" id="tradegrid">
+    <aside class="tradepartners">
+      <div class="eyebrow">Partners</div>
+      <ul id="trade-partners"></ul>
+    </aside>
+    <div class="tradefeed">
+      <div class="tcomposer">
+        <button id="tc-toggle" class="refreshbtn" type="button">Evaluate an offer</button>
+        <div id="tc-body" hidden>
+          <div class="tc-head">
+            <span class="eyebrow">Partner</span>
+            <select id="tc-partner" aria-label="Trade partner"></select>
+            <button id="tc-eval" class="refreshbtn" type="button">Evaluate</button>
+            <button id="tc-clear" class="refreshbtn" type="button">Clear</button>
+          </div>
+          <div class="tc-cols">
+            <div><div class="eyebrow">You send <span class="ecr" id="tc-sendct"></span></div><ul id="tc-mine" class="tc-list"></ul></div>
+            <div><div class="eyebrow">You get <span class="ecr" id="tc-getct"></span></div><ul id="tc-theirs" class="tc-list"></ul></div>
+          </div>
+          <div id="tc-result"></div>
+        </div>
+      </div>
+      <div class="eyebrow" id="trade-list-head"></div>
+      <ul id="trade-list"></ul>
+      <p class="ecr" id="trade-empty"></p>
+      <p class="note" id="trade-note"></p>
     </div>
   </div>
 </section>
@@ -573,20 +680,23 @@ function rosterMatcher(){
     ? new RegExp(`\\b(${[...lasts].join("|")})\\b(?!\\s+[A-Z][a-z])`) : null;
   return t => reFull.test(t) || (reLast && reLast.test(t));
 }
-let view = new URLSearchParams(location.search).get("view") === "wire" ? "wire" : "board";
+let view = (() => {
+  const v = new URLSearchParams(location.search).get("view");
+  return ["wire", "trades"].includes(v) ? v : "board";
+})();
 let wireScope = "all", wireSrc = null;   // null = every source
-const MASTHEAD = {board: "My Team", wire: "The Wire"};
+const MASTHEAD = {board: "My Team", wire: "The Wire", trades: "Trades"};
 function applyView(){
   document.body.dataset.view = view;
   $("#mast-title").textContent = MASTHEAD[view];
   document.querySelectorAll("#viewseg button").forEach(b =>
     b.classList.toggle("on", b.dataset.view === view));
   const q = new URLSearchParams(location.search);
-  view === "wire" ? q.set("view", "wire") : q.delete("view");
+  view !== "board" ? q.set("view", view) : q.delete("view");
   history.replaceState(null, "", location.pathname + (q.size ? "?" + q : ""));
 }
 document.querySelectorAll("#viewseg button").forEach(b =>
-  b.onclick = () => { view = b.dataset.view; applyView(); renderWire(); });
+  b.onclick = () => { view = b.dataset.view; applyView(); renderWire(); renderTrades(); });
 document.querySelectorAll("#wirescopeseg button").forEach(b =>
   b.onclick = () => {
     wireScope = b.dataset.wscope;
@@ -670,10 +780,611 @@ $("#wire-more").onclick = loadWire;
 applyView();
 loadWire();
 
+// ── Trades: evidence-based trade finder ───────────────────────────────────────
+// All client-side over DATA.leagues[k].teams (every roster in the league). The
+// core primitive is a greedy optimal REST-OF-SEASON lineup where an unfillable
+// seat is priced at the best free agent — the replacement-level rule that makes
+// 2-for-1 consolidation math honest.
+const TRADES_CACHE = {};        // league|built -> engine output
+let tradePartner = null;        // team-id filter (click a rail row to toggle)
+
+function teamPlayersT(t){
+  return t.roster.map(([name, pos, wk, ros, inj]) =>
+    ({name, pos, ros: +ros || 0, wk: +wk || 0, inj: inj || ""}));
+}
+function tradeModel(L){
+  const pool = {};
+  for (const p of L.players) pool[p.name] = p;
+  const faByPos = {};
+  for (const p of L.players){
+    if (!p.fa) continue;
+    const pts = p.ros?.elb?.pts ?? p.ros?.csg?.pts;
+    if (pts == null || pts <= 0) continue;
+    (faByPos[p.pos] = faByPos[p.pos] || []).push({name: p.name, pos: p.pos, ros: pts, fa: true});
+  }
+  for (const k in faByPos) faByPos[k].sort((a, b) => b.ros - a.ros);
+  // the FA value pool: the best ~3 free agents per lineup-eligible position,
+  // baked into every team-value call so waiver value cancels out of trade deltas
+  const topFA = ["QB", "RB", "WR", "TE"].flatMap(pos => (faByPos[pos] || []).slice(0, 3));
+  const slots = L.slots.map(([s, n]) => [s === "D/ST" ? "DST" : s, n]);
+  return {pool, faByPos, slots, topFA};
+}
+function meanRosVbd(pool, name){
+  const r = pool[name]?.ros;
+  if (!r || (!r.elb && !r.csg)) return null;
+  return ((r.elb?.vbd ?? 0) + (r.csg?.vbd ?? 0)) / 2;
+}
+// Greedy optimal ROS lineup: dedicated slots first (best ros at pos), then FLEX
+// from best remaining RB/WR/TE. Empty seat -> best available FREE AGENT at the
+// slot's eligible positions (K/DST have no FA pool -> 0, noted in the footer).
+function rosLineup(plist, M){
+  const byPos = {};
+  for (const p of plist) (byPos[p.pos] = byPos[p.pos] || []).push(p);
+  for (const k in byPos) byPos[k].sort((a, b) => b.ros - a.ros);
+  const idx = {}, usedFA = new Set(), rows = [];
+  const take = pos => {
+    const arr = byPos[pos] || [], i = idx[pos] ?? 0;
+    if (i < arr.length){ idx[pos] = i + 1; return arr[i]; }
+    return null;
+  };
+  const takeFA = poss => {
+    let best = null;
+    for (const pos of poss)
+      for (const f of (M.faByPos[pos] || [])){
+        if (usedFA.has(f.name)) continue;
+        if (!best || f.ros > best.ros) best = f;
+        break;                                 // sorted: first unused is the pos's best
+      }
+    if (best) usedFA.add(best.name);
+    return best;
+  };
+  for (const [slot, n] of M.slots.filter(s => s[0] !== "FLEX"))
+    for (let i = 0; i < n; i++) rows.push({slot, p: take(slot) || takeFA([slot])});
+  const flexN = M.slots.filter(s => s[0] === "FLEX").reduce((s, x) => s + x[1], 0);
+  for (let i = 0; i < flexN; i++){
+    let best = null, bpos = null;
+    for (const pos of FLEX_POS){
+      const arr = byPos[pos] || [], j = idx[pos] ?? 0;
+      if (j < arr.length && (!best || arr[j].ros > best.ros)){ best = arr[j]; bpos = pos; }
+    }
+    if (best) idx[bpos] = (idx[bpos] ?? 0) + 1;
+    else best = takeFA(FLEX_POS);
+    rows.push({slot: "FLEX", p: best});
+  }
+  const total = rows.reduce((s, r) => s + (r.p?.ros || 0), 0);
+  return {rows, total, perWeek: total / WEEKS_LEFT};
+}
+// Team value = optimal ROS lineup of (roster ∪ top free agents). The identical
+// FA pool sits under the pre- and post-trade roster of BOTH sides, so waiver
+// value cancels out of every delta: a pure waiver move scores exactly 0, and a
+// trade is only credited for edge the wire can't provide.
+function teamValue(plist, M){ return rosLineup(plist.concat(M.topFA), M); }
+const DROP_REJECT = Symbol("forced top-12 drop");
+const borisRank = (M, name) => M.pool[name]?.ros?.boris?.posrank ?? null;
+const topRanked = (M, name) => { const b = borisRank(M, name); return b != null && b <= 12; };
+const TRADE_STASHED = new Set(["O", "OUT", "IR", "PUP", "SUSP", "SSPD", "SUSPENDED", "SUSPENSION", "NFI"]);
+const isStash = (M, p) => TRADE_STASHED.has(String(p.inj || "").toUpperCase()) || borisRank(M, p.name) == null;
+// The side that nets extra bodies must cut someone. Under the FA-pooled value
+// model a non-starter's cut costs 0, so the true least-cost drop is the
+// cheapest non-starter — but never a boris top-12 player: a candidate that
+// forces cutting one is rejected outright rather than rendered.
+function resolveDrop(post, startCount, lu, M){
+  if (post.length <= startCount) return null;
+  const started = new Set(lu.rows.map(r => r.p?.name).filter(Boolean));
+  const drops = [];
+  let cur = post.slice();
+  while (cur.length > startCount){
+    const nonStart = cur.filter(p => !started.has(p.name));
+    const safe = nonStart.filter(p => !topRanked(M, p.name));
+    if (safe.length){
+      const d = safe.reduce((a, b) => a.ros <= b.ros ? a : b);
+      drops.push(d); cur = cur.filter(p => p !== d);
+    } else if (nonStart.length){
+      return DROP_REJECT;                 // every zero-cost cut is a top-12 player
+    } else {
+      // everyone starts (no bench at all): true least-cost drop, still never top-12
+      let best = null, bc = Infinity;
+      const base = teamValue(cur, M).total;
+      for (const p of cur){
+        if (topRanked(M, p.name)) continue;
+        const c = base - teamValue(cur.filter(x => x !== p), M).total;
+        if (c < bc){ bc = c; best = p; }
+      }
+      if (!best) return DROP_REJECT;
+      drops.push(best); cur = cur.filter(p => p !== best);
+    }
+  }
+  return drops;
+}
+// Loose drop resolution for the offer EVALUATOR: same least-cost logic, but a
+// forced top-12 cut is reported (warned about), never rejected — the user is
+// scoring a real proposal, not generating one.
+function resolveDropLoose(post, startCount, lu, M){
+  if (post.length <= startCount) return null;
+  const started = new Set(lu.rows.map(r => r.p?.name).filter(Boolean));
+  const drops = [];
+  let cur = post.slice();
+  while (cur.length > startCount){
+    const nonStart = cur.filter(p => !started.has(p.name));
+    let d = null;
+    if (nonStart.length){
+      const safe = nonStart.filter(p => !topRanked(M, p.name));
+      d = (safe.length ? safe : nonStart).reduce((a, b) => a.ros <= b.ros ? a : b);
+    } else {
+      let bc = Infinity;
+      const base = teamValue(cur, M).total;
+      for (const p of cur){
+        const c = base - teamValue(cur.filter(x => x !== p), M).total;
+        if (c < bc){ bc = c; d = p; }
+      }
+    }
+    drops.push(d); cur = cur.filter(p => p !== d);
+  }
+  return drops;
+}
+// Freed roster spots: name the FA(s) to actually add — the ones the post-trade
+// lineup starts, else the best remaining by ros. Display only: the value model
+// already banks the FA pool for both sides.
+function resolveAdds(post, startCount, lu, M){
+  if (post.length >= startCount) return null;
+  const names = new Set(post.map(p => p.name));
+  const starting = [], seen = new Set();
+  for (const r of lu.rows){
+    const p = r.p;
+    if (p && p.fa && !names.has(p.name) && !seen.has(p.name)){ starting.push(p); seen.add(p.name); }
+  }
+  const rest = M.topFA.filter(f => !names.has(f.name) && !seen.has(f.name))
+    .sort((a, b) => b.ros - a.ros);
+  return starting.concat(rest).slice(0, startCount - post.length);
+}
+function buildTrades(L){
+  const M = tradeModel(L);
+  const me = L.teams.find(t => t.mine);
+  const pre = {};
+  for (const t of L.teams){
+    const plist = teamPlayersT(t);
+    // lu = pure-roster lineup (needs/surplus semantics: an FA seat IS a need);
+    // val = FA-pooled team value (the delta baseline)
+    pre[t.id] = {t, plist, lu: rosLineup(plist, M), val: teamValue(plist, M)};
+  }
+  // league-wide starter distribution per dedicated slot -> median (rail "needs")
+  // and bottom decile (the "fills their hole" chip)
+  const posVals = {};
+  for (const id in pre)
+    for (const r of pre[id].lu.rows)
+      if (r.slot !== "FLEX") (posVals[r.slot] = posVals[r.slot] || []).push(r.p?.ros || 0);
+  const median = {}, decile = {};
+  for (const k in posVals){
+    const v = [...posVals[k]].sort((a, b) => a - b);
+    median[k] = v[Math.floor(v.length / 2)];
+    decile[k] = v[Math.floor(v.length * 0.1)];
+  }
+  // K/DST are streamable week-to-week commodities: never trade pieces, and a
+  // "needs DST" is a waiver note, not a trade need — they're excluded throughout.
+  const STREAMED = new Set(["K", "DST"]);
+  // Injured stashes aren't currency either: OUT/IR/suspended, or unranked by the
+  // ROS consensus (boris null — the market won't price him), can't headline a
+  // deal that survives first contact. Q/D players are playing and stay tradeable.
+  // Stashes remain eligible as rebalance DROPS.
+  const tradeable = p => !STREAMED.has(p.pos) && !isStash(M, p);
+  const needsOf = id => {
+    const needs = new Set(), holes = new Set();
+    for (const r of pre[id].lu.rows){
+      if (r.slot === "FLEX" || STREAMED.has(r.slot)) continue;
+      const faSeat = !r.p || !!r.p.fa, v = r.p?.ros || 0;
+      if (faSeat || v < median[r.slot]) needs.add(r.slot);
+      if (faSeat || v <= decile[r.slot]) holes.add(r.slot);
+    }
+    return {needs, holes};
+  };
+  // my worst starter per pos (and worst FLEX) — an opponent bench player who
+  // beats one of these would START on MY team: that's their surplus
+  const myStartMin = {};
+  let myFlexMin = Infinity;
+  for (const r of pre[me.id].lu.rows){
+    const p = r.p;
+    if (!p || p.fa) continue;
+    if (r.slot === "FLEX") myFlexMin = Math.min(myFlexMin, p.ros);
+    else myStartMin[p.pos] = Math.min(myStartMin[p.pos] ?? Infinity, p.ros);
+  }
+  const surplusOf = id => {
+    const started = new Set(pre[id].lu.rows.map(r => r.p?.name).filter(Boolean));
+    const out = new Set();
+    for (const p of pre[id].plist){
+      if (started.has(p.name) || STREAMED.has(p.pos)) continue;
+      const beatsPos = myStartMin[p.pos] != null && p.ros > myStartMin[p.pos];
+      const beatsFlex = FLEX_POS.includes(p.pos) && p.ros > myFlexMin;
+      if (beatsPos || beatsFlex) out.add(p.pos);
+    }
+    return out;
+  };
+  const myP = pre[me.id].plist, myPreVal = pre[me.id].val.perWeek;
+  const untouch = new Set([...myP].filter(tradeable)
+    .sort((a, b) => b.ros - a.ros).slice(0, 2).map(p => p.name));
+  const gives = myP.filter(p => tradeable(p) && !untouch.has(p.name));
+  // 2-for-1 pair pool: non-lineup players + the bottom-3 owned starters, <=40 pairs
+  const pairPool = id => {
+    const {plist, lu} = pre[id];
+    const started = new Set(lu.rows.map(r => r.p?.name).filter(Boolean));
+    const owned = lu.rows.map(r => r.p).filter(p => p && !p.fa);
+    const fringe = [...owned].sort((a, b) => a.ros - b.ros).slice(0, 3);
+    const cand = plist.filter(p => !started.has(p.name)).concat(fringe)
+      .filter(p => tradeable(p) && !(id === me.id && untouch.has(p.name)))
+      .sort((a, b) => b.ros - a.ros);
+    const pairs = [];
+    for (let i = 0; i < cand.length && pairs.length < 40; i++)
+      for (let j = i + 1; j < cand.length && pairs.length < 40; j++)
+        pairs.push([cand[i], cand[j]]);
+    return pairs;
+  };
+  const myPairs = pairPool(me.id);
+  const perTeam = {};   // id -> kept suggestions, best first
+  for (const t of L.teams){
+    if (t.mine) continue;
+    const theirP = pre[t.id].plist, theirPreVal = pre[t.id].val.perWeek;
+    const kept = [];
+    const tryTrade = (give, get) => {
+      const gn = new Set(give.map(p => p.name)), tn = new Set(get.map(p => p.name));
+      const mPost = myP.filter(p => !gn.has(p.name)).concat(get);
+      const mv = teamValue(mPost, M);
+      const myD = mv.perWeek - myPreVal;
+      if (myD <= 0.15) return;                    // must clearly help me
+      const tPost = theirP.filter(p => !tn.has(p.name)).concat(give);
+      const tv = teamValue(tPost, M);
+      const thD = tv.perWeek - theirPreVal;
+      if (thD < 0.3) return;                      // honest win-win: they gain too
+      const myDrop = resolveDrop(mPost, myP.length, mv, M);
+      if (myDrop === DROP_REJECT) return;         // never force cutting a top-12 player
+      const thDrop = resolveDrop(tPost, theirP.length, tv, M);
+      if (thDrop === DROP_REJECT) return;
+      kept.push({teamId: t.id, give, get, myD, thD, score: myD + 0.25 * thD,
+                 myDrop, thDrop,
+                 myAdd: resolveAdds(mPost, myP.length, mv, M),
+                 thAdd: resolveAdds(tPost, theirP.length, tv, M)});
+    };
+    const theirGets = theirP.filter(tradeable);
+    for (const g of gives) for (const r of theirGets) tryTrade([g], [r]);
+    for (const pr of myPairs) for (const r of theirGets) tryTrade(pr, [r]);
+    const theirPairs = pairPool(t.id);
+    for (const g of gives) for (const pr of theirPairs) tryTrade([g], pr);
+    // dominance dedupe: same "get" with myΔ within ±0.15 -> keep only the
+    // cheapest outbound package; richer variants fold into a negotiation
+    // ladder ("if refused, sweeten"). A human opens cheap.
+    const outRos = c => c.give.reduce((s, p) => s + p.ros, 0);
+    const byGet = {};
+    for (const c of kept){
+      const k = c.get.map(p => p.name).sort().join("|");
+      (byGet[k] = byGet[k] || []).push(c);
+    }
+    const deduped = [];
+    for (const grp of Object.values(byGet)){
+      grp.sort((a, b) => outRos(a) - outRos(b));
+      const bases = [];
+      for (const c of grp){
+        const b = bases.find(u => Math.abs(u.myD - c.myD) <= 0.15);
+        if (b){
+          // a sweetener must stay a sweetener: worth ≤ half the base send's VBD
+          const baseVbd = b.give.reduce((s, p) => s + (meanRosVbd(M.pool, p.name) ?? 0), 0);
+          for (const p of c.give)
+            if (!b.give.some(x => x.name === p.name) && !b.ladder.includes(p.name)){
+              const v = meanRosVbd(M.pool, p.name);
+              if (v != null && v <= 0.5 * baseVbd) b.ladder.push(p.name);
+            }
+        } else { c.ladder = []; bases.push(c); }
+      }
+      deduped.push(...bases);
+    }
+    // same-SEND collapse: one card per outbound package. The primary ask is the
+    // max-return variant (you open HIGH on incoming pieces); lesser returns
+    // become the concession ladder — "ask for + X; settle: …", cheapest last.
+    const byGive = {};
+    for (const c of deduped){
+      const k = c.give.map(p => p.name).sort().join("|");
+      (byGive[k] = byGive[k] || []).push(c);
+    }
+    const collapsed = [];
+    for (const grp of Object.values(byGive)){
+      grp.sort((a, b) => (b.myD - a.myD)
+        || (b.get.reduce((s, p) => s + p.ros, 0) - a.get.reduce((s, p) => s + p.ros, 0)));
+      const prim = grp[0];
+      if (grp.length > 1){
+        const core = prim.get.filter(p => grp.every(c => c.get.some(x => x.name === p.name)));
+        const label = c => {
+          const extra = c.get.filter(p => !core.some(x => x.name === p.name));
+          return extra.length ? "+ " + extra.map(p => p.name).join(" + ")
+                              : `${c.give.length}-for-${c.get.length}`;
+        };
+        const asks = prim.get.filter(p => !core.some(x => x.name === p.name));
+        const falls = grp.slice(1);                       // already best-first
+        const shown = falls.length > 2 ? [falls[0], falls[falls.length - 1]] : falls;
+        prim.askLadder = (asks.length ? `ask for + ${asks.map(p => p.name).join(" + ")}; ` : "")
+          + "settle: " + shown.map(label).join(", then ");
+      }
+      collapsed.push(prim);
+    }
+    collapsed.sort((a, b) => b.score - a.score);
+    // per-opponent top 3, no two moving the identical player set
+    const seen = new Set(), top = [];
+    for (const c of collapsed){
+      const key = [...c.give, ...c.get].map(p => p.name).sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key); top.push(c);
+      if (top.length === 3) break;
+    }
+    perTeam[t.id] = top;
+  }
+  // global feed: top ~18 across the league, deduped on the moved player set,
+  // capped so no single player appears in more than 6 of the cards
+  const seen = new Set(), global = [], perPlayer = {};
+  for (const c of Object.values(perTeam).flat().sort((a, b) => b.score - a.score)){
+    const movers = [...c.give, ...c.get].map(p => p.name);
+    const key = [...movers].sort().join("|");
+    if (seen.has(key)) continue;
+    if (movers.some(n => (perPlayer[n] || 0) >= 6)) continue;
+    seen.add(key);
+    movers.forEach(n => perPlayer[n] = (perPlayer[n] || 0) + 1);
+    global.push(c);
+    if (global.length === 18) break;
+  }
+  const partners = L.teams.filter(t => !t.mine).map(t => {
+    const {needs} = needsOf(t.id);
+    const surplus = surplusOf(t.id);
+    const bits = [];
+    if (needs.size) bits.push("needs " + [...needs].join(", "));
+    if (surplus.size) bits.push("deep at " + [...surplus].join(", "));
+    return {team: t, needLine: bits.join(" · ") || "balanced roster",
+            best: perTeam[t.id][0] ?? null};
+  }).sort((a, b) => (b.best?.myD ?? -1e9) - (a.best?.myD ?? -1e9));
+  const holesOf = {};
+  for (const t of L.teams) holesOf[t.id] = needsOf(t.id).holes;
+  return {M, me, pre, partners, perTeam, global, holesOf,
+          hasKD: M.slots.some(([s]) => s === "K" || s === "DST")};
+}
+function tradeChips(c, T, L){
+  const pool = T.M.pool, chips = [];
+  const short = n => {
+    const w = n.trim().split(/\s+/).filter(t => !/^(Jr\.?|Sr\.?|II|III|IV|V)$/i.test(t));
+    return w[w.length - 1] || n;
+  };
+  chips.push({cls: "", txt: c.give.length > c.get.length ? `consolidates ${c.give.length}→${c.get.length}`
+                        : c.get.length > c.give.length ? `expands ${c.give.length}→${c.get.length}`
+                        : `${c.give.length}-for-${c.get.length}`});
+  const holes = T.holesOf[c.teamId] || new Set();
+  for (const pos of new Set(c.give.map(p => p.pos)))
+    if (holes.has(pos)) chips.push({cls: "blue", txt: `fills their ${pos} hole`});
+  const havePrev = L.prev_vbd && Object.keys(L.prev_vbd).length > 0;
+  const eng = n => pool[n]?.ros?.elb?.posrank ?? pool[n]?.ros?.csg?.posrank ?? null;
+  const bor = n => pool[n]?.ros?.boris?.posrank ?? null;
+  for (const p of c.get){
+    if (havePrev){
+      const prev = L.prev_vbd[p.name], cur = meanRosVbd(pool, p.name);
+      if (prev != null && prev > 0 && cur != null){
+        const drop = (prev - cur) / Math.abs(prev);
+        const e = eng(p.name), b = bor(p.name);
+        if (drop >= 0.15 && e != null && b != null && Math.abs(b - e) <= 3)
+          chips.push({cls: "blue", txt: `${short(p.name)} ▼ ${Math.round(drop * 100)}% wk/wk`});
+      }
+    }
+    const e = eng(p.name), b = bor(p.name);
+    if (e != null && b != null && b - e >= 5)
+      chips.push({cls: "blue", txt: `${short(p.name)}: model likes him more than the market`});
+  }
+  for (const p of c.give){
+    if (havePrev){
+      const prev = L.prev_vbd[p.name], cur = meanRosVbd(pool, p.name);
+      if (prev != null && prev > 0 && cur != null && (cur - prev) / Math.abs(prev) >= 0.2)
+        chips.push({cls: "orange",
+          txt: `${short(p.name)} ▲ ${Math.round((cur - prev) / Math.abs(prev) * 100)}% wk/wk`});
+    }
+    const e = eng(p.name), b = bor(p.name);
+    if (e != null && b != null && e - b >= 5)
+      chips.push({cls: "orange", txt: `${short(p.name)}: market likes him more than the model`});
+  }
+  return chips;
+}
+function renderTrades(){
+  if (view !== "trades") return;
+  const L = DATA.leagues[league];
+  const hasTeams = L.teams && L.teams.length;
+  $("#trade-sync").hidden = !!hasTeams;
+  $("#tradegrid").style.display = hasTeams ? "" : "none";
+  if (!hasTeams) return;
+  const key = league + "|" + A.built;
+  if (!TRADES_CACHE[key]) TRADES_CACHE[key] = buildTrades(L);
+  const T = TRADES_CACHE[key];
+  if (tradePartner != null && !T.perTeam[tradePartner]) tradePartner = null;
+
+  const sd = d => (d >= 0 ? "+" : "") + d.toFixed(1);
+  $("#trade-partners").innerHTML = T.partners.map(p => {
+    const has = !!p.best;
+    return `<li class="${!has ? "none" : String(p.team.id) === String(tradePartner) ? "on" : ""}">
+      <button type="button" data-team="${esc(String(p.team.id))}" ${has ? "" : "disabled"}>
+        <span class="tp-row"><span class="n">${esc(p.team.name)}</span>
+          <span class="d mono">${has ? sd(p.best.myD) : ""}</span></span>
+        <span class="tp-need">${esc(p.needLine)}${has ? "" : " · no win-win found"}</span>
+      </button></li>`;
+  }).join("");
+  document.querySelectorAll("#trade-partners button[data-team]").forEach(b =>
+    b.onclick = () => {
+      if (b.disabled) return;
+      tradePartner = String(tradePartner) === b.dataset.team ? null : b.dataset.team;
+      renderTrades();
+    });
+
+  const shown = tradePartner != null
+    ? T.perTeam[tradePartner] || []
+    : T.global;
+  const teamById = id => T.pre[id].t;
+  const partnerLine = id => T.partners.find(p => String(p.team.id) === String(id))?.needLine || "";
+  $("#trade-list-head").textContent = shown.length
+    ? (tradePartner != null
+        ? `Deals with ${teamById(tradePartner).name} · win-win only`
+        : `Top deals across the league · win-win only`)
+    : "";
+  const prow = (p, incoming) => {
+    const v = meanRosVbd(T.M.pool, p.name);
+    return `<div class="tprow"><span class="n"><span class="posmark">${esc(p.pos)}</span>${esc(p.name)}${
+      incoming && p.inj ? `<span class="inj">${esc(p.inj)}</span>` : ""}</span>
+      <span class="v mono">${fmt(p.ros, 0)} pts · ${v == null ? "—" : fmt(v, 0).replace(/^-0$/, "0")} VBD</span></div>`;
+  };
+  const rebalLine = c => {
+    const bits = [];
+    if (c.myAdd?.length)
+      bits.push("you then add " + c.myAdd.map(f => `${esc(f.name)} (${f.pos}, FA)`).join(", "));
+    if (c.myDrop?.length)
+      bits.push("you then drop " + c.myDrop.map(f => esc(f.name)).join(", "));
+    if (c.thAdd?.length)
+      bits.push("they add " + c.thAdd.map(f => `${esc(f.name)} (FA)`).join(", "));
+    if (c.thDrop?.length)
+      bits.push("they drop " + c.thDrop.map(f => esc(f.name)).join(", "));
+    return bits.length ? `<div class="trebal">${bits.join(" · ")}</div>` : "";
+  };
+  $("#trade-list").innerHTML = shown.map((c, ci) => {
+    const t = teamById(c.teamId);
+    const chips = tradeChips(c, T, L)
+      .map(ch => `<span class="tchip ${ch.cls}">${esc(ch.txt)}</span>`).join("");
+    const getNames = c.get.map(p => p.name).join(" and ");
+    const giveNames = c.give.map(p => p.name).join(" and ");
+    return `<li class="tcard">
+      <div class="tcard-head"><span class="tpartner">${esc(t.name)}</span>
+        <span class="ecr">${esc(partnerLine(c.teamId))}</span>
+        <button type="button" class="refreshbtn tc-editbtn" data-ci="${ci}">edit this offer</button></div>
+      <div class="tcols">
+        <div><div class="eyebrow">You send</div>${c.give.map(p => prow(p, false)).join("")}</div>
+        <div><div class="eyebrow">You get</div>${c.get.map(p => prow(p, true)).join("")}</div>
+      </div>
+      <div class="tdeltas mono">You: ${sd(c.myD)} pts/wk <span class="them">· Them: ${sd(c.thD)} pts/wk</span></div>
+      <div class="tchips">${chips}</div>
+      ${rebalLine(c)}
+      ${c.askLadder ? `<div class="tladder">${esc(c.askLadder)}</div>` : ""}
+      ${c.ladder && c.ladder.length ? `<div class="tladder">if refused, sweeten: + ${c.ladder.slice(0, 3).map(esc).join(" or + ")}</div>` : ""}
+      <div class="tswap">Swap test: if you already owned ${esc(getNames)}, would you send ${c.get.length > 1 ? "them" : "him"} back for ${esc(giveNames)}?</div>
+    </li>`;
+  }).join("");
+  $("#trade-empty").textContent = shown.length ? "" :
+    "No win-win trades found this week — the league's rosters don't mirror your needs. Check again after waivers move.";
+  $("#trade-note").textContent = shown.length
+    ? `Deltas are optimal rest-of-season lineup points per week (weeks ${A.week}–${A.final_week}), measured over roster + top waiver options for both sides — so a deal is only credited for edge the wire can't give you. Injured stashes (OUT/IR) and consensus-unranked players aren't offered as trade pieces.` +
+      (T.hasKD ? " K/DST are streamable week to week, so they're never trade pieces here." : "")
+    : "";
+  document.querySelectorAll("#trade-list .tc-editbtn").forEach(b =>
+    b.onclick = () => {
+      const c = shown[+b.dataset.ci];
+      TC.open = true; TC.partner = String(c.teamId); TC.result = null;
+      TC.send = new Set(c.give.map(p => p.name));
+      TC.get = new Set(c.get.map(p => p.name));
+      renderTrades();
+      $("#tc-body").scrollIntoView({behavior: "smooth", block: "nearest"});
+    });
+
+  // ── the offer composer: score a leaguemate's exact proposal ────────────────
+  function renderComposer(){
+    const opps = L.teams.filter(x => !x.mine);
+    $("#tc-toggle").textContent = TC.open ? "Evaluate an offer ▴" : "Evaluate an offer ▾";
+    $("#tc-body").hidden = !TC.open;
+    if (!TC.open) return;
+    if (TC.partner == null || !opps.some(x => String(x.id) === String(TC.partner))){
+      TC.partner = String(opps[0].id); TC.get.clear(); TC.result = null;
+    }
+    $("#tc-partner").innerHTML = opps.map(x =>
+      `<option value="${esc(String(x.id))}"${String(x.id) === String(TC.partner) ? " selected" : ""}>${esc(x.name)}</option>`).join("");
+    const row = (p, selSet) => `<li class="${selSet.has(p.name) ? "sel" : ""}">
+      <button type="button" data-n="${esc(p.name)}">
+        <span class="posmark">${esc(p.pos)}</span><span class="n">${esc(p.name)}${p.inj ? `<span class="inj">${esc(p.inj)}</span>` : ""}</span>
+        <span class="v mono">${fmt(p.ros, 0)} pts</span></button></li>`;
+    const mine = [...T.pre[T.me.id].plist].sort((a, b) => b.ros - a.ros);
+    const theirs = [...T.pre[TC.partner].plist].sort((a, b) => b.ros - a.ros);
+    $("#tc-mine").innerHTML = mine.map(p => row(p, TC.send)).join("");
+    $("#tc-theirs").innerHTML = theirs.map(p => row(p, TC.get)).join("");
+    $("#tc-sendct").textContent = TC.send.size ? `${TC.send.size}/3` : "";
+    $("#tc-getct").textContent = TC.get.size ? `${TC.get.size}/3` : "";
+    $("#tc-eval").disabled = !(TC.send.size && TC.get.size);
+    const toggle = (set, b) => {
+      const n = b.dataset.n;
+      if (set.has(n)) set.delete(n);
+      else if (set.size < 3) set.add(n);
+      else return;
+      TC.result = null;
+      renderTrades();
+    };
+    document.querySelectorAll("#tc-mine button").forEach(b => b.onclick = () => toggle(TC.send, b));
+    document.querySelectorAll("#tc-theirs button").forEach(b => b.onclick = () => toggle(TC.get, b));
+
+    const r = TC.result;
+    if (!r){ $("#tc-result").innerHTML = ""; return; }
+    const t = teamById(r.teamId);
+    // warnings, not exclusions: this is an evaluator scoring a real proposal
+    const warns = [];
+    for (const p of r.get){
+      if (["K", "DST"].includes(p.pos))
+        warns.push(`${p.name}: streamable — near-zero trade value`);
+      else if (isStash(T.M, p))
+        warns.push(`${p.name}: stash risk — consensus won't rank him; you're buying rehab, price accordingly`);
+    }
+    for (const d of (r.myDrop || []).concat(r.thDrop || []))
+      if (topRanked(T.M, d.name))
+        warns.push(`forced cut: ${d.name} is a consensus top-12 ${T.M.pool[d.name]?.pos ?? ""}`);
+    const chips = tradeChips(r, T, L)
+      .map(ch => `<span class="tchip ${ch.cls}">${esc(ch.txt)}</span>`)
+      .concat(warns.map(w => `<span class="tchip warn">${esc(w)}</span>`)).join("");
+    const verdict = r.myD >= 0.5
+      ? {cls: "take", txt: `Take it — raises your lineup ~+${r.myD.toFixed(1)} pts/wk over replacement.`}
+      : r.myD >= -0.25
+      ? {cls: "side", txt: "Sideways — only if it fixes something the model can't see (byes, injuries you believe in)."}
+      : {cls: "decline", txt: `Decline — costs your lineup ${Math.abs(r.myD).toFixed(1)} pts/wk.`};
+    const getNames = r.get.map(p => p.name).join(" and ");
+    const giveNames = r.give.map(p => p.name).join(" and ");
+    $("#tc-result").innerHTML = `<div class="tcard">
+      <div class="tcard-head"><span class="tpartner">${esc(t.name)}</span>
+        <span class="ecr">your offer, scored</span></div>
+      <div class="tcols">
+        <div><div class="eyebrow">You send</div>${r.give.map(p => prow(p, false)).join("")}</div>
+        <div><div class="eyebrow">You get</div>${r.get.map(p => prow(p, true)).join("")}</div>
+      </div>
+      <div class="tdeltas mono">You: ${sd(r.myD)} pts/wk <span class="them">· Them: ${sd(r.thD)} pts/wk</span></div>
+      <div class="tverdict ${verdict.cls}">${verdict.txt}</div>
+      <div class="tchips">${chips}</div>
+      ${rebalLine(r)}
+      <div class="tswap">Swap test: if you already owned ${esc(getNames)}, would you send ${r.get.length > 1 ? "them" : "him"} back for ${esc(giveNames)}?</div>
+    </div>`;
+  }
+  renderComposer();
+}
+// composer state + actions (the static controls exist once; rows rebind per render)
+const TC = {open: false, partner: null, send: new Set(), get: new Set(), result: null};
+function evalOffer(){
+  const T = TRADES_CACHE[league + "|" + A.built];
+  if (!T || !TC.send.size || !TC.get.size) return;
+  const M = T.M;
+  const myP = T.pre[T.me.id].plist, theirP = T.pre[TC.partner].plist;
+  const give = myP.filter(p => TC.send.has(p.name));
+  const get = theirP.filter(p => TC.get.has(p.name));
+  if (!give.length || !get.length) return;
+  const mPost = myP.filter(p => !TC.send.has(p.name)).concat(get);
+  const tPost = theirP.filter(p => !TC.get.has(p.name)).concat(give);
+  const mv = teamValue(mPost, M), tv = teamValue(tPost, M);
+  TC.result = {teamId: TC.partner, give, get,
+    myD: mv.perWeek - T.pre[T.me.id].val.perWeek,
+    thD: tv.perWeek - T.pre[TC.partner].val.perWeek,
+    myDrop: resolveDropLoose(mPost, myP.length, mv, M),
+    thDrop: resolveDropLoose(tPost, theirP.length, tv, M),
+    myAdd: resolveAdds(mPost, myP.length, mv, M),
+    thAdd: resolveAdds(tPost, theirP.length, tv, M)};
+  renderTrades();
+}
+$("#tc-toggle").onclick = () => { TC.open = !TC.open; renderTrades(); };
+$("#tc-partner").onchange = e => {
+  TC.partner = e.target.value; TC.get.clear(); TC.result = null; renderTrades();
+};
+$("#tc-eval").onclick = evalOffer;
+$("#tc-clear").onclick = () => { TC.send.clear(); TC.get.clear(); TC.result = null; renderTrades(); };
+
 // ── Account switcher: the dropdown is a status board across your teams ───────
 function setLeague(k){
   if (!DATA.leagues[k] || k === league) { closeAcct(); return; }
   league = k;
+  tradePartner = null;   // partner filter is per-league; team ids collide across leagues
+  TC.partner = null; TC.send.clear(); TC.get.clear(); TC.result = null;
   try { localStorage.setItem("fc.league", k); } catch (e) {}
   closeAcct();
   render();
@@ -723,7 +1434,7 @@ document.addEventListener("click", e => {
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeAcct(); });
 
 const _render = render;
-render = function(){ _render(); renderLineup(); renderWire(); renderAccount(); };
+render = function(){ _render(); renderLineup(); renderWire(); renderTrades(); renderAccount(); };
 function renderAsof(){
   const a = DATA.asof;
   $("#lu-eyebrow").innerHTML =

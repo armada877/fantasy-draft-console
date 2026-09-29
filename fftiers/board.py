@@ -136,12 +136,20 @@ def cmd_pull(args) -> int:
 
         wk_by = {p["id"]: p["points"] for p in wk_pool}
         ros_by = {p["id"]: p["points"] for p in ros_list}
-        roster = [{"name": r["name"], "pos": r["pos"],
-                   "wk": wk_by.get(r["id"], 0.0), "ros": ros_by.get(r["id"], 0.0),
-                   "injury": norm_injury(r["injury"]), "slot": r.get("slot", "")}
-                  for r in espn.team_roster(lg["league_id"], season, lg["team_id"], cookie)]
-        roster.sort(key=lambda r: -r["ros"])
+        all_rosters = espn.league_rosters(lg["league_id"], season, cookie)
+
+        def enrich(entries):
+            rows = [{"name": r["name"], "pos": r["pos"],
+                     "wk": wk_by.get(r["id"], 0.0), "ros": ros_by.get(r["id"], 0.0),
+                     "injury": norm_injury(r["injury"]), "slot": r.get("slot", "")}
+                    for r in entries]
+            rows.sort(key=lambda r: -r["ros"])
+            return rows
+
+        roster = enrich(all_rosters.get(int(lg["team_id"]), []))
         (espn_dir / f"{key}-roster.json").write_text(json.dumps(roster, indent=1) + "\n")
+        write_teams_json(espn_dir / f"{key}-teams.json", all_rosters, enrich,
+                         info["my_teams"], int(lg["team_id"]))
         meta = {"week": week, "final_week": final_week,
                 "team": info["my_teams"].get(int(lg["team_id"]), ""),
                 "league_name": info["name"], "pulled": _now()}
@@ -260,6 +268,14 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
         players.append(entry)
 
     slots = [[s, cfg.roster[s]] for s in SLOT_ORDER if cfg.roster.get(s, 0) > 0]
+    # every team's roster, when the pull captured them (trade finder's raw material)
+    teams_p = data_dir / "espn" / f"{key}-teams.json"
+    teams = []
+    if teams_p.exists():
+        row = lambda r: [r["name"], r["pos"], r["wk"], r["ros"], r["injury"], r.get("slot", "")]
+        teams = [{"id": t["id"], "name": t["name"], "mine": t["mine"],
+                  "roster": [row(r) for r in t["roster"]]}
+                 for t in json.loads(teams_p.read_text())]
     return {
         "label": lg.get("label", key),
         "size": cfg.teams,
@@ -269,6 +285,7 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
         "slots": slots,
         "roster": [[r["name"], r["pos"], r["wk"], r["ros"], r["injury"], r.get("slot", "")]
                    for r in roster],
+        "teams": teams,
         "players": players,
     }
 
@@ -334,6 +351,29 @@ def cmd_build(args) -> int:
                      "sources": sources},
             "leagues": built}
 
+    # Week-over-week ledger: per-league {player: mean ROS VBD}, one entry per week.
+    # Each league embeds the latest PRIOR week's map so the trade finder can chip
+    # rising/falling values without a network hop. Local, gitignored, append-only.
+    ledger_p = (Path(args.viz_out).parent if args.viz_out else out_dir / "board") / "history.json"
+    try:
+        ledger = json.loads(ledger_p.read_text()) if ledger_p.exists() else {}
+    except ValueError:
+        ledger = {}
+    weeks_led = ledger.setdefault("weeks", {})
+    for key, lg in built.items():
+        cur = {}
+        for p in lg["players"]:
+            vbds = [b["vbd"] for b in (p["ros"].get("elb"), p["ros"].get("csg")) if b]
+            if vbds:
+                cur[p["name"]] = round(sum(vbds) / len(vbds), 1)
+        prior_weeks = sorted((int(w) for w, m in weeks_led.items()
+                              if key in m and int(w) < week), reverse=True)
+        lg["prev_vbd"] = weeks_led[str(prior_weeks[0])][key] if prior_weeks else {}
+        lg["prev_week"] = prior_weeks[0] if prior_weeks else None
+        weeks_led.setdefault(str(week), {})[key] = cur
+    ledger_p.parent.mkdir(parents=True, exist_ok=True)
+    ledger_p.write_text(json.dumps(ledger))
+
     viz_out = Path(args.viz_out) if args.viz_out else out_dir / "board" / "viz-data.json"
     viz_out.parent.mkdir(parents=True, exist_ok=True)
     viz_out.write_text(json.dumps(data))
@@ -352,6 +392,15 @@ def cmd_build(args) -> int:
     if not args.no_push:
         push_snapshot(data, season)
     return 0
+
+
+def write_teams_json(dest: Path, all_rosters: dict, enrich, team_names: dict,
+                     my_id: int) -> None:
+    """Every team's enriched roster — the trade finder's raw material."""
+    teams = [{"id": tid, "name": team_names.get(tid, f"Team {tid}"),
+              "mine": tid == my_id, "roster": enrich(entries)}
+             for tid, entries in sorted(all_rosters.items())]
+    dest.write_text(json.dumps(teams, indent=1) + "\n")
 
 
 # ── sync (network, fast) ─────────────────────────────────────────────────────
@@ -388,7 +437,8 @@ def cmd_sync(args) -> int:
                       f"run the full refresh (`python3 pipeline.py week`) first")
                 continue
             wk_pool = espn.player_pool(lg["league_id"], season, week, cookie)
-            team = espn.team_roster(lg["league_id"], season, lg["team_id"], cookie)
+            all_rosters = espn.league_rosters(lg["league_id"], season, cookie)
+            team = all_rosters.get(int(lg["team_id"]), [])
         except (espn.EspnError, OSError) as e:
             print(f"[{key}] SKIP - ESPN error, nothing written for this league: {e}")
             continue
@@ -411,16 +461,22 @@ def cmd_sync(args) -> int:
             for r0 in json.loads(roster_p.read_text()):
                 prev[(norm_name(r0["name"]), r0["pos"])] = r0.get("ros", 0.0)
 
-        roster = []
-        for r in team:
-            k2 = (norm_name(r["name"]), r["pos"])
-            roster.append({"name": r["name"], "pos": r["pos"],
-                           "wk": wk_by.get(r["id"], 0.0),
-                           "ros": ros_by.get(k2, prev.get(k2, 0.0)),
-                           "injury": norm_injury(r["injury"]),
-                           "slot": r.get("slot", "")})
-        roster.sort(key=lambda r: -r["ros"])
+        def enrich(entries):
+            rows = []
+            for r in entries:
+                k2 = (norm_name(r["name"]), r["pos"])
+                rows.append({"name": r["name"], "pos": r["pos"],
+                             "wk": wk_by.get(r["id"], 0.0),
+                             "ros": ros_by.get(k2, prev.get(k2, 0.0)),
+                             "injury": norm_injury(r["injury"]),
+                             "slot": r.get("slot", "")})
+            rows.sort(key=lambda r: -r["ros"])
+            return rows
+
+        roster = enrich(team)
         roster_p.write_text(json.dumps(roster, indent=1) + "\n")
+        write_teams_json(espn_dir / f"{key}-teams.json", all_rosters, enrich,
+                         info["my_teams"], int(lg["team_id"]))
         meta = {"week": week, "final_week": final_week,
                 "team": info["my_teams"].get(int(lg["team_id"]), ""),
                 "league_name": info["name"], "pulled": _now()}

@@ -89,6 +89,14 @@ def main():
     assert dq["ros"]["boris"], dq["ros"]
     ok("FP-only player: fa is null (unknown), engine columns empty, row present")
 
+    # Every team's roster rides along for the trade finder: 6-tuple rows, exactly
+    # one team marked mine, and the week-over-week ledger key always present.
+    assert len(L["teams"]) == 2, L.get("teams")
+    assert sum(1 for t in L["teams"] if t["mine"]) == 1
+    assert all(len(r) == 6 for t in L["teams"] for r in t["roster"])
+    assert "prev_vbd" in L and isinstance(L["prev_vbd"], dict)
+    ok("league teams present for the trade finder; prev_vbd ledger key present")
+
     with open(dest) as f:
         html = f.read()
     assert "Alpha Quarterback" in html, "fixture player missing from injected HTML"

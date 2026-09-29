@@ -273,18 +273,27 @@ def team_roster(league_id: int, season: int, team_id: int,
 
     `slot` is the CURRENTLY SET lineup slot on ESPN ("QB", "FLEX", "BE", "IR", ...)
     — what the manager has actually clicked in, distinct from optimal."""
+    return league_rosters(league_id, season, cookie).get(int(team_id), [])
+
+
+def league_rosters(league_id: int, season: int,
+                   cookie: str | None = None) -> dict[int, list[dict]]:
+    """EVERY team's roster entries in one fetch: {team_id: [{id,name,pos,injury,slot}]}.
+
+    The trade finder needs the whole league's holdings, not just mine — partner
+    fit is computed from what everyone else starts and benches."""
     cookie = cookie or auth_cookie()
     data = fetch(league_url(league_id, season, ["mRoster"]), cookie)
-    out = []
+    out: dict[int, list[dict]] = {}
     for team in data.get("teams") or []:
-        if int(team.get("id") or 0) != int(team_id):
-            continue
+        entries = []
         for e in (team.get("roster") or {}).get("entries") or []:
             pl = (e.get("playerPoolEntry") or {}).get("player") or {}
-            out.append({"id": pl.get("id"), "name": pl.get("fullName") or "",
-                        "pos": POSITION_NAMES.get(int(pl.get("defaultPositionId") or 0), "?"),
-                        "injury": pl.get("injuryStatus") or "",
-                        "slot": SLOT_NAMES.get(int(e.get("lineupSlotId", -1)), "")})
+            entries.append({"id": pl.get("id"), "name": pl.get("fullName") or "",
+                            "pos": POSITION_NAMES.get(int(pl.get("defaultPositionId") or 0), "?"),
+                            "injury": pl.get("injuryStatus") or "",
+                            "slot": SLOT_NAMES.get(int(e.get("lineupSlotId", -1)), "")})
+        out[int(team.get("id") or 0)] = entries
     return out
 
 
