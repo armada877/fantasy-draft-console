@@ -72,3 +72,5 @@ draft_sheets/csg_consensus.json
 # their ids, managers or team names stays local. Adding a doc to docs/ (not
 # docs/local/) is a decision to publish it: the remote is public.
 docs/local/
+
+.vercel/
