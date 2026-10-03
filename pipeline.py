@@ -234,7 +234,7 @@ def _value_boards(args, module):
                 print(f"• {key}/{horizon}: skipped — missing {os.path.relpath(csv_path, ROOT)} "
                       "(run `pull` first).")
                 continue
-            run(venv_py(), "-m", module, "--league", entry["yaml"],
+            run(venv_py(), "-m", module, "--league", entry["yaml"], "--week", str(week_n),
                 "--horizon", horizon, "--projections-csv", csv_path)
 
 
