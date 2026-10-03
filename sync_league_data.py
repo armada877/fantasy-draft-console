@@ -9,11 +9,11 @@ restores them on the other side.
     python3 sync_league_data.py export ~/iCloud/fantasy-league     # repo  -> folder
     python3 sync_league_data.py import ~/iCloud/fantasy-league     # folder -> repo
 
-SECRETS ARE EXCLUDED BY DEFAULT. config/.env (your ANTHROPIC_API_KEY) and
-scraping/.espn_auth.json (live ESPN session cookies) are skipped unless you pass
---with-secrets. Only add that flag if the destination is private to YOU — a shared cloud
-folder is not. Credentials are cheap to retype and expensive to leak; ESPN cookies expire
-every few weeks anyway.
+SECRETS ARE EXCLUDED BY DEFAULT. config/.env (your ANTHROPIC_API_KEY),
+scraping/.espn_auth.json (live ESPN session cookies) and api_key.txt (your FantasyPros
+key) are skipped unless you pass --with-secrets. Only add that flag if the destination
+is private to YOU — a shared cloud folder is not. Credentials are cheap to retype and
+expensive to leak; ESPN cookies expire every few weeks anyway.
 
 Use --dry-run to see what would move without touching anything.
 """
@@ -33,9 +33,14 @@ PATHS = [
     "draft_sheets/elboberto_projections.json",
     "reports",
     "league",
+    "leagues",
+    "docs/local",
+    "draft_sheets/csg_consensus.json",
+    "out/board/history.json",
+    "api_key.txt",
 ]
 
-SECRETS = {"config/.env", "scraping/.espn_auth.json"}
+SECRETS = {"config/.env", "scraping/.espn_auth.json", "api_key.txt"}
 
 
 def _rel(path):
@@ -84,7 +89,7 @@ def main():
                     help="export: repo -> folder.  import: folder -> repo.")
     ap.add_argument("folder", help="the sync folder (e.g. an iCloud/Dropbox path)")
     ap.add_argument("--with-secrets", action="store_true",
-                    help="also copy config/.env and scraping/.espn_auth.json")
+                    help="also copy config/.env, scraping/.espn_auth.json and api_key.txt")
     ap.add_argument("--dry-run", action="store_true", help="show what would move")
     args = ap.parse_args()
 
