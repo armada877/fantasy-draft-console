@@ -12,7 +12,8 @@ One app, two modes:
 - **Manage (in-season)** — the **fftiers board** (`/manage`): one page, three valuation
   methods per player (Boris Chen-style ECR tiers, elboberto VBD, CSG games-based VBD),
   two horizons (this week / rest of season), across every league in `config/boards.json`.
-  Fed by the `fftiers/` package (FantasyPros consensus ranks + live ESPN projections).
+  Fed by the `fftiers/` package (FantasyPros consensus ranks + live ESPN or Sleeper
+  projections).
 
 `draft_app/server.py` serves both: `/` redirects to `DEFAULT_MODE` (env, default
 `manage`), `/draft` → `static/index.html`, `/manage` → `static/board.html`.
@@ -27,7 +28,7 @@ One app, two modes:
 | `draft_app/static/board.html` | Generated: board template + injected viz-data | no (generated) |
 | `draft_app/server.py` | FastAPI: two modes + `/api/advise` | yes |
 | `pipeline.py` | **Single entry point** — draft: `scrape/calibrate/csg/simulate/build/inject/all`; manage: `pull/tiers/vbd-boards/csg-boards/board/week` | yes |
-| `fftiers/` | The manage engine: league-configurable tier charts (`cli`), elboberto VBD port (`vbd_cli`), CSG VBD port (`csg_cli`), live ESPN client (`espn_cli`), board builder (`board`) | yes |
+| `fftiers/` | The manage engine: league-configurable tier charts (`cli`), elboberto VBD port (`vbd_cli`), CSG VBD port (`csg_cli`), live ESPN client (`espn_cli`), live Sleeper client (`sleeper`, `sleeper_cli`), board builder (`board`) | yes |
 | `leagues/*.yaml` | Per-league configs (teams, roster slots, scoring) — name real leagues | no (except `example-standard-12.yaml`) |
 | `config/boards.json` | Manage league registry: key → league_id, team_id, label, yaml | no (local; `boards.example.json` tracked) |
 | `dat/` | FantasyPros rank caches (`{year}/week-N-POS-SCORING.json`; week **90** = ROS) + ESPN pulls (`espn/{key}-*.csv`, `-roster.json`, `-meta.json`) | no (fetched) |
@@ -59,8 +60,9 @@ One app, two modes:
 | `analysis/keeper_outlook.py`, `season_values.py` | Keeper/budget/RFA projection; past-season valuation basis | yes |
 | `analysis/refresh_briefing_opponents.py` | Writes the briefing's opponent table from `config/tendencies.json` | yes |
 | `sync_league_data.py` | Copies the gitignored league data to a folder, and back, for a second machine | yes |
-| `vercel_build.py` | Vercel build command: `LEAGUE_CONFIG_JSON` → `config/league.json`, Sleeper scrapes, calibrate, `build inject` | yes |
+| `vercel_build.py` | Vercel build command: `LEAGUE_CONFIG_JSON` → `config/league.json`, Sleeper scrapes, calibrate, `build inject`, then the Sleeper manage board | yes |
 | `requirements-build.txt` | Build-only packages for `vercel_build.py` (openpyxl), installed outside the function | yes |
+| `requirements-board.txt` | Build-only packages for the board on Vercel (scikit-learn, PyYAML), installed outside the function | yes |
 | `draft_app/vercel.json` | Vercel config: FastAPI preset, build command, function excludes | yes |
 | `draft_app/pyproject.toml` | Vercel function's runtime packages (no scikit-learn) + `cdn = false` | yes |
 | `analysis/research/a1..a17` | Archived one-off research behind `reports/league_analysis.md` | yes |
@@ -68,6 +70,7 @@ One app, two modes:
 | `scraping/raw/`, `reports/`, `league/` | League data / analysis outputs | no (local) |
 | `tests/draft_regression.py` | sha256-pins the draft payload (golden: `tests/draft_golden.json`) | yes |
 | `tests/board_smoke.py` + `tests/fixtures_board/` | Offline manage-board build + inject check (synthetic data) | yes |
+| `tests/board_pull.py` | Offline ESPN + Sleeper `pull`/`sync` check (network calls replaced, synthetic data) | yes |
 | `docs/local/` | Local plans/notes (name real leagues/ids) | no (local) |
 
 History note: the previous in-season stack (engine/, season console, research_agent/app,
@@ -94,6 +97,7 @@ curl -s localhost:8000/healthz        # {"ok":true,"advisor":true,...}
 #   /manage  → fftiers board        (404 hint: pipeline.py week)
 python3 tests/draft_regression.py     # draft payload byte-identical
 .venv/bin/python tests/board_smoke.py # manage board builds + injects offline
+.venv/bin/python tests/board_pull.py  # ESPN + Sleeper pull/sync write the board inputs
 python3 draft_app/eval_advisor.py     # eval the advisor against a mock draft
 ```
 
@@ -167,7 +171,7 @@ neutral-opponent console. The archived `analysis/research/a1..a17` run with
 
 | Stage | Does | Network |
 |-------|------|---------|
-| `pull` | ESPN projections (week + ROS CSVs), my roster, league meta → `dat/espn/`; refreshes FantasyPros rank caches (current week + ROS sentinel week 90) → `dat/{year}/` | ESPN + FantasyPros |
+| `pull` | ESPN or Sleeper projections (week + ROS CSVs), my roster, league meta → `dat/espn/`; refreshes FantasyPros rank caches (current week + ROS sentinel week 90) → `dat/{year}/` | ESPN/Sleeper + FantasyPros |
 | `tiers` | GMM tier charts per league → `out/{key}/week-N/{png,txt,csv}` | none with `--no-download` |
 | `vbd-boards` | elboberto VBD, both horizons, league-scored ESPN projections → `out/{key}/week-N/vbd/` | none |
 | `csg-boards` | CSG games-based VBD, both horizons → `out/{key}/week-N/csg/` | none |
@@ -181,9 +185,22 @@ neutral-opponent console. The archived `analysis/research/a1..a17` run with
 ```
 
 Requirements: `config/boards.json` (see `boards.example.json`), `leagues/{key}.yaml` per
-league (generate with `.venv/bin/python -m fftiers.espn_cli sync-league <id>`), ESPN cookies
-in `scraping/.espn_auth.json` (or `ESPN_SWID`/`ESPN_S2` env), and `FANTASYPROS_API_KEY`
-(or `api_key.txt`, gitignored) — without the FP key, `pull` warns and reuses cached ranks.
+league (generate with `.venv/bin/python -m fftiers.espn_cli sync-league <id>`), and ESPN cookies
+in `scraping/.espn_auth.json` (or `ESPN_SWID`/`ESPN_S2` env). `FANTASYPROS_API_KEY`
+(or `api_key.txt`, gitignored) is optional: without it, `fetch.download` reads the weekly
+ranks from the public ranking page, which serves only the current week. The ROS ranks
+always come from the public ROS page. When a horizon has no rank cache, `board` still
+builds, sets `no_ranks`, and the page says that the tier columns are empty.
+
+**Sleeper leagues** (`"platform": "sleeper"` in `config/boards.json`, with `league_id` and
+`user` or `team_id`): `fftiers/sleeper.py` reads the public Sleeper API and writes the
+same `dat/espn/<key>-*` files, so vbd/csg/board do not know the platform. Points are the
+Sleeper projection stats times the league's `scoring_settings` (same keys), so first
+downs, K, and DEF score exactly. ROS sums each week to the last playoff week. Lineup slots
+use ESPN names (DEF → `DST`, BN → `BE`, reserve → `IR`). The YAML comes from
+`python -m fftiers.sleeper_cli sync-league <id> --dest leagues/<key>.yaml`. A
+Sleeper-only config needs no ESPN cookies. `meta.platform` drives the platform name on
+the page; ESPN meta has no `platform`. The value boards get `--week` from the pull meta.
 
 **Snapshot store (Supabase, project `fantasy-console`):** every `board` build is also
 persisted as one row in `board_snapshots` (whole viz-data as jsonb) via the
@@ -341,7 +358,13 @@ installs the function's packages from `draft_app/pyproject.toml`, not `requireme
 Keep its pins in step with `requirements.txt`. The function holds only `draft_app/`, so
 the advisor reads `STRATEGY_BRIEFING_MD` (the briefing text) instead of
 `config/briefing.md`. `cdn = false` keeps `static/` in the function, behind the auth
-middleware. Env vars and dashboard settings: README "Deploy on Vercel". Test with
+middleware. After the draft console, `vercel_build.py` builds the Sleeper manage board
+(`BOARDS_CONFIG_JSON`, else derived from `LEAGUE_CONFIG_JSON`; YAML generated; stages
+`pull vbd-boards csg-boards board`, never `tiers`, which needs matplotlib). scikit-learn
+stays in the build temp dir: the function is about 25 MB, and with scikit-learn it was
+over the 225 MB limit. A board failure prints `✗ MANAGE BOARD NOT BUILT` and the draft
+console still deploys. The board refreshes only on a deploy (Deploy Hook + scheduler,
+README). Env vars and dashboard settings: README "Deploy on Vercel". Test with
 `vercel build` in a temporary clone that has a hand-written `.vercel/project.json`.
 Never run `vercel link` in a checkout.
 
@@ -366,5 +389,6 @@ Never run `vercel link` in a checkout.
   needs, roster; best-available; inflation; on-the-block). Keep `draftStateForAdvisor()`
   in the template and the eval's state-builder in sync when changing the shape.
 - **Nothing ships untested**: `tests/draft_regression.py` guards the draft payload;
-  `tests/board_smoke.py` guards the manage build. Run both before calling work done.
+  `tests/board_smoke.py` guards the manage build; `tests/board_pull.py` guards the ESPN
+  and Sleeper pulls. Run them before calling work done.
 - Don't commit or push unless the user asks.

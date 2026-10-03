@@ -11,7 +11,7 @@ One app, two modes:
   each player valued three independent ways — Boris Chen-style expert-consensus tiers
   (GMM clustering), an elboberto-workbook VBD port, and a CSG games-based VBD port — at
   two horizons (this week / rest of season), with your roster and free agents flagged.
-  Rebuilt from live ESPN + FantasyPros data with one command every week.
+  Rebuilt from live ESPN or Sleeper data + FantasyPros ranks with one command every week.
 
 Built for specific leagues, but the framework is **bring-your-own-league**: the code and
 the universal projection baseline are tracked here; your league configs, data, secrets,
@@ -84,7 +84,7 @@ pip install -e .                            # fftiers (manage mode)
 cp config/league.example.json config/league.json    # draft: league_id, season, your team ("me")
 cp config/boards.example.json config/boards.json    # manage: leagues, team ids
 cp config/env.example config/.env                   # ESPN_SWID + ESPN_S2 (+ ANTHROPIC_API_KEY,
-set -a && . config/.env && set +a                   #  FANTASYPROS_API_KEY)
+set -a && . config/.env && set +a                   #  FANTASYPROS_API_KEY, optional)
 
 # 2) Draft mode
 python3 pipeline.py scrape build inject             # ESPN; or `all` when you have auction history
@@ -93,6 +93,7 @@ python3 scraping/scrape_sleeper.py && python3 pipeline.py build inject
 
 # 3) Manage mode
 python3 -m fftiers.espn_cli sync-league <league_id> # writes leagues/<key>.yaml from ESPN
+#    Sleeper: python3 -m fftiers.sleeper_cli sync-league <league_id> --dest leagues/<key>.yaml
 python3 pipeline.py week                            # pull + boards + render
 
 # 4) (Optional) enable the advisor — see Configuration below
@@ -109,7 +110,45 @@ Run `pipeline.py` with the venv active (or `.venv/bin/python pipeline.py …`) �
 build needs `openpyxl`, the manage stages need `scikit-learn`/`matplotlib`.
 
 Without `ANTHROPIC_API_KEY` everything still works; only the Advisor panel is disabled.
-Without `FANTASYPROS_API_KEY`, manage `pull` reuses the cached consensus ranks.
+Without `FANTASYPROS_API_KEY`, manage `pull` reads the consensus ranks from the public
+FantasyPros ranking pages. Those pages give the current week and rest of season, which
+is all that the board uses. If a rank fetch fails, the board still builds and says that
+the tier columns are empty.
+
+### Sleeper leagues on the manage board
+
+A `config/boards.json` entry with `"platform": "sleeper"` reads Sleeper instead of ESPN.
+It needs no cookies. Set `league_id` (the number in the sleeper.com league URL) and
+`user` (your Sleeper username), or `team_id` (your `roster_id`). See
+`config/boards.example.json`. Make the league YAML once, and name it after the key:
+
+```bash
+python3 -m fftiers.sleeper_cli sync-league <league_id> --dest leagues/<key>.yaml
+```
+
+It writes the team count, the roster slots (FLEX, K, DEF as DST, bench, IR), the scoring
+keys that the tiers read, `week_one_tuesday`, and the last fantasy week. It lists any
+offense scoring (for example first downs) that consensus ranks do not reflect.
+
+`pull` and `sync` (`fftiers/sleeper.py`) write the same `dat/espn/<key>-*` files as for
+ESPN, so the vbd, csg, and board stages do not change. They read these public endpoints:
+
+| Data | Endpoint |
+|---|---|
+| League settings, `scoring_settings`, `roster_positions` | `https://api.sleeper.app/v1/league/<id>` |
+| Managers and team names | `https://api.sleeper.app/v1/league/<id>/users` |
+| Rosters, set starters, IR (`reserve`) | `https://api.sleeper.app/v1/league/<id>/rosters` |
+| Current week and season | `https://api.sleeper.app/v1/state/nfl` |
+| A username's `user_id` | `https://api.sleeper.app/v1/user/<username>` |
+| Weekly projections, with player name, position, and injury status | `https://api.sleeper.app/projections/nfl/<season>/<week>?season_type=regular&position[]=QB&…&position[]=DEF` |
+| All players (only if a rostered player has no projection row) | `https://api.sleeper.app/v1/players/nfl` |
+
+The projections endpoint is not documented. It returns a list of
+`{player_id, week, stats: {pass_yd, rush_fd, rec, …}, player: {first_name, last_name,
+position, injury_status}}`. The stat keys are the same as the `scoring_settings` keys, so
+a player's points are the sum of each stat times the league's value for it. That
+includes K and DEF scoring. Rest of season is the sum of each week from the current week
+to the last playoff week.
 
 ## Configuration
 
@@ -159,9 +198,9 @@ and optionally `DEFAULT_MODE=draft|manage`. See `draft_app/README.md`.
 
 ## Deploy on Vercel
 
-Vercel builds the draft console from git on each push. The build scrapes a public
-Sleeper league, so no league data goes into git. This works for Sleeper leagues only:
-the ESPN scrape needs private cookies. The manage board is not built on Vercel.
+Vercel builds the draft console and the manage board from git on each push. The build
+scrapes a public Sleeper league, so no league data goes into git. This works for Sleeper
+leagues only: the ESPN scrape needs private cookies.
 
 How it works:
 
@@ -175,6 +214,14 @@ How it works:
   runs `scrape_sleeper.py`, `scrape_sleeper_history.py`, `scrape_sleeper_keepers.py`,
   `pipeline.py calibrate build`, `scrape_sleeper_status.py` and `pipeline.py build inject`.
   The build fails if a step fails, and Vercel keeps the last good deploy.
+- Then `vercel_build.py` builds the manage board. It writes `config/boards.json` from
+  `BOARDS_CONFIG_JSON`, or, when that is not set, from `sleeper_league_id` and
+  `sleeper_username` (or `me`) in `LEAGUE_CONFIG_JSON`. It writes each league YAML from
+  the Sleeper settings, and installs `requirements-board.txt` (scikit-learn, PyYAML) into
+  the same temp directory. Then it runs `pipeline.py pull vbd-boards csg-boards board`
+  and copies the Wire's reporter list into `draft_app/`. ESPN entries are skipped. If a
+  board step fails, the log shows `✗ MANAGE BOARD NOT BUILT: <reason>`, the draft console
+  still deploys, and `/manage` returns 404.
 - The function holds only `draft_app/` (about 25 MB). Static files stay in the function
   (`cdn = false`), so `CONSOLE_PASSWORD` also guards `/data.json`.
 
@@ -195,7 +242,8 @@ Environment variables (Production; the build and the function both read them):
 |---|---|---|
 | `LEAGUE_CONFIG_JSON` | the content of `config/league.json`: `sleeper_league_id`, `season`, `sleeper_username` or `me`, `roster` with K and DST | build (required) |
 | `CONSOLE_PASSWORD` | a long random password | build (required) and function: HTTP Basic, user `draft` |
-| `DEFAULT_MODE` | `draft` | function: `/` goes to `/draft` |
+| `DEFAULT_MODE` | `manage` or `draft` | function: `/` goes to `/manage` or `/draft` |
+| `BOARDS_CONFIG_JSON` | the content of `config/boards.json`, Sleeper entries only | build (optional): the board leagues; the default is the `LEAGUE_CONFIG_JSON` league |
 | `ANTHROPIC_API_KEY` | your API key | function: the advisor |
 | `STRATEGY_BRIEFING_MD` | the content of `config/briefing.md` | function: the advisor prompt (optional) |
 | `CONSOLE_USER` | the HTTP Basic user name | function (optional, default `draft`) |
@@ -215,10 +263,25 @@ To test the build on your machine, run it in a temporary clone, because it overw
 CONSOLE_PASSWORD=test LEAGUE_CONFIG_JSON="$(cat config/league.json)" python3 vercel_build.py
 ```
 
+The board on Vercel is a snapshot from the build. The page's Sync and Full refresh buttons
+need the pipeline in the deploy, so on Vercel they return 501. A new deploy rebuilds the
+board with fresh rosters, projections, and ranks. To refresh it on a schedule:
+
+1. In the Vercel project, open Settings → Git → Deploy Hooks. Make a hook for the branch
+   `main`. Keep the URL secret: anyone with it can start a deploy.
+2. Call the hook from a scheduler, for example a GitHub Actions workflow with
+   `on: schedule: - cron: "0 13 * * 2,4,0"` (Tuesday, Thursday, and Sunday) and one step:
+   `curl -fsS -X POST "$DEPLOY_HOOK_URL"`, with the URL in a repository secret. The
+   repository is public, so never put the URL in the workflow file.
+
+To refresh one time, run `vercel deploy --prod`, use Redeploy in the dashboard, or
+`curl -X POST` the hook URL.
+
 ## Refresh data
 
-- **Weekly (manage):** `python3 pipeline.py week` — new ESPN projections + rosters, fresh
-  FantasyPros ranks, all boards, re-rendered page.
+- **Weekly (manage):** `python3 pipeline.py week` — new ESPN or Sleeper projections +
+  rosters, fresh FantasyPros ranks, all boards, re-rendered page. On Vercel, a deploy
+  does this (see [Deploy on Vercel](#deploy-on-vercel)).
 - **New season (draft):** drop the new Elboberto `.xlsm` into `draft_sheets/`, point
   `config/league.json` at it, then `python3 pipeline.py scrape build inject` (or `all` to
   also refresh opponent calibration).
