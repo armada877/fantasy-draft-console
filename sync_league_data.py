@@ -31,10 +31,7 @@ PATHS = [
     "scraping/.espn_auth.json",      # secret: listed so --with-secrets can reach it
     "draft_sheets/tool_data.json",   # generated console payload
     "draft_sheets/elboberto_projections.json",
-    "reports",
-    "league",
     "leagues",
-    "docs/local",
     "draft_sheets/csg_consensus.json",
     "out/board/history.json",
     "api_key.txt",
