@@ -157,6 +157,61 @@ briefing) into a temp bundle and runs `railway up` — nothing league-private to
 Set `ANTHROPIC_API_KEY`, `CONSOLE_PASSWORD` (HTTP Basic on everything but `/healthz`),
 and optionally `DEFAULT_MODE=draft|manage`. See `draft_app/README.md`.
 
+## Deploy on Vercel
+
+Vercel builds the draft console from git on each push. The build scrapes a public
+Sleeper league, so no league data goes into git. This works for Sleeper leagues only:
+the ESPN scrape needs private cookies. The manage board is not built on Vercel.
+
+How it works:
+
+- `draft_app/vercel.json` sets the FastAPI preset and the build command
+  `cd .. && python vercel_build.py`.
+- Vercel installs the runtime packages from `draft_app/pyproject.toml` (fastapi,
+  uvicorn, anthropic). Those are the function's packages. `draft_app/requirements.txt`
+  stays the full list for local runs and Railway.
+- `vercel_build.py` writes `config/league.json` from `LEAGUE_CONFIG_JSON`. It installs
+  `requirements-build.txt` (openpyxl) into a temp directory outside the function. Then it
+  runs `scrape_sleeper.py`, `scrape_sleeper_history.py`, `scrape_sleeper_keepers.py`,
+  `pipeline.py calibrate build`, `scrape_sleeper_status.py` and `pipeline.py build inject`.
+  The build fails if a step fails, and Vercel keeps the last good deploy.
+- The function holds only `draft_app/` (about 25 MB). Static files stay in the function
+  (`cdn = false`), so `CONSOLE_PASSWORD` also guards `/data.json`.
+
+Project settings (Settings → Build and Deployment):
+
+| Setting | Value |
+|---|---|
+| Root Directory | `draft_app` |
+| Include files outside the root directory in the Build Step | Enabled |
+| Framework Preset | FastAPI (`draft_app/vercel.json` also sets it) |
+| Build Command | no override (`draft_app/vercel.json` sets it) |
+| Install Command | no override |
+| Output Directory | no override |
+
+Environment variables (Production; the build and the function both read them):
+
+| Name | Value | Used by |
+|---|---|---|
+| `LEAGUE_CONFIG_JSON` | the content of `config/league.json`: `sleeper_league_id`, `season`, `sleeper_username` or `me`, `roster` with K and DST | build (required) |
+| `CONSOLE_PASSWORD` | a long random password | function: HTTP Basic, user `draft` |
+| `DEFAULT_MODE` | `draft` | function: `/` goes to `/draft` |
+| `ANTHROPIC_API_KEY` | your API key | function: the advisor |
+| `STRATEGY_BRIEFING_MD` | the content of `config/briefing.md` | function: the advisor prompt (optional) |
+| `CONSOLE_USER` | the HTTP Basic user name | function (optional, default `draft`) |
+
+All env vars together must be smaller than 64 KB. Without `CONSOLE_PASSWORD`, the
+console is public and `/api/advise` spends your API credit. The build fails without
+`LEAGUE_CONFIG_JSON` or without `roster`, because `scrape_sleeper.py` drops the K and DEF
+slots. Vercel reads env vars at deploy time, so redeploy after you change one.
+
+To test the build on your machine, run it in a temporary clone, because it overwrites
+`config/league.json`:
+
+```bash
+LEAGUE_CONFIG_JSON="$(cat config/league.json)" python3 vercel_build.py
+```
+
 ## Refresh data
 
 - **Weekly (manage):** `python3 pipeline.py week` — new ESPN projections + rosters, fresh

@@ -59,6 +59,10 @@ One app, two modes:
 | `analysis/keeper_outlook.py`, `season_values.py` | Keeper/budget/RFA projection; past-season valuation basis | yes |
 | `analysis/refresh_briefing_opponents.py` | Writes the briefing's opponent table from `config/tendencies.json` | yes |
 | `sync_league_data.py` | Copies the gitignored league data to a folder, and back, for a second machine | yes |
+| `vercel_build.py` | Vercel build command: `LEAGUE_CONFIG_JSON` → `config/league.json`, Sleeper scrapes, calibrate, `build inject` | yes |
+| `requirements-build.txt` | Build-only packages for `vercel_build.py` (openpyxl), installed outside the function | yes |
+| `draft_app/vercel.json` | Vercel config: FastAPI preset, build command, function excludes | yes |
+| `draft_app/pyproject.toml` | Vercel function's runtime packages (no scikit-learn) + `cdn = false` | yes |
 | `analysis/research/a1..a17` | Archived one-off research behind `reports/league_analysis.md` | yes |
 | `config/tendencies.json`, `price_curve.json` | Calibration outputs | no (local) |
 | `scraping/raw/`, `reports/`, `league/` | League data / analysis outputs | no (local) |
@@ -142,7 +146,9 @@ Run `scraping/scrape_sleeper.py` instead of `pipeline.py scrape`. It writes the 
 ESPN-shaped `league_full.json`, so the build does not know the platform. Optional, before
 `build`: `scrape_sleeper_history.py` (prior seasons, for calibration),
 `scrape_sleeper_keepers.py` (declared keepers), and, after a first `build`,
-`scrape_sleeper_status.py` (availability flags). See `scraping/README.md`.
+`scrape_sleeper_status.py` (availability flags). See `scraping/README.md`. Calibration names a
+Sleeper manager by `displayName` (`lib.member_name`), the same name the console uses, so
+no `config/manager_canon.json` is necessary.
 
 **Keepers, RFA round, K and DEF (draft console).** The console has three draft phases:
 `keepers` (formula price: `keeper_bump` + last season's price), `rfa` (each manager
@@ -320,6 +326,22 @@ Service env vars: `ANTHROPIC_API_KEY`, `CONSOLE_PASSWORD` (HTTP Basic on everyth
 and — for live board data without redeploys — `SUPABASE_URL`, `SUPABASE_API_KEY`,
 `BOARD_DB_SECRET` (see the snapshot-store section; without them `/manage` serves its
 baked data).
+
+## Deploying (Vercel)
+
+Vercel builds from git, so it cannot use the staged bundle. Instead the build makes the
+payload: Root Directory `draft_app`, with "include files outside the root directory"
+enabled. `draft_app/vercel.json` runs `cd .. && python vercel_build.py`, which writes
+`config/league.json` from the `LEAGUE_CONFIG_JSON` env var and scrapes the public Sleeper
+league. It works for Sleeper leagues only, because ESPN needs private cookies. Vercel
+installs the function's packages from `draft_app/pyproject.toml`, not `requirements.txt`
+(the first manifest up from `server.py` wins, and `pyproject.toml` beats `requirements.txt`).
+Keep its pins in step with `requirements.txt`. The function holds only `draft_app/`, so
+the advisor reads `STRATEGY_BRIEFING_MD` (the briefing text) instead of
+`config/briefing.md`. `cdn = false` keeps `static/` in the function, behind the auth
+middleware. Env vars and dashboard settings: README "Deploy on Vercel". Test with
+`vercel build` in a temporary clone that has a hand-written `.vercel/project.json`.
+Never run `vercel link` in a checkout.
 
 ## Conventions & guardrails
 
