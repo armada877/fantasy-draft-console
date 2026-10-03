@@ -40,16 +40,6 @@ def write_league_config():
     print("• wrote config/league.json from LEAGUE_CONFIG_JSON")
 
 
-def write_briefing():
-    text = os.environ.get("STRATEGY_BRIEFING_MD", "").strip()
-    if not text:
-        print("• STRATEGY_BRIEFING_MD not set: the advisor uses the generic briefing.")
-        return
-    with open(os.path.join(CONFIG, "briefing.md"), "w", encoding="utf-8") as f:
-        f.write(text + "\n")
-    print("• wrote config/briefing.md from STRATEGY_BRIEFING_MD")
-
-
 def missing_build_modules():
     return [m for m in BUILD_MODULES if importlib.util.find_spec(m) is None]
 
@@ -96,7 +86,6 @@ def report_console():
 
 def main():
     write_league_config()
-    write_briefing()
     env = build_env()
     run("scraping/scrape_sleeper.py", env=env)
     run("scraping/scrape_sleeper_history.py", env=env)

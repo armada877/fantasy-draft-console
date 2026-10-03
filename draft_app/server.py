@@ -70,7 +70,12 @@ def _load_briefing():
     """The advisor's system prompt. Kept in the local (gitignored) config/ directory so
     league-specific content (opponent names, your plan, your league's tendencies) stays
     out of the public repo. Override with STRATEGY_BRIEFING_PATH. Falls back to a generic,
-    still-grounded briefing if none is present. See config/briefing.example.md."""
+    still-grounded briefing if none is present. See config/briefing.example.md.
+    STRATEGY_BRIEFING_MD (the briefing text itself) wins over the file: the Vercel
+    function holds only draft_app/, so config/ is not there."""
+    inline = os.environ.get("STRATEGY_BRIEFING_MD", "").strip()
+    if inline:
+        return inline
     path = os.environ.get(
         "STRATEGY_BRIEFING_PATH",
         os.path.join(HERE, os.pardir, "config", "briefing.md"),

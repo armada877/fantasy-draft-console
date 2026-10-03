@@ -74,3 +74,5 @@ draft_sheets/csg_consensus.json
 docs/local/
 
 .vercel/
+draft_app/uv.lock
+draft_app/.python-version

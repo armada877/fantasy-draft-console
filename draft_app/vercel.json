@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "fastapi",
+  "buildCommand": "cd .. && python vercel_build.py",
+  "functions": {
+    "server.py": {
+      "excludeFiles": "{eval_advisor.py,README.md,Procfile,railway.json,requirements.txt,uv.lock}"
+    }
+  }
+}
