@@ -801,6 +801,7 @@ def main():
     keeper_waiver = int(cfg.get("keeper_waiver_value", 1) or 0)
     keeper_pool = read_keeper_pool(season - 1, league.get("owners") or {},
                                    keeper_bump, keeper_waiver, load_manager_canon())
+    keeper_pool = {labels.get(name, name): rows for name, rows in keeper_pool.items()}
     if keeper_pool:
         n_add = sum(1 for rows in keeper_pool.values() for r in rows if r["acq"] == "ADD")
         print(f"  Keeper costs from {season - 1} rosters: {len(keeper_pool)} managers, "
