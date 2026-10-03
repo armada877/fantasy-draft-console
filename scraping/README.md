@@ -11,6 +11,7 @@ downstream (`build_tool_data.py`, the console, `analysis/`) is platform-agnostic
 | Script | Use it for | Scope |
 |--------|-----------|-------|
 | `scrape_sleeper.py` | **Sleeper leagues (start here).** Current-season settings + managers. No auth required. | 1 season |
+| `scrape_sleeper_history.py` | Past Sleeper seasons (priced draft picks, managers) for calibrating opponent tendencies. No auth required. | all prior seasons in the chain |
 | `scrape_league.py` | **ESPN fresh setup (start here).** Current-season settings + teams/owners, so `build_tool_data.py` can configure the console for your league. | 1 season, 2 views |
 | `scrape.py` | Deep history for calibrating opponent tendencies (many seasons of drafts, transactions, matchups). Only needed for the optional `analysis/` pipeline. | all seasons, all views |
 | `scrape_playercards.py` | Executed-trade detail (playercards), for the deep analysis only. | all seasons |
@@ -40,13 +41,20 @@ slot, K/DEF/IDP/taxi slots are dropped (the console drafts skill positions only)
 auction budget is read from the draft object, falling back to the league object, then to
 $200 — the run prints which source it used, and warns on anything it had to guess.
 
-**Limits.** Two things Sleeper leagues don't get yet:
+**Opponent calibration.** Sleeper opponents can be calibrated from past auctions. Run the
+history scraper after `scrape_sleeper.py`, then calibrate:
 
-- **No opponent calibration.** `analysis/` derives `mult`/`conc`/`maxbuy` from historical
-  auction bids, and Sleeper does not document its auction bid fields. Sleeper opponents
-  stay neutral (they bid at projected value) until that's reverse-engineered against a
-  real auction draft. Season chaining for that work is via `previous_league_id`, which
-  the scraper prints when present.
+```bash
+python3 scraping/scrape_sleeper_history.py    # → scraping/raw/{season}/league_full.json, players.json
+python3 pipeline.py calibrate build inject
+```
+
+It follows `previous_league_id` back through the seasons. It reads each bid from
+`pick.metadata.amount`, which Sleeper does not document. Calibration skips a season that
+has no scrape.
+
+**Limit.** Sleeper leagues have one gap:
+
 - **SUPER_FLEX is approximated** as a standard RB/WR/TE flex — the console's
   replacement-level model has no QB-eligible flex slot. The run warns when it sees one.
 
@@ -105,6 +113,7 @@ runs before you've scraped.
 ```
 scraping/
   scrape_sleeper.py     # Sleeper fresh-setup scraper (settings + managers, one season)
+  scrape_sleeper_history.py # Sleeper past seasons (priced picks) for calibration
   scrape_league.py      # ESPN fresh-setup scraper (settings + teams, one season)
   scrape.py             # full historical scraper (all seasons, all views)
   scrape_playercards.py # executed-trade detail for the deep analysis
