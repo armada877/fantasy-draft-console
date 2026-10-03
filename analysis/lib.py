@@ -197,8 +197,13 @@ _MEMBER_CACHE = {}
 _TEAMOWNER_CACHE = {}
 
 
+def member_name(mem):
+    full = f"{mem.get('firstName','').strip()} {mem.get('lastName','').strip()}".strip()
+    return full or (mem.get("displayName") or "").strip()
+
+
 def member_names(season=None):
-    """{memberId: 'First Last'} — merged across all seasons if season is None."""
+    """{memberId: member_name} — merged across all seasons if season is None."""
     key = season or "ALL"
     if key in _MEMBER_CACHE:
         return _MEMBER_CACHE[key]
@@ -208,7 +213,7 @@ def member_names(season=None):
         d = load(yr)
         for mem in d.get("members", []):
             mid = mem.get("id")
-            nm = f"{mem.get('firstName','').strip()} {mem.get('lastName','').strip()}".strip()
+            nm = member_name(mem)
             if mid and nm:
                 out[mid] = nm
     _MEMBER_CACHE[key] = out
