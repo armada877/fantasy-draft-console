@@ -69,8 +69,8 @@ def have_calibration():
     """True when the (local) calibration pipeline can run: its script + scraped auction
     history — meaning at least one scraped season that actually contains draft picks.
 
-    The mere existence of a league_full.json is NOT enough: every fresh-setup scraper
-    (scrape_league.py, scrape_sleeper.py) writes settings + managers for the CURRENT
+    The mere existence of a league_full.json is NOT enough: the fresh-setup scraper
+    (scrape_league.py) writes settings + managers for the CURRENT
     season with no draftDetail, while build_agents() reads PRIOR seasons' picks. Checking
     only for the file made `all` and `calibrate` die with FileNotFoundError on a
     brand-new league, instead of skipping calibration the way the README promises.
