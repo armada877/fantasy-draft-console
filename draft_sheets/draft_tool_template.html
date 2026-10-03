@@ -82,7 +82,7 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 @media(max-width:820px){
   .vitals{grid-template-columns:1fr 1fr}
   .vitals .brand{grid-column:1 / -1}
-  .vitals .themebtn{grid-column:1 / -1;justify-self:end}
+  .vitals .dock-actions{grid-column:1 / -1;justify-self:end}
 }
 .brand{display:flex;flex-direction:column;justify-content:center;padding-right:6px;margin-right:2px}
 .brand .t{font-size:15px;font-weight:750;letter-spacing:.04em}
@@ -96,9 +96,38 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 .vital .note{font-size:10.5px;color:var(--faint);margin-top:1px;letter-spacing:.01em}
 .vital.hot .v{color:var(--stop-ink)} .vital.hot .note{color:var(--stop-ink)}
 .vital.cold .v{color:var(--go-ink)} .vital.cold .note{color:var(--go-ink)}
-.themebtn{margin-left:auto;align-self:center;background:var(--panel);border:1px solid var(--line);
+.dock-actions{margin-left:auto;align-self:center;display:flex;gap:6px;align-items:center}
+.themebtn{align-self:center;background:var(--panel);border:1px solid var(--line);
   color:var(--muted);border-radius:9px;padding:0 13px;height:38px;font-size:16px}
 .themebtn:hover{color:var(--ink);border-color:var(--line2)}
+a.modelink{display:inline-flex;align-items:center;font-size:12px;font-weight:650;
+  text-decoration:none;white-space:nowrap}
+
+/* ============ HOW-TO-USE overlay — on demand, never occupying board space ============ */
+.helpwrap[hidden]{display:none}
+.helpwrap{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(4,7,10,.66);backdrop-filter:blur(3px)}
+.helpcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);width:min(660px,100%);max-height:min(86vh,760px);
+  display:flex;flex-direction:column;overflow:hidden}
+.helphead{display:flex;align-items:baseline;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);
+  background:var(--panel2)}
+.helphead h2{font-size:14px;font-weight:750;letter-spacing:.04em;margin:0}
+.helphead .sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--faint)}
+.helphead .x{margin-left:auto;background:transparent;border:1px solid var(--line);color:var(--muted);
+  border-radius:8px;width:30px;height:28px;font-size:15px;line-height:1;cursor:pointer}
+.helphead .x:hover{color:var(--ink);border-color:var(--line2)}
+.helpbody{padding:16px 18px 18px;overflow-y:auto;font-size:12.5px;line-height:1.55;color:var(--muted)}
+.helpbody h3{font-size:9.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--faint);
+  margin:16px 0 7px;font-weight:700}
+.helpbody h3:first-child{margin-top:0}
+.helpbody b{color:var(--ink);font-weight:650}
+.helpbody ol,.helpbody ul{margin:0;padding-left:17px}
+.helpbody li{margin:0 0 5px}
+.helpbody li::marker{color:var(--faint)}
+.helpbody .k{font-family:var(--mono);color:var(--ink);background:var(--raise);
+  border:1px solid var(--line);border-radius:5px;padding:0 5px;font-size:11px}
+.helpbody .lede{color:var(--ink);margin:0 0 2px}
 
 /* the block — the command surface */
 .block{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
@@ -187,6 +216,13 @@ input::placeholder{color:var(--faint)}
 .fact .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:1px;color:var(--ink)}
 .fact.half .v,.fact.wide .v{font-size:13px;font-weight:600;line-height:1.35;margin-top:3px}
 .fact .fnote{font-size:9.5px;color:var(--faint);margin-top:2px;letter-spacing:.01em;text-transform:none}
+/* market (CSG consensus) — advisory, so it stays quiet until it disagrees with us */
+.fact .fnote.mkt-over{color:var(--warn-ink)}    /* we price him ABOVE the market */
+.fact .fnote.mkt-under{color:var(--go-ink)}     /* the market prices him above us */
+.pill.hurt{background:var(--warn-bg);border-color:var(--warn-line,var(--line));color:var(--warn-ink)}
+.pill.hurt[hidden]{display:none}
+/* board: a quiet divergence marker on Worth — no extra column, no lost width */
+.mktflag{font-size:9px;margin-left:3px;color:var(--faint);cursor:help;vertical-align:super}
 .fact .v.over{color:var(--stop-ink)}
 .fact .v .chase{display:inline-flex;gap:5px;align-items:baseline;margin-right:12px;font-family:var(--sans);font-weight:600}
 .fact .v .chase b{color:var(--ink)} .fact .v .chase .mono{color:var(--muted);font-size:12px}
@@ -539,7 +575,11 @@ body.phase-rfa .rfa-only{display:inline-block}
       <div class="vital"><div class="k">Roster</div><div class="v mono" id="s-roster">0<small>/8</small></div><div class="note" id="s-need">need: QB RB RB WR WR TE F F</div></div>
       <div class="vital"><div class="k">Market</div><div class="v mono" id="s-infl">1.00×</div><div class="note" id="s-phase">pre-draft</div></div>
       <div class="vital" id="v-nom" hidden><div class="k">Nominating</div><div class="v" id="s-nom">—</div><div class="note" id="s-nom-next"></div></div>
-      <button class="themebtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+      <div class="dock-actions">
+        <a class="themebtn modelink" href="/manage" title="Switch to the in-season board">Manage &rarr;</a>
+        <button class="themebtn" id="helpbtn" title="How to use this console" aria-label="How to use">?</button>
+        <button class="themebtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+      </div>
     </div>
 
     <div class="block" id="block-panel">
@@ -561,7 +601,7 @@ body.phase-rfa .rfa-only{display:inline-block}
       <div class="eval" id="eval">
         <div class="eval-grid">
           <div class="eval-decision">
-            <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span><button class="hero-tag" id="ev-tag"></button></div>
+            <div class="who"><span class="posdot" id="ev-pos"></span><span class="nm" id="ev-name"></span><span class="pill tierpill" id="ev-tier"></span><span class="pill hurt" id="ev-status" hidden></span><button class="hero-tag" id="ev-tag"></button></div>
             <div class="ceiling" id="ceiling">
               <div class="c-k" data-tip="The most this player is worth to YOU — never pay above it. The call underneath is a different question: whether you will actually GET him at that price. 'Let it go' means the room will bid past your ceiling, not that your ceiling is wrong.">Bid up to</div>
               <div class="c-v mono" id="ev-max"></div>
@@ -571,7 +611,7 @@ body.phase-rfa .rfa-only{display:inline-block}
             <div class="verdict" id="ev-verdict"></div>
           </div>
           <div class="eval-facts">
-            <div class="fact"><div class="k">Worth</div><div class="v mono" id="ev-worth"></div></div>
+            <div class="fact"><div class="k">Worth</div><div class="v mono" id="ev-worth"></div><div class="fnote" id="ev-mkt"></div></div>
             <div class="fact"><div class="k">Will go ≈</div><div class="v mono" id="ev-pred"></div></div>
             <div class="fact"><div class="k">VORP</div><div class="v mono" id="ev-vorp"></div><div class="fnote" id="ev-vorp-note"></div></div>
             <div class="fact half"><div class="k">Scarcity if taken</div><div class="v mono" id="ev-scar"></div></div>
@@ -712,6 +752,73 @@ body.phase-rfa .rfa-only{display:inline-block}
     </div>
   </div>
  </aside>
+</div>
+
+<!-- HOW TO USE — on-demand overlay (the '?' in the vitals strip) -->
+<div class="helpwrap" id="helpwrap" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="helpcard" id="helpcard">
+    <div class="helphead">
+      <h2 id="help-title">How to use</h2><span class="sub">live auction console</span>
+      <button class="x" id="helpclose" aria-label="Close">×</button>
+    </div>
+    <div class="helpbody">
+      <p class="lede">Every price on this page re-prices itself from what has actually sold.
+        Keeping the log current is the whole job.</p>
+
+      <h3>The loop, once per player</h3>
+      <ol>
+        <li><b>Put him on the block</b> — type the nominated player into the search up top, or
+          click any row on the board. Hit <b>Nominate</b> to mark bidding open; the advisor
+          fires back a two-sentence read.</li>
+        <li><b>Take the call</b> — <b>Bid up to</b> is your ceiling right now, and the verdict
+          next to it is your go / hold / stop.</li>
+        <li><b>Log the sale</b> — enter <b>Sold&nbsp;$</b>, choose the team, press
+          <b>Log pick</b>. Log <i>every</i> player, not just yours: that is what keeps budgets,
+          inflation and prices honest. Mis-clicked? <b>Undo last</b> lives in <b>Picks</b>.</li>
+      </ol>
+
+      <h3>What the numbers mean</h3>
+      <ul>
+        <li><b>Worth</b> — value in <i>your</i> league: ESPN scoring &rarr; points over
+          replacement &rarr; share of the auction pool.</li>
+        <li><b>Will go &asymp;</b> — predicted sale price: a second-price estimate across every
+          rival who still has budget and a need at the position, times market inflation.</li>
+        <li><b>Bid up to</b> — your live max after scarcity, inflation, budget and roster. It
+          always reserves $1 for each of your open slots.</li>
+        <li><b>Market &times;</b> — above 1.00 the room is paying over model, so hold; below
+          1.00 there is value on the table.</li>
+        <li><b>market $ / ECR</b> (under Worth) — the <i>outside</i> view, from the CSG
+          consensus sheet: what the wider market pays and where FantasyPros ranks him.
+          A <b>&#9650;</b> or <b>&#9660;</b> on the board flags a material disagreement —
+          amber when we are above consensus, green when the market is above us. Either you
+          found an edge or the projection is out on a limb; the two numbers sit together so
+          you can tell which.</li>
+      </ul>
+
+      <h3>The four side panels</h3>
+      <ul>
+        <li><b>Budget</b> your build against target &middot; <b>League</b> every rival's budget,
+          needs and bid ceiling, threats highlighted &middot; <b>Runway</b> startable players
+          left per team still needing one &middot; <b>Picks</b> the running log.</li>
+        <li><b>&#9873; Flag</b> marks a player <b>Target</b>, <b>Sleeper</b> or <b>Avoid</b>.
+          Flags and picks are saved in this browser and survive a reload.</li>
+      </ul>
+
+      <h3>Keys</h3>
+      <ul>
+        <li><span class="k">&uarr;</span> <span class="k">&darr;</span> move the search,
+          <span class="k">Enter</span> selects, <span class="k">Esc</span> clears the block,
+          <span class="k">?</span> opens this. <b>&#9686;</b> toggles light / dark.</li>
+      </ul>
+
+      <h3>One caveat</h3>
+      <ul>
+        <li>Rival behaviour is calibrated from past auctions; a manager with no history is
+          modelled at the league average, which is an assumption, not a read. It is a model —
+          trust your eyes in the room.</li>
+      </ul>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -886,14 +993,73 @@ function teamBid(t,p,infl){
   bid=Math.min(bid,t.budget-(openSlots(t)-1),t.maxbuy);
   return Math.max(0,bid);
 }
-// predicted market price = second-highest field bid + 1
-function predictPrice(p){
-  const infl=inflation();
-  const bids=Object.values(teams).filter(t=>t.name!==ME).map(t=>teamBid(t,p,infl))
+/* MARKET VIEW (optional p.mkt, from the CSG sheet via csg_consensus.json).
+   Advisory only: it never enters worth/vbd or any bid math. It answers one question —
+   does the wider market agree with our league-accurate number? Where it disagrees hard,
+   either we found an edge or our projection is out on a limb, and you should know which
+   before bidding. Divergence is "material" at >=$5 AND >=25% of our number, so cheap
+   players don't scream over rounding. */
+function mktGap(p){
+  const m=p.mkt; if(!m||m.price==null)return null;
+  const diff=p.worth-m.price;                     // >0 = we're higher than the market
+  const material=Math.abs(diff)>=5&&Math.abs(diff)>=p.worth*0.25;
+  return {price:m.price,diff,material,ecr:m.ecr,boris:m.boris,gold:m.gold,bs:m.bs};
+}
+// the quiet ▲/▼ marker both boards hang off the Worth cell (no extra column)
+function mktFlagHTML(p){
+  const g=mktGap(p); if(!g||!g.material)return '';
+  const side=g.diff>0?`$${Math.round(g.diff)} above`:`$${Math.round(-g.diff)} below`;
+  return `<span class="mktflag" title="Market has him at ${money(g.price)} — we are ${side} consensus">`
+       + `${g.diff>0?'▲':'▼'}</span>`;
+}
+/* ── WILL-GO: historical LEVEL, live DYNAMICS ──────────────────────────────────────
+   The raw opponent model asks all 11 rivals for a bid as if each still had a full budget
+   and every need open. Backtested out-of-sample (opponents calibrated on <=2024, predicting
+   2025) it over-predicted the top of the board by ~$17 and under-predicted QB by ~$14,
+   because it effectively takes a near-maximum across rivals rather than a typical clear.
+   What DOES reproduce 2025's real prices is the league's own paid/projection premium
+   (DATA.premium, measured on 2025 — the only season sharing this one's $200/full-supply
+   regime). So the premium sets the LEVEL and the opponent model supplies the MOVEMENT:
+   as budgets drain and needs fill, the model falls relative to its own draft-open value,
+   and will-go falls with it. At draft open the factor is 1 and will-go is exactly the
+   historical expectation — e.g. Gibbs: proj $84 x 1.28 = $108.
+   Players outside the projection set (deep bench, no `pv`) keep the pure model. */
+const PREMIUM=DATA.premium||null;
+function pricePremium(pv){
+  if(!PREMIUM)return null;
+  for(const [floor,mult] of PREMIUM){ if(pv>=floor) return mult; }
+  return PREMIUM[PREMIUM.length-1][1];
+}
+function histPrice(p){
+  if(!p.pv||!PREMIUM)return null;
+  const m=pricePremium(p.pv);
+  return m?Math.max(1,p.pv*m):null;
+}
+// second-price across rivals, given a team list (real teams, or full-budget clones)
+function fieldPrice(p,tlist,infl){
+  const bids=tlist.filter(t=>t.name!==ME).map(t=>teamBid(t,p,infl))
     .filter(b=>b>=1).sort((a,b)=>b-a);
   if(bids.length===0)return 1;
-  const second=bids.length>1?bids[1]:1;
-  return Math.max(1,Math.min(bids[0],second+1));
+  return Math.max(1,Math.min(bids[0],(bids.length>1?bids[1]:1)+1));
+}
+// draft-open clones: full budget, every need open — the denominator for the live factor
+const OPEN_TEAMS=DATA.managers.map(m=>({...m,budget:DATA.budget,players:[],
+  need:{...DATA.starters},flex:DATA.flex,bench:DATA.bench}));
+const _openCache={};
+function openPrice(p){
+  if(_openCache[p.id]===undefined)_openCache[p.id]=fieldPrice(p,OPEN_TEAMS,1);
+  return _openCache[p.id];
+}
+function predictPrice(p){
+  const infl=inflation();
+  const model=fieldPrice(p,Object.values(teams),infl);
+  const hist=histPrice(p);
+  if(hist===null)return model;                      // no projection -> pure model
+  const open=openPrice(p);
+  // how much has the room's willingness moved from draft-open? clamped so a thin field
+  // can't collapse or explode the historical level
+  const factor=open>0?Math.min(1.6,Math.max(0.4,model/open)):1;
+  return Math.max(1,hist*factor);
 }
 // DYNAMIC max bid — how high it's worth going RIGHT NOW, given your value, live scarcity,
 // the market trend, your budget, and your roster makeup. Recomputes every render as the draft moves.
@@ -1035,6 +1201,19 @@ function showEval(p){
   $("#ev-tag").onclick=(e)=>{e.stopPropagation();openTagMenu(e.currentTarget,p.name);};
   // supporting facts
   $("#ev-worth").textContent=money(p.worth);
+  // market cross-check, directly under our number — the comparison you actually want
+  const mg=mktGap(p), mkEl=$("#ev-mkt");
+  mkEl.className="fnote";
+  if(mg){
+    const sign=mg.diff>0?"+":"";
+    const rank=mg.ecr!=null?` · ECR ${Math.round(mg.ecr)}`:"";
+    mkEl.textContent=`market ${money(mg.price)} (${sign}${Math.round(mg.diff)} us)${rank}`;
+    if(mg.material)mkEl.classList.add(mg.diff>0?"mkt-over":"mkt-under");
+  }else{
+    mkEl.textContent=(p.mkt&&p.mkt.ecr!=null)?`ECR ${Math.round(p.mkt.ecr)} · no market price`:"";
+  }
+  const st=$("#ev-status"), stTxt=(p.mkt||{}).status;
+  st.hidden=!stTxt; if(stTxt)st.textContent=stTxt;
   $("#ev-pred").textContent=money(pred);
   $("#ev-vorp").textContent=Math.round(p.vbd);
   // contextualize VORP as points/week over a replacement-level starter (season ≈ 17 wks)
@@ -1159,7 +1338,7 @@ function renderBoard(){
         <td class="num tier">${p.tier}</td>
         <td class="num">${Math.round(p.fpts)}</td>
         <td class="num vorpcell">${gone?'':`<span class="vbar" style="width:${Math.max(2,Math.min(100,Math.round(p.vbd/maxVbd*100)))}%"></span>`}<span class="vnum">${Math.round(p.vbd)}</span></td>
-        <td class="num">${money(p.worth)}</td>
+        <td class="num">${money(p.worth)}${mktFlagHTML(p)}</td>
         <td class="num scar ${hot?'hot':''}"${gone?'':` data-tip="Drop to the next available ${p.pos} in VORP if this one goes · ${sc.posLeft} left at ${p.pos}"`}>${gone?'—':(sc.next?(sc.cliff>0?'−'+sc.cliff:'0'):'LAST')}</td>`;
       tr.querySelector(".tagbtn").onclick=(e)=>{e.stopPropagation();openTagMenu(e.currentTarget,p.name);};
       if(!gone)tr.onclick=()=>{showEval(p);window.scrollTo({top:0,behavior:'smooth'});};
@@ -1176,8 +1355,8 @@ function renderBoard(){
     `<th class="tagcol" data-tip="Your prep flags. Click a row's marker to set ◎ target · ☾ sleeper · ⊘ avoid. Filter by flag above. Saved per league.">◎</th>`+
     `<th class="l">Player</th>`+
     `<th data-tip="Positional tier from the projections — e.g. RB1 = the top RB group, RB4 = the fourth tier.">Tier</th>`+
-    `<th data-tip="Projected auction value (Elboberto/FantasyPros). What the player is worth on a $200 board.">Worth</th>`+
-    `<th data-tip="Predicted sale price right now — a second-price estimate from every opponent who still has budget + a need at this position, times market inflation.">Will go ≈</th>`+
+    `<th data-tip="Projected auction value, recomputed from YOUR league scoring and roster. ▲/▼ marks a player the wider market prices materially differently — hover it for the consensus number.">Worth</th>`+
+    `<th data-tip="Predicted sale price right now. Level comes from what THIS league has actually paid per dollar of projection (measured on 2025, the comparable $200 full-supply season); it then moves with the live room as budgets drain and needs fill.">Will go ≈</th>`+
     `<th data-tip="The most YOU should bid up to right now — your conversion-aware value adjusted for live scarcity, market inflation, your budget and roster. Moves as the draft moves.">Your max</th>`+
     `<th data-tip="Your max minus the likely sale price — your headroom. Positive (green) = you can land him at or under your ceiling; grey/negative = the room will push past your max. Turns positive live as budgets drain.">Edge</th>`+
     `</tr>`;
@@ -1203,7 +1382,7 @@ function renderBoard(){
     tr.innerHTML=`<td class="tagcell"><button class="tagbtn t-${tag}" title="Flag ${p.name}">${TAG_GLYPH[tag]}</button></td>
       <td class="l"><span class="posdot p-${p.pos}">${p.pos}</span>${p.name}${riskChip(p)}${gone?`<span class="sold">$${p.price} → ${shortName(p.drafted)}</span>`:''}</td>
       <td class="num tier">${p.tier}</td>
-      <td class="num">${money(p.worth)}</td>
+      <td class="num">${money(p.worth)}${mktFlagHTML(p)}</td>
       <td class="num">${gone?'—':money(pred)}</td>
       <td class="num">${gone?'—':money(harryMaxBid(p))}</td>
       <td class="num ${gone?'gap-neg':pocket?'pocket':edge>0?'gap-pos':'gap-neg'}">${gone?'—':(edge>0?'+':'')+Math.round(edge)}</td>`;
@@ -1712,7 +1891,11 @@ function draftStateForAdvisor(){
   const topAvail={};
   POS_ALL.forEach(pos=>{
     topAvail[pos]=avail().filter(p=>p.pos===pos).sort((a,b)=>b.worth-a.worth).slice(0,8)
-      .map(p=>({name:p.name,tier:p.tier,worth:p.worth,est_price:predictPrice(p)}));
+      .map(p=>{const g=mktGap(p),o={name:p.name,tier:p.tier,worth:p.worth,est_price:predictPrice(p)};
+        // consensus cross-check: lets the advisor say "we're $28 over the market here"
+        if(g){o.market_price=Math.round(g.price);if(g.ecr!=null)o.ecr=Math.round(g.ecr);}
+        if((p.mkt||{}).status)o.status=p.mkt.status;
+        return o;});
   });
   const kept=keeperPicks().map(l=>({team:l.team,name:players[l.id].name,pos:players[l.id].pos,
     price:l.price,worth:players[l.id].worth,surplus:Math.round(players[l.id].worth-l.price)}));
@@ -1732,6 +1915,10 @@ function draftStateForAdvisor(){
     inflation_by_phase:{rfa:inflationOf("rfa"), auction:inflationOf("auction")},
     picks_made:log.length, on_the_block:selected?{name:selected.name,pos:selected.pos,
       worth:selected.worth,est_price:predictPrice(selected),your_max:harryMaxBid(selected),
+      ...(()=>{const g=mktGap(selected);const o={};
+        if(g){o.market_price=Math.round(g.price);if(g.ecr!=null)o.ecr=Math.round(g.ecr);}
+        if((selected.mkt||{}).status)o.status=selected.mkt.status;
+        return o;})(),
       // In the RFA round the matching right belongs to the player, so whether this one was on
       // the nominator's own roster is the difference between a lot you can win and one where
       // bidding only taxes him. The advisor cannot infer it — the prior rosters are not in the
@@ -1841,6 +2028,19 @@ window.addEventListener("scroll",hideTip,true);
 $("#adv-ask").onclick=()=>{const q=$("#adv-q").value.trim();if(q)askAdvisor(q);};
 $("#adv-q").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim();if(q)askAdvisor(q);}});
 document.querySelectorAll(".adv-quick button").forEach(b=>b.onclick=()=>{$("#adv-q").value=b.dataset.q;askAdvisor(b.dataset.q);});
+/* ---------- how-to-use overlay ---------- */
+const _help=$("#helpwrap");
+function showHelp(){_help.hidden=false;$("#helpclose").focus();}
+function hideHelp(){_help.hidden=true;}
+$("#helpbtn").onclick=showHelp;
+$("#helpclose").onclick=hideHelp;
+_help.addEventListener("click",e=>{if(e.target===_help)hideHelp();});   // backdrop only
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!_help.hidden){hideHelp();return;}
+  // "?" opens it, but never while typing into the search / advisor / a price field
+  if(e.key==="?"&&_help.hidden&&!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))showHelp();
+});
+
 $("#themebtn").onclick=()=>{
   const cur=document.documentElement.getAttribute("data-theme")||"light";  // light is the default
   document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");

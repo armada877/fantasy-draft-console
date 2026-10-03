@@ -1,0 +1,11 @@
+{
+  "season": 2026,
+  "leagues": {
+    "example": {
+      "league_id": 0,
+      "team_id": 0,
+      "label": "Example League",
+      "yaml": "leagues/example-standard-12.yaml"
+    }
+  }
+}

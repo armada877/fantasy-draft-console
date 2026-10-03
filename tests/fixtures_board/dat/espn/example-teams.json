@@ -1,0 +1,64 @@
+[
+ {
+  "id": 1,
+  "name": "Fixture Franchise",
+  "mine": true,
+  "roster": [
+   {
+    "name": "Alpha Quarterback",
+    "pos": "QB",
+    "wk": 22.0,
+    "ros": 330.0,
+    "injury": "",
+    "slot": "QB"
+   },
+   {
+    "name": "Alpha Runner",
+    "pos": "RB",
+    "wk": 19.0,
+    "ros": 285.0,
+    "injury": "",
+    "slot": "RB"
+   },
+   {
+    "name": "Bravo Runner",
+    "pos": "RB",
+    "wk": 16.5,
+    "ros": 247.5,
+    "injury": "",
+    "slot": "BE"
+   }
+  ]
+ },
+ {
+  "id": 2,
+  "name": "Rival Robots",
+  "mine": false,
+  "roster": [
+   {
+    "name": "Bravo Quarterback",
+    "pos": "QB",
+    "wk": 20.0,
+    "ros": 300.0,
+    "injury": "",
+    "slot": "QB"
+   },
+   {
+    "name": "Charlie Runner",
+    "pos": "RB",
+    "wk": 15.0,
+    "ros": 225.0,
+    "injury": "Q",
+    "slot": "RB"
+   },
+   {
+    "name": "Delta Wideout",
+    "pos": "WR",
+    "wk": 13.0,
+    "ros": 195.0,
+    "injury": "",
+    "slot": "WR"
+   }
+  ]
+ }
+]

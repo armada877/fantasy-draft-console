@@ -16,10 +16,13 @@ Run:   python3 analysis/calibrate.py        (or: python3 pipeline.py calibrate)
 
 mult = $-weighted paid/projected by position (>1 = overpays), conc = stars-and-scrubs
 top-3 spend share, maxbuy = historical single-buy ceiling +15%. See build_agents() for the
-exact derivation. Managers with too little history fall back to the league positional mean.
+exact derivation. Managers with too little history fall back to the league positional mean;
+a reserved "_league_default" entry carries that league-average profile for managers with
+NO history at all (substitutions), so the console never models them as flat-1.0 bidders.
 """
 import json
 import os
+import statistics
 import sys
 
 import a18_agent_auction as a18
@@ -28,6 +31,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUT = os.path.join(ROOT, "config", "tendencies.json")
 POS = ("QB", "RB", "WR", "TE")
+# reserved tendencies.json key: profile for managers with no auction history
+LEAGUE_DEFAULT_KEY = "_league_default"
 
 # reuse the console builder's own scraped-league name derivation so tendencies keys
 # match exactly what build_tool_data.py will call each manager (no divergence).
@@ -102,12 +107,25 @@ def main():
         if canon in tendencies and console_name not in tendencies:
             tendencies[console_name] = tendencies[canon]
 
+    # Reserved entry: the profile build_tool_data.py gives a manager with NO auction
+    # history (a mid-season substitution, an expansion team). "Neutral" has to mean
+    # league-average, not 1.0 — a flat 1.0 mult would model a newcomer as willing to pay
+    # full projected value at every position (2.4x the league norm at QB) with no ceiling,
+    # which inflates predicted competition for exactly the players you're bidding on.
+    real = [t for n, t in tendencies.items() if not n.startswith("_")]
+    tendencies[LEAGUE_DEFAULT_KEY] = {
+        "mult": {p: round(a18.LEAGUE_MULT[p], 2) for p in POS},
+        "conc": round(statistics.median(t["conc"] for t in real)) if real else 50,
+        "maxbuy": round(statistics.median(t["maxbuy"] for t in real)) if real else 100,
+    }
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(tendencies, f, indent=2, sort_keys=True)
 
     # audit table — same view a18 prints, so a calibrate run is self-documenting
-    print(f"Calibrated {len(tendencies)} managers from auction history "
+    named = [n for n in tendencies if not n.startswith("_")]
+    print(f"Calibrated {len(named)} managers from auction history "
           f"(league fallback mult {a18.LEAGUE_MULT}).")
     # Say which seasons actually contributed. build_agents() reads fixed season ranges and
     # load() now tolerates gaps, so a partial scrape calibrates quietly off less than you
@@ -137,9 +155,9 @@ def main():
     if gap:
         print(f"   note: {', '.join(map(str, gap))} inform concentration/max-buy only — "
               "multipliers need a projection workbook for the season.")
-    fallbacks = sum(1 for t in tendencies.values() for p in POS
-                    if abs(t["mult"][p] - round(a18.LEAGUE_MULT[p], 2)) < 0.005)
-    total = len(tendencies) * len(POS)
+    fallbacks = sum(1 for n in named for p in POS
+                    if abs(tendencies[n]["mult"][p] - round(a18.LEAGUE_MULT[p], 2)) < 0.005)
+    total = len(named) * len(POS)
     if fallbacks:
         print(f"   {fallbacks}/{total} positional multipliers fell back to the league mean "
               "(too few priced picks for that manager+position).")
@@ -149,7 +167,7 @@ def main():
     rfa = a18.lib.RFA_ROUND
     hdr = f"   {'manager':20}{'QB':>6}{'RB':>6}{'WR':>6}{'TE':>6}{'conc%':>7}{'maxbuy':>8}"
     print(hdr + (f"{'rfa$%':>7}{'keep%':>7}" if rfa else ""))
-    for name in sorted(tendencies, key=lambda m: -tendencies[m]["mult"]["RB"]):
+    for name in sorted(named, key=lambda m: -tendencies[m]["mult"]["RB"]):
         t = tendencies[name]
         m = t["mult"]
         row = (f"   {name:20}{m['QB']:>6.2f}{m['RB']:>6.2f}{m['WR']:>6.2f}{m['TE']:>6.2f}"
@@ -163,9 +181,15 @@ def main():
     if aliases:
         print("\n   aliased to current-league scrape names: "
               + ", ".join(f"{c} = {k}" for k, c in aliases.items()))
+    d = tendencies[LEAGUE_DEFAULT_KEY]
+    print(f"\n   {LEAGUE_DEFAULT_KEY:20}{d['mult']['QB']:>6.2f}{d['mult']['RB']:>6.2f}"
+          f"{d['mult']['WR']:>6.2f}{d['mult']['TE']:>6.2f}{d['conc']:>7}{d['maxbuy']:>8}"
+          "   <- managers with no history")
+
     print(f"\nWrote {OUT}")
-    print("  build_tool_data.py merges these per manager (by name); unmatched managers "
-          "stay neutral. Next: python3 pipeline.py build inject")
+    print("  build_tool_data.py merges these per manager (by name); managers with no "
+          f"history get {LEAGUE_DEFAULT_KEY} (league-average).\n"
+          "  Next: python3 pipeline.py build inject")
 
 
 if __name__ == "__main__":

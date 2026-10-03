@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Fantasy Console</title>
+<style>
+  :root{--ink:#16181d;--ink3:#8a919e;--line:#d5d9e0;--bg:#f6f7f9;--accent:#1b66d1}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:var(--bg);color:var(--ink);
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px 26px;
+    width:340px;box-shadow:0 8px 28px rgba(20,24,32,.07)}
+  h1{font-size:17px;margin:0 0 2px}
+  p.sub{margin:0 0 18px;color:var(--ink3);font-size:12.5px}
+  label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink3);margin:0 0 5px}
+  input{width:100%;font:inherit;padding:9px 11px;border:1px solid var(--line);
+    border-radius:8px;margin-bottom:12px;background:#fff;color:inherit}
+  input:focus{outline:none;border-color:var(--accent)}
+  button{width:100%;font:inherit;font-weight:600;padding:10px;border:none;border-radius:8px;
+    background:var(--accent);color:#fff;cursor:pointer}
+  button:disabled{opacity:.55;cursor:default}
+  .msg{font-size:12.5px;margin:12px 0 0;color:var(--ink3);min-height:18px}
+  .msg.err{color:#c4372f}
+  #step-code{display:none}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Fantasy Console</h1>
+  <p class="sub">Sign in with your email — we'll send a one-time code.</p>
+
+  <div id="step-email">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+    <button id="send">Email me a code</button>
+  </div>
+
+  <div id="step-code">
+    <label for="code">6-digit code</label>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" class="mono">
+    <button id="verify">Sign in</button>
+  </div>
+
+  <p class="msg" id="msg"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "{{SUPABASE_URL}}";
+const SUPABASE_KEY = "{{SUPABASE_API_KEY}}";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = s => document.querySelector(s);
+const msg = (t, err) => { const m = $("#msg"); m.textContent = t; m.className = "msg" + (err ? " err" : ""); };
+const nextUrl = new URLSearchParams(location.search).get("next") || "/";
+
+async function establish(session){
+  // Hand the access token to our server so it can set the httpOnly session cookie
+  // (the server re-validates the token and checks the allowlist).
+  const r = await fetch("/api/session", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({access_token: session.access_token}),
+  });
+  if (r.ok) { location.href = nextUrl; return true; }
+  const body = await r.json().catch(() => ({}));
+  msg(body.error || "This email isn't authorized for this console.", true);
+  return false;
+}
+
+// Landed here from the magic link in the email? The tokens arrive in the URL hash.
+// Adopt them, scrub the URL, and establish the cookie.
+(async () => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("access_token") && h.get("refresh_token")) {
+    history.replaceState(null, "", location.pathname + location.search);  // tokens out of the URL/history
+    msg("Signing you in…");
+    const { data, error } = await sb.auth.setSession({
+      access_token: h.get("access_token"), refresh_token: h.get("refresh_token")});
+    if (!error && data.session) { await establish(data.session); return; }
+  }
+  // Already signed in from a previous visit? supabase-js keeps (and refreshes) the
+  // session in this browser — re-establish the cookie and bounce back silently.
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) { msg("Signing you back in…"); await establish(data.session); }
+})();
+
+$("#send").onclick = async () => {
+  const email = $("#email").value.trim();
+  if (!email) { msg("Enter your email.", true); return; }
+  $("#send").disabled = true; msg("Sending…");
+  const { error } = await sb.auth.signInWithOtp({ email });
+  $("#send").disabled = false;
+  if (error) { msg(error.message, true); return; }
+  $("#step-code").style.display = "block";
+  msg("Code sent — check your inbox.");
+  $("#code").focus();
+};
+
+$("#verify").onclick = async () => {
+  const email = $("#email").value.trim(), token = $("#code").value.trim();
+  if (!token) { msg("Enter the code from the email.", true); return; }
+  $("#verify").disabled = true; msg("Checking…");
+  const { data, error } = await sb.auth.verifyOtp({ email, token, type: "email" });
+  $("#verify").disabled = false;
+  if (error || !data.session) { msg((error && error.message) || "Invalid code.", true); return; }
+  await establish(data.session);
+};
+</script>
+</body>
+</html>

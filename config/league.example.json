@@ -32,9 +32,12 @@
   "me": "",
   "_me": "The team you are drafting. Leave blank to AUTO-DETECT (scrape_league.py matches your SWID to the league members). If set, must match a manager name from the scrape (ESPN owner display name). The console tracks THIS team's budget, roster and needs.",
 
-  "projections_xlsm": "draft_sheets/2026_FantasyFootball_0.3_elboberto.xlsm",
+  "projections_xlsm": "draft_sheets/2026_FantasyFootball_1.01_elboberto.xlsm",
   "_projections_xlsm": "Path to the checked-in Elboberto projections workbook (the universal baseline). build_tool_data.py reads its CheatSheet + LeagueInfo sheets.",
 
   "my_mult": {"QB": 1.0, "RB": 1.0, "WR": 1.0, "TE": 1.0},
-  "_my_mult": "Positional tilt for YOUR max-bid model: how far above (or below) computed worth you will bid, by position. 1.0 = neutral, >1 pays up, <1 holds back. NOT cosmetic — 'your max' is worth x this tilt x scarcity x market trend, and the trend term is exactly 1.0 until prices are logged, so leaving every position at 1.0 makes 'your max' equal 'worth' on nearly every row. That reads as a broken column, and worse, in a room that clears above worth at a position it advises walking away from every player there. Set it from what your league actually pays: raise the positions you must pay market to win, lower the ones the room overbids."
+  "_my_mult": "Positional tilt for YOUR max-bid model: how far above (or below) computed worth you will bid, by position. 1.0 = neutral, >1 pays up, <1 holds back. NOT cosmetic — 'your max' is worth x this tilt x scarcity x market trend, and the trend term is exactly 1.0 until prices are logged, so leaving every position at 1.0 makes 'your max' equal 'worth' on nearly every row. That reads as a broken column, and worse, in a room that clears above worth at a position it advises walking away from every player there. Set it from what your league actually pays: raise the positions you must pay market to win, lower the ones the room overbids.",
+
+  "manager_labels": {"Scraped Owner Name": "What you call them"},
+  "_manager_labels": "OPTIONAL. Rename a manager on the console board. ESPN reports each team's owner's real name; use this when you know a team by its team name instead - typically a mid-season substitution or a co-owned team. Keyed by the scraped name (see the build output's manager list). Tendencies merge on the RELABELLED name, so a newcomer you relabel still falls through to the league-average profile."
 }

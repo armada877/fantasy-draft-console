@@ -1,0 +1,33 @@
+# Template: classic 12-team standard league. With these settings the derived
+# pools/tiers reproduce the hardcoded values from upstream borisachen/fftiers
+# (QB 26 players / 8 tiers, RB ~40/9, WR ~60/12, TE 24/8, FLX ranks ~20-95).
+name: Example Standard 12-Team
+teams: 12
+roster:
+  QB: 1
+  RB: 2
+  WR: 2
+  TE: 1
+  FLEX: 1     # aliases accepted: RB/WR/TE, W/R/T
+  D/ST: 1     # aliases: DST, DEF
+  K: 1
+  BENCH: 6    # alias: BE
+  # OP: 1     # superflex slot — widens the QB pool
+scoring:
+  receptions: 0      # 0 -> STD rankings, 0.5 -> HALF, 1.0 -> PPR
+  passing_yards: 0.04
+  passing_td: 4      # non-default values (e.g. 6) are flagged in output notes
+  interceptions: -2
+  rushing_yards: 0.1
+  rushing_td: 6
+  receiving_yards: 0.1
+  receiving_td: 6
+  fumbles_lost: -2
+  two_point_conversions: 2
+  te_reception_bonus: 0   # TE-premium leagues get a scoring note
+season:
+  year: 2026
+  week_one_tuesday: 2026-09-08   # Tuesday before Week 1 kickoff
+# overrides:            # hand-tune any position
+#   WR: {pool: 70, tiers: 13}
+#   FLX: {low: 25, pool_high: 100, tiers: 15}

@@ -1,0 +1,1523 @@
+<title>My Team</title>
+<style>
+:root{
+  --ground:#f5f6f8; --card:#ffffff; --card2:#eef0f3; --line:#dde1e7;
+  --ink:#14161a; --ink2:#5a6069; --ink3:#8a919b;
+  --elb:#2a78d6; --csg:#eb6834;
+  --mine-bg:#14161a; --mine-fg:#ffffff;
+  --tier-h:222; --tier-s:22%;
+  --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#16181c; --card:#1e2126; --card2:#262a30; --line:#343941;
+    --ink:#f2f3f5; --ink2:#b8bdc6; --ink3:#7d8590;
+    --elb:#3987e5; --csg:#d95926;
+    --mine-bg:#f2f3f5; --mine-fg:#14161a;
+    --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16181c; --card:#1e2126; --card2:#262a30; --line:#343941;
+  --ink:#f2f3f5; --ink2:#b8bdc6; --ink3:#7d8590;
+  --elb:#3987e5; --csg:#d95926;
+  --mine-bg:#f2f3f5; --mine-fg:#14161a;
+  --accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 20px 60px}
+header h1{margin:0;font-size:21px;font-weight:800;letter-spacing:-.015em}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:44px}
+.mastrow{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line)}
+.mastleft{display:flex;align-items:flex-end;gap:26px}
+.mastleft h1{padding-bottom:9px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.sub{color:var(--ink2);margin:6px 0 0;max-width:72ch}
+.asof{display:flex;align-items:center;gap:10px;padding-bottom:6px}
+.asof-line{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);cursor:default}
+.freshdot{width:9px;height:9px;border-radius:50%;flex:none}
+.freshdot.ok{background:#1baf7a}.freshdot.warn{background:#eda100}.freshdot.stale{background:#e34948}
+/* ── Account switcher: which team you are right now ── */
+.account{position:relative}
+.acct-chip{display:flex;align-items:center;gap:10px;font:inherit;text-align:left;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:7px 12px 7px 8px;cursor:pointer;color:inherit}
+.acct-chip:hover{border-color:#9aa3b2}
+.acct-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.acct-mono{width:28px;height:28px;border-radius:7px;background:var(--card2);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;letter-spacing:.02em;color:var(--ink2)}
+.acct-id{display:flex;flex-direction:column;line-height:1.25}
+.acct-team{font-size:13px;font-weight:700}
+.acct-league{font-size:10px;color:var(--ink3)}
+.acct-caret{color:var(--ink3);font-size:10px;margin-left:2px}
+.acct-alert{width:8px;height:8px;border-radius:50%;background:var(--csg);
+  position:absolute;top:-3px;right:-3px;border:2px solid var(--bg,#f6f7f9)}
+.acct-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:290px;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 10px 32px rgba(20,24,32,.14);padding:6px;}
+.acct-menu button{display:flex;width:100%;align-items:center;gap:10px;border:0;
+  background:transparent;font:inherit;text-align:left;padding:8px;border-radius:8px;
+  cursor:pointer;color:inherit}
+.acct-menu button:hover{background:var(--card2)}
+.acct-menu button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.acct-row-id{flex:1;display:flex;flex-direction:column;line-height:1.3;min-width:0}
+.acct-row-id .t{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-row-id .l{font-size:10.5px;color:var(--ink3)}
+.acct-row-st{text-align:right;line-height:1.3}
+.acct-row-st .pts{font-size:12px;font-weight:700}
+.acct-row-st .st{font-size:10px}
+.acct-row-st .st.ok{color:var(--ink3)}
+.acct-row-st .st.warn{color:var(--csg);font-weight:700}
+.acct-menu .check{width:14px;color:var(--accent);font-weight:800}
+.acct-menu .foot{border-top:1px solid var(--line);margin-top:5px;padding:8px 8px 4px;
+  font-size:10.5px;color:var(--ink3)}
+
+/* ── Section tabs: navigation, not a lens — a different species from .seg ── */
+.sectiontabs{display:flex;gap:22px}
+.sectiontabs button{border:0;background:transparent;font:inherit;font-size:13.5px;
+  font-weight:600;color:var(--ink3);padding:0 2px 9px;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.sectiontabs button:hover{color:var(--ink2)}
+.sectiontabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.sectiontabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── Sections (Board / Wire / Trades), switched via #viewseg ── */
+body:not([data-view="board"]) .boardonly{display:none}
+body:not([data-view="wire"]) .wireonly{display:none}
+body:not([data-view="wire"]) #wireview{display:none}
+body:not([data-view="trades"]) .tradesonly{display:none}
+body:not([data-view="trades"]) #tradesview{display:none}
+.wiregrid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start;margin-top:14px}
+.wiresources{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px 0 8px}
+.wiresources .eyebrow{padding:0 14px 8px;display:flex;justify-content:space-between;
+  align-items:baseline;gap:8px}
+#wire-srcs{list-style:none;margin:0;padding:0;max-height:70vh;overflow-y:auto}
+#wire-srcs button{display:block;width:100%;border:0;background:transparent;color:var(--ink2);
+  font:inherit;font-size:12.5px;text-align:left;padding:5px 14px;cursor:pointer;
+  border-left:3px solid transparent}
+#wire-srcs button:hover{color:var(--ink)}
+#wire-srcs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#wire-srcs li.on button{border-left-color:var(--accent);color:var(--ink);font-weight:700;
+  background:var(--card2)}
+.src-row{display:flex;align-items:center;gap:8px}
+.src-row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-row .ct{font-size:10.5px;color:var(--ink3);min-width:2ch;text-align:right}
+.src-bar{display:block;height:3px;border-radius:2px;background:var(--accent);opacity:.45;
+  margin-top:3px;min-width:2px}
+.wirefeed{min-width:0}
+@media (min-width:821px){
+  /* the feed scrolls; the page chrome stays put */
+  .wirefeed{max-height:calc(100vh - 200px);overflow-y:auto;padding-right:8px;
+    overscroll-behavior:contain}
+  #wire-srcs{max-height:calc(100vh - 260px)}
+}
+#wire-list{list-style:none;margin:0;padding:0}
+#wire-list li.day{border:0;padding:18px 0 4px}
+#wire-list li.day .eyebrow{display:flex;align-items:center;gap:10px}
+#wire-list li.day .eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+#wire-list li.post{padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.5}
+#wire-list li.day + li.post{border-top:0}
+#wire-list li.post.myguy{border-left:3px solid var(--accent);padding-left:11px;margin-left:-14px}
+.wire-meta{font-size:11px;color:var(--ink3);margin-bottom:2px;display:flex;align-items:baseline;gap:7px}
+.wire-meta a{color:inherit}
+.wire-meta .who{font-weight:700;color:var(--ink2);font-size:11.5px}
+.wire-text{white-space:pre-wrap;word-break:break-word}
+.wire-foot{display:flex;align-items:center;gap:14px;margin-top:12px}
+@media (max-width:820px){
+  .wiregrid{grid-template-columns:1fr}
+  .wiresources{position:static}
+  #wire-srcs{max-height:180px}
+}
+/* ── Trades: evidence-based trade finder — same two-column pattern as the Wire ── */
+.tradegrid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:26px;align-items:start;margin-top:14px}
+.tradepartners{position:sticky;top:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px 0 8px}
+.tradepartners .eyebrow{padding:0 14px 8px}
+#trade-partners{list-style:none;margin:0;padding:0;max-height:74vh;overflow-y:auto}
+#trade-partners button{display:block;width:100%;border:0;background:transparent;color:var(--ink2);
+  font:inherit;font-size:12.5px;text-align:left;padding:6px 14px;cursor:pointer;
+  border-left:3px solid transparent}
+#trade-partners button:hover{color:var(--ink)}
+#trade-partners button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#trade-partners li.on button{border-left-color:var(--accent);color:var(--ink);font-weight:700;
+  background:var(--card2)}
+#trade-partners li.none button{color:var(--ink3);cursor:default}
+.tp-row{display:flex;align-items:baseline;gap:8px}
+.tp-row .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650}
+.tp-row .d{font-size:11px;min-width:4ch;text-align:right}
+.tp-need{display:block;font-size:10.5px;color:var(--ink3);margin-top:1px}
+.tradefeed{min-width:0}
+#trade-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:14px}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tcard-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:8px}
+.tcard-head .tpartner{font-weight:750;font-size:14.5px}
+.tcols{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;margin-top:10px}
+@media (max-width:640px){.tcols{grid-template-columns:1fr;gap:10px 0}}
+.tprow{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:13.5px}
+.tprow .n{font-weight:650;flex:1;min-width:0}
+.tprow .v{font-size:12px;color:var(--ink2);white-space:nowrap}
+.tdeltas{margin-top:10px;font-size:15px;font-weight:750}
+.tdeltas .them{color:var(--ink2);font-weight:600;font-size:13px}
+.tchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.tchip{font-size:10.5px;font-weight:700;letter-spacing:.03em;border:1px solid var(--line);
+  border-radius:5px;padding:2px 7px;color:var(--ink2);background:var(--card2);white-space:nowrap}
+.tchip.blue{color:var(--elb);border-color:var(--elb)}
+.tchip.orange{color:var(--csg);border-color:var(--csg)}
+.trebal{margin-top:8px;font-size:12px;color:var(--ink2)}
+.tladder{margin-top:8px;font-size:12px;color:var(--ink2);font-style:italic}
+.tswap{margin-top:8px;font-size:12px;color:var(--ink3)}
+/* the offer composer: evaluate a leaguemate's exact proposal */
+.tcomposer{margin:8px 0 16px}
+#tc-body{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;margin-top:10px}
+.tc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#tc-partner{font:inherit;font-size:13px;background:var(--card2);color:var(--ink);
+  border:1px solid var(--line);border-radius:7px;padding:6px 8px;max-width:280px}
+#tc-partner:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tc-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;margin-top:12px}
+@media (max-width:640px){.tc-cols{grid-template-columns:1fr;gap:12px 0}}
+.tc-list{list-style:none;margin:6px 0 0;padding:0;max-height:250px;overflow-y:auto;
+  border:1px solid var(--line);border-radius:8px}
+.tc-list button{display:flex;width:100%;gap:8px;align-items:baseline;border:0;
+  background:transparent;color:var(--ink2);font:inherit;font-size:12.5px;text-align:left;
+  padding:4px 10px;cursor:pointer}
+.tc-list button:hover{color:var(--ink);background:var(--card2)}
+.tc-list button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tc-list li.sel button{background:var(--card2);color:var(--ink);font-weight:650;
+  box-shadow:inset 3px 0 0 var(--accent)}
+.tc-list .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-list .v{font-size:11px;color:var(--ink3);white-space:nowrap}
+#tc-result{margin-top:12px}
+.tverdict{margin-top:10px;font-size:13.5px;font-weight:700}
+.tverdict.take{color:#1baf7a}
+.tverdict.side{color:var(--ink2)}
+.tverdict.decline{color:var(--csg)}
+.tchip.warn{color:var(--csg);border-color:var(--csg);background:transparent}
+.tc-editbtn{font-size:10.5px;padding:2px 8px}
+@media (max-width:820px){
+  .tradegrid{grid-template-columns:1fr}
+  .tradepartners{position:static}
+  #trade-partners{max-height:220px}
+}
+.refreshbtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;
+  border:1px solid var(--line,#d5d9e0);border-radius:6px;background:transparent;color:inherit;cursor:pointer}
+.refreshbtn:hover:not(:disabled){border-color:#9aa3b2}
+.refreshbtn:disabled{opacity:.55;cursor:default}
+.modenav{display:flex;gap:16px;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;margin:0 0 10px}
+.modenav .on{color:var(--ink)}
+.modenav a{color:var(--ink3);text-decoration:none}
+.modenav a:hover{color:var(--accent)}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:14px 0 6px}
+.seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--ink2);font:inherit;font-weight:600;
+  padding:7px 14px;border-radius:6px;cursor:pointer}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.seg button .shape{display:block;font-size:10.5px;font-weight:500;color:var(--ink3);letter-spacing:.02em}
+.postabs button{padding:6px 13px}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:16px 0 20px}
+.legend .m{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.legend .m b{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.legend .m span{display:block;font-size:12.5px;color:var(--ink2);margin-top:3px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.boardbox{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1000px}
+th{position:sticky;top:0;background:var(--card);z-index:2;text-align:left;
+  font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);
+  padding:10px 10px;border-bottom:1px solid var(--line)}
+th.num,td.num{text-align:right}
+th[data-sort]{cursor:pointer;user-select:none}
+th[data-sort]:hover{color:var(--ink)}
+th[data-tip]{cursor:help;text-decoration:underline dotted var(--ink3);text-underline-offset:3px}
+td{padding:6px 10px;border-bottom:1px solid var(--line);font-size:13.5px}
+tr:last-child td{border-bottom:0}
+tr.tierbreak td{border-top:2px solid var(--ink3)}
+tr:hover td{background:var(--card2)}
+.pname{font-weight:650;white-space:nowrap}
+.posmark{font-size:10.5px;font-weight:700;color:var(--ink3);letter-spacing:.05em;margin-right:6px}
+.badge{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.08em;border-radius:4px;
+  padding:1.5px 5px;margin-left:7px;vertical-align:1px}
+.badge.mine{background:var(--mine-bg);color:var(--mine-fg)}
+.badge.fa{border:1.5px dashed var(--ink3);color:var(--ink2)}
+.chip{display:inline-block;min-width:30px;text-align:center;font-weight:700;font-size:12px;
+  border-radius:6px;padding:2.5px 6px}
+.chip.none{background:transparent;color:var(--ink3);font-weight:500}
+.bar{display:inline-block;height:9px;border-radius:0 4px 4px 0;vertical-align:middle;margin-right:7px;min-width:2px}
+.bar.elb{background:var(--elb)}
+.bar.csg{background:var(--csg)}
+.cellbar{white-space:nowrap}
+.perwk{color:var(--ink3);font-size:11.5px;margin-left:5px}
+.ecr{color:var(--ink2);font-size:12px}
+.pts{font-weight:650}
+.note{font-size:12.5px;color:var(--ink3);margin-top:14px;max-width:95ch}
+.lineupcard{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:16px 18px;margin:0 0 18px}
+.lu-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.lu-head h2{margin:2px 0 0;font-size:19px;letter-spacing:-.01em}
+.lu-total{font-size:22px;font-weight:750}
+.lu-total small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink3);text-align:right}
+.lu-grid{display:grid;grid-template-columns:minmax(320px,1.05fr) 1fr;gap:6px 26px;margin-top:8px}
+@media (max-width:760px){.lu-grid{grid-template-columns:1fr}}
+.lu-table{min-width:0;width:100%}
+.lu-table td{padding:4.5px 8px;font-size:13.5px}
+.lu-table .slot{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--ink3);width:52px}
+.lu-table .flexslot{color:var(--accent)}
+.lu-bench h3{margin:0 0 6px;font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink3)}
+.lu-bench ul{list-style:none;margin:0;padding:0;columns:2;column-gap:24px;font-size:12.5px;color:var(--ink2)}
+.lu-bench li{padding:2.5px 0;break-inside:avoid}
+.inj{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.06em;border-radius:3px;
+  padding:1px 4px;margin-left:6px;background:var(--csg);color:#fff;vertical-align:1px}
+.inj.swap{background:var(--accent);cursor:help}
+.lu-diff{font-size:11px;font-weight:700;margin-top:4px;letter-spacing:.02em}
+.lu-diff.warn{color:var(--csg)}
+.lu-diff.ok{color:var(--ink3);font-weight:600}
+#tip{position:fixed;pointer-events:none;background:var(--card);border:1px solid var(--line);
+  border-radius:10px;padding:10px 13px;font-size:12.5px;box-shadow:0 6px 24px rgba(0,0,0,.25);
+  z-index:10;display:none;max-width:360px}
+#tip h4{margin:0 0 5px;font-size:13.5px}
+#tip table{min-width:0;width:auto}
+#tip td,#tip th{padding:1.5px 8px 1.5px 0;border:0;font-size:12px}
+#tip th{position:static;text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink3)}
+#tip .sum{margin:6px 0 0;color:var(--ink2);font-size:12px;max-width:40ch}
+@media (prefers-reduced-motion: no-preference){
+  .seg button{transition:background .12s}
+}
+</style>
+<div class="wrap">
+<header id="pagehead">
+  <div class="topbar">
+    <nav class="modenav" aria-label="Console mode"><span class="on">Manage</span><a href="/draft">Draft</a></nav>
+    <div class="account" id="account">
+      <button class="acct-chip" id="acct-chip" type="button"
+              aria-haspopup="menu" aria-expanded="false" aria-label="Switch team">
+        <span class="acct-mono" id="acct-mono"></span>
+        <span class="acct-id"><span class="acct-team" id="acct-team"></span>
+          <span class="acct-league mono" id="acct-league"></span></span>
+        <span class="acct-caret">▾</span>
+        <span class="acct-alert" id="acct-alert" hidden title="Another team's lineup isn't set"></span>
+      </button>
+      <div class="acct-menu" id="acct-menu" role="menu" hidden></div>
+    </div>
+  </div>
+  <div class="mastrow">
+    <div class="mastleft">
+      <h1 id="mast-title">My Team</h1>
+      <nav class="sectiontabs" id="viewseg" aria-label="Section">
+        <button type="button" data-view="board" class="on">Board</button>
+        <button type="button" data-view="wire">The Wire</button>
+        <button type="button" data-view="trades">Trades</button>
+      </nav>
+    </div>
+    <div class="asof" id="asof">
+      <span class="asof-line" id="asof-line"><span class="freshdot" id="freshdot"></span><span id="asof-text" class="mono"></span></span>
+      <button id="syncbtn" class="refreshbtn" type="button" data-mode="sync"
+              title="Fast: rosters, lineup slots, this-week projections (~15s). ROS totals and consensus ranks stay cached.">Sync lineup</button>
+      <button id="refreshbtn" class="refreshbtn" type="button" data-mode="full"
+              title="Everything: ESPN pools + rest-of-season sums + FantasyPros ranks (~2 min).">Full refresh</button>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg boardonly" id="hseg" role="tablist" aria-label="Horizon"></div>
+  <div class="seg postabs boardonly" id="posseg" role="tablist" aria-label="Position"></div>
+  <div class="seg boardonly" id="scopeseg" role="tablist" aria-label="Scope"></div>
+  <div class="seg wireonly" id="wirescopeseg" role="tablist" aria-label="Wire scope">
+    <button type="button" data-wscope="all" class="on">All posts</button>
+    <button type="button" data-wscope="mine">My guys</button>
+  </div>
+</div>
+
+<section class="lineupcard boardonly">
+  <div class="lu-head">
+    <div>
+      <div class="eyebrow" id="lu-eyebrow"></div>
+      <h2 id="lu-title"></h2>
+    </div>
+    <div class="lu-total mono" id="lu-total"></div>
+  </div>
+  <div class="lu-grid">
+    <table class="lu-table" id="lu-starters" aria-label="Optimal starters"></table>
+    <div class="lu-bench" id="lu-bench"></div>
+  </div>
+</section>
+
+<div class="boardbox boardonly"><table id="board" aria-label="Player valuation board"></table></div>
+<p class="note boardonly" id="footnote"></p>
+
+<section id="wireview">
+  <div class="wiregrid">
+    <aside class="wiresources">
+      <div class="eyebrow">Sources <span class="ecr" id="wire-note"></span></div>
+      <ul id="wire-srcs"></ul>
+    </aside>
+    <div class="wirefeed">
+      <ul id="wire-list"></ul>
+      <div class="wire-foot">
+        <button id="wire-more" class="refreshbtn" type="button">Load more</button>
+        <span class="ecr" id="wire-empty"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tradesview">
+  <p class="note" id="trade-sync" hidden>Opponent rosters arrive with the next refresh &mdash; run Sync.</p>
+  <div class="tradegrid" id="tradegrid">
+    <aside class="tradepartners">
+      <div class="eyebrow">Partners</div>
+      <ul id="trade-partners"></ul>
+    </aside>
+    <div class="tradefeed">
+      <div class="tcomposer">
+        <button id="tc-toggle" class="refreshbtn" type="button">Evaluate an offer</button>
+        <div id="tc-body" hidden>
+          <div class="tc-head">
+            <span class="eyebrow">Partner</span>
+            <select id="tc-partner" aria-label="Trade partner"></select>
+            <button id="tc-eval" class="refreshbtn" type="button">Evaluate</button>
+            <button id="tc-clear" class="refreshbtn" type="button">Clear</button>
+          </div>
+          <div class="tc-cols">
+            <div><div class="eyebrow">You send <span class="ecr" id="tc-sendct"></span></div><ul id="tc-mine" class="tc-list"></ul></div>
+            <div><div class="eyebrow">You get <span class="ecr" id="tc-getct"></span></div><ul id="tc-theirs" class="tc-list"></ul></div>
+          </div>
+          <div id="tc-result"></div>
+        </div>
+      </div>
+      <div class="eyebrow" id="trade-list-head"></div>
+      <ul id="trade-list"></ul>
+      <p class="ecr" id="trade-empty"></p>
+      <p class="note" id="trade-note"></p>
+    </div>
+  </div>
+</section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+let DATA = /*DATA*/;
+let A, HZ, WEEKS_LEFT;
+const POSN = ["ALL","FLEX","QB","RB","WR","TE"];
+const FLEX_POS = ["RB","WR","TE"];
+let league = null, pos = "ALL", hz = "ros", scope = "all";
+let sortKey = null, sortDir = "desc";   // null = the view's default order
+const SCOPES = [{key:"all", label:"Everyone"}, {key:"minefa", label:"Mine + FA"}];
+
+// The page boots from the baked-in DATA, then /api/board-data may hand it a newer
+// snapshot — everything derived from DATA is (re)bound here.
+function bindData(d){
+  DATA = d; A = d.asof;
+  HZ = [{key:"week", label:"This week", shape:`Week ${A.week} pts`},
+        {key:"ros",  label:"Rest of season", shape:`Weeks ${A.week}-${A.final_week} pts`}];
+  WEEKS_LEFT = A.weeks_left;
+  COLTIPS.pts = `Raw FantasyPros consensus point projection for the selected horizon (this week's game, or total for weeks ${A.week}-${A.final_week}), in this league's scoring flavor.`;
+  if (!DATA.leagues[league]) league = Object.keys(DATA.leagues)[0];
+}
+
+const $ = s => document.querySelector(s);
+
+const COLTIPS = {
+  rank: "Row order. In position views this is ECR: the player's expert-consensus rank at this position and horizon. In ALL/FLEX views, # ranks by mean VBD across the two engines. Click any numeric column header to sort by it (click again to flip); click this column to restore the default order.",
+  player: "MINE = on my roster in this league. FA = currently on waivers here (drives CSG's scarcity factor).",
+  pts: "",  // filled by bindData (depends on the current week)
+  btier: "Boris Chen method: Gaussian-mixture clustering of expert ranks. Players sharing a tier are effectively interchangeable; the gap between tiers is real. Says nothing about size of the edge.",
+  cons: "Average expert rank \u00b1 how much the experts disagree (std dev). Positional-rank units, NOT points \u2014 switches with the horizon like every other column.",
+  etier: "elboberto's tier: z-score ladder over its VBD, position-relative (e.g. RB3 = roughly a low-end starter).",
+  evbd: "elboberto value: projected points above replacement. Baselines from lineup seat counts \u2014 the last starter and the last rostered player at the position.",
+  ctier: "CSG's tier: half a standard deviation of VBD per tier, counted down from the position leader.",
+  cvbd: "CSG value: projected points above replacement. Baselines from historical games-played depth, so injuries and byes push replacement deeper than seat counts imply.",
+  cadj: "CSG VBD \u00d7 (1.5 \u2212 0.5 \u00d7 share of the position's value still on waivers). A picked-clean position is worth more to hold; only meaningful within this league.",
+};
+
+function tierColor(t, max){
+  const f = Math.min((t-1)/Math.max(max-1,1), 1);
+  const l = 30 + f*44;
+  const fg = l > 55 ? "#14161a" : "#ffffff";
+  return `background:hsl(var(--tier-h) var(--tier-s) ${l}%);color:${fg}`;
+}
+
+function seg(el, items, cur, fn, shape){
+  el.innerHTML = "";
+  for (const it of items){
+    const b = document.createElement("button");
+    b.role = "tab";
+    b.innerHTML = shape ? `${it.label}<span class="shape">${it.shape}</span>` : it.label ?? it;
+    const key = it.key ?? it;
+    if (key === cur) b.classList.add("on");
+    b.onclick = () => fn(key);
+    el.appendChild(b);
+  }
+}
+
+function fmt(n, d=1){ return n==null ? "\u2014" : (+n).toFixed(d); }
+
+function render(){
+  const L = DATA.leagues[league];
+  const ros = hz === "ros";
+  seg($("#hseg"), HZ, hz, h => { hz = h; render(); }, true);
+  seg($("#posseg"), POSN, pos, p => { pos = p; render(); });
+  seg($("#scopeseg"), SCOPES, scope, s => { scope = s; render(); });
+
+  const H = p => p[hz] ?? {};
+  const pts = p => H(p).csg?.pts ?? H(p).elb?.pts ?? null;
+  const meanVbd = p => ((H(p).elb?.vbd ?? 0) + (H(p).csg?.vbd ?? 0)) / 2;
+
+  const all = pos === "ALL" || pos === "FLEX";
+  let shown;
+  if (all){
+    shown = L.players.filter(p => (pos === "ALL" || FLEX_POS.includes(p.pos))
+        && ((H(p).elb?.vbd ?? 0) > 0 || (H(p).csg?.vbd ?? 0) > 0))
+      .sort((a,b) => meanVbd(b) - meanVbd(a)).slice(0, 90);
+  } else {
+    shown = L.players.filter(p => p.pos === pos && (H(p).boris || H(p).elb || H(p).csg))
+      .sort((a,b) => (H(a).boris?.posrank ?? 900+(H(a).elb?.posrank??99)) - (H(b).boris?.posrank ?? 900+(H(b).elb?.posrank??99)))
+      .filter(p => H(p).boris || (H(p).elb && H(p).elb.vbd > 0) || (H(p).csg && H(p).csg.vbd > 0));
+  }
+  if (scope === "minefa") shown = shown.filter(p => p.mine || p.fa);
+  // Column sorting: any numeric column, toggled by clicking its header. Rows with
+  // no value in that column sink to the bottom regardless of direction.
+  const SORT_VAL = {
+    pts:  p => pts(p),
+    cons: p => H(p).boris?.ecr ?? null,
+    evbd: p => H(p).elb?.vbd ?? null,
+    cvbd: p => H(p).csg?.vbd ?? null,
+    cadj: p => (H(p).csg && H(p).csg.vbd > 0 ? H(p).csg.adj : null),
+  };
+  if (sortKey && SORT_VAL[sortKey]) {
+    const v = SORT_VAL[sortKey];
+    shown = [...shown].sort((a, b) => {
+      const va = v(a), vb = v(b);
+      if (va == null) return vb == null ? 0 : 1;
+      if (vb == null) return -1;
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+  }
+  const maxVbd = Math.max(1, ...shown.map(p => Math.max(H(p).elb?.vbd ?? 0, H(p).csg?.vbd ?? 0)));
+  const maxBoris = Math.max(1, ...shown.map(p => H(p).boris?.tier ?? 1));
+  const maxCsg  = Math.max(1, ...shown.map(p => H(p).csg && H(p).csg.vbd>0 ? +String(H(p).csg.tier).replace(/\D+/g,"") : 1));
+
+  const ptsHead = ros ? "Proj pts (ROS)" : "Proj pts (wk)";
+  const mark = k => sortKey === k ? (sortDir === "asc" ? " ▴" : " ▾") : "";
+  let html = `<thead><tr>
+    <th class="num" data-sort="rank" data-tip="rank">${all ? "#" : "ECR"}</th><th data-tip="player">Player</th>
+    <th class="num" data-sort="pts" data-tip="pts">${ptsHead}${mark("pts")}</th>
+    <th data-tip="btier">Boris tier</th><th class="ecr" data-sort="cons" data-tip="cons">Consensus${mark("cons")}</th>
+    <th data-tip="etier">Elbo tier</th><th class="cellbar" data-sort="evbd" data-tip="evbd">elboberto VBD${mark("evbd")}</th>
+    <th data-tip="ctier">CSG tier</th><th class="cellbar" data-sort="cvbd" data-tip="cvbd">CSG VBD${mark("cvbd")}</th>
+    <th class="num" data-sort="cadj" data-tip="cadj">CSG scarcity-adj${mark("cadj")}</th></tr></thead><tbody>`;
+  let prevTier = null;
+  shown.forEach((p, i) => {
+    const h = H(p);
+    const bt = h.boris?.tier ?? null;
+    // tier-break rules only mean something in the default consensus order
+    const brk = !all && !sortKey && bt != null && prevTier != null && bt !== prevTier;
+    if (bt != null) prevTier = bt;
+    const et = h.elb && h.elb.vbd > 0 ? h.elb.tier : null;
+    const ctn = h.csg && h.csg.vbd > 0 ? +String(h.csg.tier).replace(/\D+/g,"") : null;
+    const chip = (t, max, label) => t == null
+      ? `<span class="chip none">&mdash;</span>`
+      : `<span class="chip" style="${tierColor(t,max)}">${label ?? t}</span>`;
+    const bar = (v, cls) => v == null || v <= 0 ? `<span class="ecr">&mdash;</span>` :
+      `<span class="bar ${cls}" style="width:${Math.round(v/maxVbd*100)}px"></span>` +
+      `<span class="mono">${fmt(v, ros ? 0 : 1)}</span>` +
+      (ros ? `<span class="perwk mono">+${fmt(v/WEEKS_LEFT)}/wk</span>` : "");
+    html += `<tr data-i="${i}" class="${brk ? "tierbreak" : ""}">
+      <td class="num mono">${all ? i+1 : (h.boris?.posrank ?? "\u2014")}</td>
+      <td class="pname">${all ? `<span class="posmark">${p.pos}</span>` : ""}${p.name}${p.mine ? '<span class="badge mine">MINE</span>' : ""}${p.fa ? '<span class="badge fa">FA</span>' : ""}</td>
+      <td class="num mono pts">${fmt(pts(p), 1)}</td>
+      <td>${chip(bt, maxBoris, all && bt != null ? p.pos.charAt(0)+bt : bt)}</td>
+      <td class="ecr mono">${h.boris ? fmt(h.boris.ecr)+" \u00b1 "+fmt(h.boris.std) : "\u2014"}</td>
+      <td>${chip(et == null ? null : +String(et).replace(/\D+/g,""), 8, et)}</td>
+      <td class="cellbar">${bar(h.elb?.vbd, "elb")}</td>
+      <td>${chip(ctn, Math.min(maxCsg, 12), ctn == null ? null : p.pos + ctn)}</td>
+      <td class="cellbar">${bar(h.csg?.vbd, "csg")}</td>
+      <td class="num mono">${h.csg && h.csg.vbd > 0 ? fmt(h.csg.adj) : "\u2014"}</td>
+    </tr>`;
+  });
+  html += "</tbody>";
+  $("#board").innerHTML = html;
+  $("#footnote").textContent =
+    `Sources: FantasyPros consensus + ESPN league projections, week ${A.week}. ` +
+    `K/DST and rows with no positive value are hidden.`;
+
+  const tip = $("#tip");
+  document.querySelectorAll("#board th[data-tip]").forEach(th => {
+    th.addEventListener("mousemove", e => {
+      tip.style.display = "block";
+      tip.innerHTML = `<h4>${th.textContent}</h4><p class="sum" style="margin-top:2px">${COLTIPS[th.dataset.tip]}</p>`;
+      const w = tip.offsetWidth, ht = tip.offsetHeight;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 10) + "px";
+      tip.style.top  = Math.min(e.clientY + 14, innerHeight - ht - 10) + "px";
+    });
+    th.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+  document.querySelectorAll("#board th[data-sort]").forEach(th => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.sort;
+      if (k === "rank") sortKey = null;                    // back to the view's default order
+      else if (sortKey === k) sortDir = sortDir === "desc" ? "asc" : "desc";
+      else { sortKey = k; sortDir = k === "cons" ? "asc" : "desc"; }
+      render();
+    });
+  });
+  document.querySelectorAll("#board tbody tr").forEach(tr => {
+    const p = shown[+tr.dataset.i];
+    tr.addEventListener("mousemove", e => {
+      const h = H(p), o = p[hz === "ros" ? "week" : "ros"] ?? {};
+      tip.style.display = "block";
+      const wk = v => ros && v > 0 ? ` (+${fmt(v/WEEKS_LEFT)}/wk)` : "";
+      const opts = o.csg?.pts ?? o.elb?.pts;
+      tip.innerHTML = `<h4>${p.name} <span class="ecr">${p.pos}${p.mine ? " \u00b7 my roster" : ""}${p.fa ? " \u00b7 free agent" : ""}</span></h4>
+        <table><tr><th></th><th>tier</th><th>value</th></tr>
+        <tr><td>Boris</td><td>${h.boris?.tier ?? "\u2014"}</td><td class="mono">${h.boris ? "ECR "+fmt(h.boris.ecr)+" \u00b1 "+fmt(h.boris.std) : "\u2014"}</td></tr>
+        <tr><td>elboberto</td><td>${h.elb?.tier ?? "\u2014"}</td><td class="mono">${h.elb ? fmt(h.elb.vbd)+" VBD"+wk(h.elb.vbd) : "\u2014"}</td></tr>
+        <tr><td>CSG</td><td>${h.csg?.tier ?? "\u2014"}</td><td class="mono">${h.csg ? fmt(h.csg.vbd)+" VBD &rarr; "+fmt(h.csg.adj)+" adj" : "\u2014"}</td></tr>
+        <tr><td>Proj pts</td><td></td><td class="mono">${fmt(pts(p))}${ros ? " ROS" : " this wk"}${opts != null ? " \u00b7 " + fmt(opts) + (ros ? " this wk" : " ROS") : ""}</td></tr></table>
+        <p class="sum">${meanVbd(p) > 0
+          ? "Worth ~" + fmt(meanVbd(p), ros ? 0 : 1) + " pts over replacement " + (ros ? "rest-of-season" : "this week") + " &mdash; weigh against any player, any position."
+          : "At or below replacement in this league at this horizon."}</p>`;
+      const w = tip.offsetWidth, ht = tip.offsetHeight;
+      tip.style.left = Math.min(e.clientX + 14, innerWidth - w - 10) + "px";
+      tip.style.top  = Math.min(e.clientY + 14, innerHeight - ht - 10) + "px";
+    });
+    tr.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+}
+// Optimal lineup for one league: greedy slot fill by weekly projection, plus the
+// diff against what's CURRENTLY SET on ESPN. Shared by the lineup card and the
+// team switcher's per-team status rows.
+function computeLineup(L){
+  const boardWk = name => {
+    const q = L.players.find(x => x.name === name);
+    return q?.week?.csg?.pts ?? q?.week?.elb?.pts ?? null;
+  };
+  const roster = L.roster.map(([name, p, wk, ros, inj, cur]) => {
+    const b = boardWk(name);
+    // injured/bye players carry ESPN's 0.0 even if the consensus board still lists them
+    const use = (inj && wk === 0) ? 0 : (b ?? wk);
+    // cur = the slot CURRENTLY SET on ESPN (BE/IR = benched); absent in old builds
+    return {name, p, wk: use, espn: b == null, inj,
+            setNow: cur ? !["BE", "IR"].includes(cur) : null};
+  });
+  const haveSlots = roster.some(r => r.setNow !== null);
+  const FLEXELIG = ["RB","WR","TE"];
+  const used = new Set();
+  const rows = [];
+  // dedicated slots first (top-N by weekly projection), then FLEX from best remaining
+  for (const [slot, n] of L.slots.filter(s => s[0] !== "FLEX")){
+    const cands = roster.filter(r => r.p === slot && !used.has(r.name))
+      .sort((a,b) => b.wk - a.wk).slice(0, n);
+    cands.forEach(c => { used.add(c.name); rows.push({slot, ...c}); });
+    for (let i = cands.length; i < n; i++) rows.push({slot, name: "(empty)", p: slot, wk: 0, inj: ""});
+  }
+  for (const [slot, n] of L.slots.filter(s => s[0] === "FLEX")){
+    const cands = roster.filter(r => FLEXELIG.includes(r.p) && !used.has(r.name))
+      .sort((a,b) => b.wk - a.wk).slice(0, n);
+    cands.forEach(c => { used.add(c.name); rows.push({slot: "FLEX", ...c}); });
+    for (let i = cands.length; i < n; i++) rows.push({slot: "FLEX", name: "(empty)", p: "", wk: 0, inj: ""});
+  }
+  const startFlag = r => haveSlots && r.setNow === false && r.name !== "(empty)";
+  return {roster, rows, used, haveSlots, startFlag,
+          total: rows.reduce((s, r) => s + (r.wk || 0), 0),
+          changes: rows.filter(startFlag).length};
+}
+
+function renderLineup(){
+  const L = DATA.leagues[league];
+  const {roster, rows, used, haveSlots, startFlag, total, changes} = computeLineup(L);
+  $("#lu-title").textContent = L.team;
+  const nStarts = changes;
+  const diffLine = !haveSlots ? "" : nStarts
+    ? `<div class="lu-diff warn">\u26a0 ${nStarts} change${nStarts > 1 ? "s" : ""} vs your set ESPN lineup</div>`
+    : `<div class="lu-diff ok">matches your set ESPN lineup \u2713</div>`;
+  $("#lu-total").innerHTML = `<small>projected total</small>${total.toFixed(1)}${diffLine}`;
+  $("#lu-starters").innerHTML = rows.map(r =>
+    `<tr><td class="slot ${r.slot === "FLEX" ? "flexslot" : ""}">${r.slot}</td>
+     <td class="pname">${r.name}<span class="ecr">${r.slot === "FLEX" ? " " + r.p : ""}${r.espn ? " \u00b7 espn" : ""}</span>${r.inj ? `<span class="inj">${r.inj}</span>` : ""}${startFlag(r) ? `<span class="inj swap" title="On your ESPN bench right now \u2014 the optimal lineup starts him">START</span>` : ""}</td>
+     <td class="num mono pts">${(r.wk ?? 0).toFixed(1)}</td></tr>`).join("");
+  const bench = roster.filter(r => !used.has(r.name)).sort((a,b) => b.wk - a.wk);
+  $("#lu-bench").innerHTML = `<h3>Bench &middot; this week</h3><ul>` + bench.map(r =>
+    `<li><span class="mono">${(r.wk ?? 0).toFixed(1)}</span> &nbsp;${r.name} <span class="ecr">${r.p}</span>${r.inj ? `<span class="inj">${r.inj}</span>` : ""}${haveSlots && r.setNow === true ? `<span class="inj swap" title="Currently in your ESPN lineup \u2014 the optimal lineup benches him">SIT</span>` : ""}</li>`).join("") + `</ul>` +
+    ``;
+}
+// ── The Wire: paginated reporter feed (/api/feed → Bluesky public API) ────────
+const WIRE = {posts: [], total: 0, sources: 0, errors: 0};
+const esc = s => s.replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function timeAgo(iso){
+  const m = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (!isFinite(m)) return "";
+  if (m < 60) return `${Math.max(1, Math.round(m))}m`;
+  if (m < 36 * 60) return `${Math.round(m/60)}h`;
+  return `${Math.round(m/1440)}d`;
+}
+function rosterMatcher(){
+  // full names (case-insensitive) plus distinctive last names from THIS league's
+  // roster. A last name only counts when NOT followed by another capitalized name
+  // — "Tucker Kraft" must not light up because Tre Tucker is rostered.
+  const rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const fulls = new Set(), lasts = new Set();
+  for (const [name] of (DATA.leagues[league]?.roster || [])){
+    fulls.add(rx(name));
+    const words = name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i, "").split(" ");
+    const last = words.slice(-1)[0].replace(/[^A-Za-z'-]/g, "");
+    if (last.length > 3) lasts.add(rx(last));
+  }
+  if (!fulls.size) return null;
+  const reFull = new RegExp(`\\b(${[...fulls].join("|")})\\b`, "i");
+  const reLast = lasts.size
+    ? new RegExp(`\\b(${[...lasts].join("|")})\\b(?!\\s+[A-Z][a-z])`) : null;
+  return t => reFull.test(t) || (reLast && reLast.test(t));
+}
+let view = (() => {
+  const v = new URLSearchParams(location.search).get("view");
+  return ["wire", "trades"].includes(v) ? v : "board";
+})();
+let wireScope = "all", wireSrc = null;   // null = every source
+const MASTHEAD = {board: "My Team", wire: "The Wire", trades: "Trades"};
+function applyView(){
+  document.body.dataset.view = view;
+  $("#mast-title").textContent = MASTHEAD[view];
+  document.querySelectorAll("#viewseg button").forEach(b =>
+    b.classList.toggle("on", b.dataset.view === view));
+  const q = new URLSearchParams(location.search);
+  view !== "board" ? q.set("view", view) : q.delete("view");
+  history.replaceState(null, "", location.pathname + (q.size ? "?" + q : ""));
+}
+document.querySelectorAll("#viewseg button").forEach(b =>
+  b.onclick = () => { view = b.dataset.view; applyView(); renderWire(); renderTrades(); });
+document.querySelectorAll("#wirescopeseg button").forEach(b =>
+  b.onclick = () => {
+    wireScope = b.dataset.wscope;
+    document.querySelectorAll("#wirescopeseg button").forEach(x =>
+      x.classList.toggle("on", x === b));
+    renderWire();
+  });
+
+function dayLabel(iso){
+  const d = new Date(iso), now = new Date();
+  const day = x => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  if (day(d) === day(now)) return "Today";
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (day(d) === day(y)) return "Yesterday";
+  return d.toLocaleDateString(undefined, {weekday: "short", month: "short", day: "numeric"});
+}
+function renderWire(){
+  if (view !== "wire" || !WIRE.posts.length) return;
+  const match = rosterMatcher();
+  const flagged = WIRE.posts.map(p => ({...p, mine: !!(match && match(p.text))}));
+
+  // source rail: every configured source, ordered by loaded-post volume
+  const byName = {};
+  flagged.forEach(p => byName[p.name] = (byName[p.name] || 0) + 1);
+  const maxCt = Math.max(1, ...Object.values(byName));
+  const rows = [[null, `All sources`, flagged.length]]
+    .concat(Object.entries(byName).sort((a,b) => b[1]-a[1]).map(([n,c]) => [n, n, c]));
+  $("#wire-srcs").innerHTML = rows.map(([key, label, ct]) =>
+    `<li class="${(wireSrc ?? null) === key ? "on" : ""}"><button type="button" data-src="${esc(label)}">
+      <span class="src-row"><span class="n">${esc(label)}</span><span class="ct mono">${ct}</span></span>
+      ${key ? `<span class="src-bar" style="width:${Math.round(ct/maxCt*100)}%"></span>` : ""}
+    </button></li>`).join("");
+  document.querySelectorAll("#wire-srcs button").forEach(b =>
+    b.onclick = () => {
+      const k = b.dataset.src === "All sources" ? null : b.dataset.src;
+      wireSrc = wireSrc === k ? null : k;
+      renderWire();
+    });
+
+  const shown = flagged.filter(p => (!wireSrc || p.name === wireSrc)
+                                 && (wireScope !== "mine" || p.mine));
+  let lastDay = null, html = "";
+  for (const p of shown){
+    const dl = dayLabel(p.at);
+    if (dl !== lastDay){ html += `<li class="day"><span class="eyebrow">${dl}</span></li>`; lastDay = dl; }
+    html += `<li class="post ${p.mine ? "myguy" : ""}">
+      <div class="wire-meta"><span class="who">${esc(p.name)}</span>
+        <a href="${esc(p.url)}" target="_blank" rel="noopener" class="mono">${timeAgo(p.at)}</a>
+        ${p.mine ? '<span class="badge mine">MY GUY</span>' : ""}</div>
+      <div class="wire-text">${esc(p.text)}</div></li>`;
+  }
+  $("#wire-list").innerHTML = html;
+  $("#wire-empty").textContent = shown.length ? "" :
+    (wireScope === "mine"
+      ? "No loaded posts mention this roster yet — load more, or the next refresh may bring some."
+      : "Nothing loaded from this source yet — try Load more.");
+  const more = WIRE.posts.length < WIRE.total;
+  $("#wire-more").style.display = more ? "" : "none";
+  $("#wire-more").textContent = (wireSrc || wireScope === "mine")
+    ? `Load more (${shown.length} match · ${WIRE.posts.length} of ${WIRE.total} loaded)`
+    : `Load more (${WIRE.posts.length} of ${WIRE.total})`;
+  $("#wire-note").textContent = WIRE.errors ? `${WIRE.errors} unreachable` : "";
+}
+async function loadWire(){
+  try {
+    const r = await fetch(`/api/feed?offset=${WIRE.posts.length}&limit=25`, {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    WIRE.total = j.total; WIRE.sources = j.sources; WIRE.errors = j.source_errors;
+    WIRE.posts.push(...j.posts);
+    WIRE.dead = false;
+    renderWire();
+  } catch (e) {
+    WIRE.dead = true;   // offline / static copy — say so instead of an empty page
+    $("#wire-more").style.display = "none";
+    $("#wire-empty").textContent =
+      "The wire needs its server — open this board via the app (locally or deployed), not as a file.";
+  }
+}
+$("#wire-more").onclick = loadWire;
+applyView();
+loadWire();
+
+// ── Trades: evidence-based trade finder ───────────────────────────────────────
+// All client-side over DATA.leagues[k].teams (every roster in the league). The
+// core primitive is a greedy optimal REST-OF-SEASON lineup where an unfillable
+// seat is priced at the best free agent — the replacement-level rule that makes
+// 2-for-1 consolidation math honest.
+const TRADES_CACHE = {};        // league|built -> engine output
+let tradePartner = null;        // team-id filter (click a rail row to toggle)
+
+function teamPlayersT(t){
+  return t.roster.map(([name, pos, wk, ros, inj]) =>
+    ({name, pos, ros: +ros || 0, wk: +wk || 0, inj: inj || ""}));
+}
+function tradeModel(L){
+  const pool = {};
+  for (const p of L.players) pool[p.name] = p;
+  const faByPos = {};
+  for (const p of L.players){
+    if (!p.fa) continue;
+    const pts = p.ros?.elb?.pts ?? p.ros?.csg?.pts;
+    if (pts == null || pts <= 0) continue;
+    (faByPos[p.pos] = faByPos[p.pos] || []).push({name: p.name, pos: p.pos, ros: pts, fa: true});
+  }
+  for (const k in faByPos) faByPos[k].sort((a, b) => b.ros - a.ros);
+  // the FA value pool: the best ~3 free agents per lineup-eligible position,
+  // baked into every team-value call so waiver value cancels out of trade deltas
+  const topFA = ["QB", "RB", "WR", "TE"].flatMap(pos => (faByPos[pos] || []).slice(0, 3));
+  const slots = L.slots.map(([s, n]) => [s === "D/ST" ? "DST" : s, n]);
+  return {pool, faByPos, slots, topFA};
+}
+function meanRosVbd(pool, name){
+  const r = pool[name]?.ros;
+  if (!r || (!r.elb && !r.csg)) return null;
+  return ((r.elb?.vbd ?? 0) + (r.csg?.vbd ?? 0)) / 2;
+}
+// Greedy optimal ROS lineup: dedicated slots first (best ros at pos), then FLEX
+// from best remaining RB/WR/TE. Empty seat -> best available FREE AGENT at the
+// slot's eligible positions (K/DST have no FA pool -> 0, noted in the footer).
+function rosLineup(plist, M){
+  const byPos = {};
+  for (const p of plist) (byPos[p.pos] = byPos[p.pos] || []).push(p);
+  for (const k in byPos) byPos[k].sort((a, b) => b.ros - a.ros);
+  const idx = {}, usedFA = new Set(), rows = [];
+  const take = pos => {
+    const arr = byPos[pos] || [], i = idx[pos] ?? 0;
+    if (i < arr.length){ idx[pos] = i + 1; return arr[i]; }
+    return null;
+  };
+  const takeFA = poss => {
+    let best = null;
+    for (const pos of poss)
+      for (const f of (M.faByPos[pos] || [])){
+        if (usedFA.has(f.name)) continue;
+        if (!best || f.ros > best.ros) best = f;
+        break;                                 // sorted: first unused is the pos's best
+      }
+    if (best) usedFA.add(best.name);
+    return best;
+  };
+  for (const [slot, n] of M.slots.filter(s => s[0] !== "FLEX"))
+    for (let i = 0; i < n; i++) rows.push({slot, p: take(slot) || takeFA([slot])});
+  const flexN = M.slots.filter(s => s[0] === "FLEX").reduce((s, x) => s + x[1], 0);
+  for (let i = 0; i < flexN; i++){
+    let best = null, bpos = null;
+    for (const pos of FLEX_POS){
+      const arr = byPos[pos] || [], j = idx[pos] ?? 0;
+      if (j < arr.length && (!best || arr[j].ros > best.ros)){ best = arr[j]; bpos = pos; }
+    }
+    if (best) idx[bpos] = (idx[bpos] ?? 0) + 1;
+    else best = takeFA(FLEX_POS);
+    rows.push({slot: "FLEX", p: best});
+  }
+  const total = rows.reduce((s, r) => s + (r.p?.ros || 0), 0);
+  return {rows, total, perWeek: total / WEEKS_LEFT};
+}
+// Team value = optimal ROS lineup of (roster ∪ top free agents). The identical
+// FA pool sits under the pre- and post-trade roster of BOTH sides, so waiver
+// value cancels out of every delta: a pure waiver move scores exactly 0, and a
+// trade is only credited for edge the wire can't provide.
+function teamValue(plist, M){ return rosLineup(plist.concat(M.topFA), M); }
+const DROP_REJECT = Symbol("forced top-12 drop");
+const borisRank = (M, name) => M.pool[name]?.ros?.boris?.posrank ?? null;
+const topRanked = (M, name) => { const b = borisRank(M, name); return b != null && b <= 12; };
+const TRADE_STASHED = new Set(["O", "OUT", "IR", "PUP", "SUSP", "SSPD", "SUSPENDED", "SUSPENSION", "NFI"]);
+const isStash = (M, p) => TRADE_STASHED.has(String(p.inj || "").toUpperCase()) || borisRank(M, p.name) == null;
+// The side that nets extra bodies must cut someone. Under the FA-pooled value
+// model a non-starter's cut costs 0, so the true least-cost drop is the
+// cheapest non-starter — but never a boris top-12 player: a candidate that
+// forces cutting one is rejected outright rather than rendered.
+function resolveDrop(post, startCount, lu, M){
+  if (post.length <= startCount) return null;
+  const started = new Set(lu.rows.map(r => r.p?.name).filter(Boolean));
+  const drops = [];
+  let cur = post.slice();
+  while (cur.length > startCount){
+    const nonStart = cur.filter(p => !started.has(p.name));
+    const safe = nonStart.filter(p => !topRanked(M, p.name));
+    if (safe.length){
+      const d = safe.reduce((a, b) => a.ros <= b.ros ? a : b);
+      drops.push(d); cur = cur.filter(p => p !== d);
+    } else if (nonStart.length){
+      return DROP_REJECT;                 // every zero-cost cut is a top-12 player
+    } else {
+      // everyone starts (no bench at all): true least-cost drop, still never top-12
+      let best = null, bc = Infinity;
+      const base = teamValue(cur, M).total;
+      for (const p of cur){
+        if (topRanked(M, p.name)) continue;
+        const c = base - teamValue(cur.filter(x => x !== p), M).total;
+        if (c < bc){ bc = c; best = p; }
+      }
+      if (!best) return DROP_REJECT;
+      drops.push(best); cur = cur.filter(p => p !== best);
+    }
+  }
+  return drops;
+}
+// Loose drop resolution for the offer EVALUATOR: same least-cost logic, but a
+// forced top-12 cut is reported (warned about), never rejected — the user is
+// scoring a real proposal, not generating one.
+function resolveDropLoose(post, startCount, lu, M){
+  if (post.length <= startCount) return null;
+  const started = new Set(lu.rows.map(r => r.p?.name).filter(Boolean));
+  const drops = [];
+  let cur = post.slice();
+  while (cur.length > startCount){
+    const nonStart = cur.filter(p => !started.has(p.name));
+    let d = null;
+    if (nonStart.length){
+      const safe = nonStart.filter(p => !topRanked(M, p.name));
+      d = (safe.length ? safe : nonStart).reduce((a, b) => a.ros <= b.ros ? a : b);
+    } else {
+      let bc = Infinity;
+      const base = teamValue(cur, M).total;
+      for (const p of cur){
+        const c = base - teamValue(cur.filter(x => x !== p), M).total;
+        if (c < bc){ bc = c; d = p; }
+      }
+    }
+    drops.push(d); cur = cur.filter(p => p !== d);
+  }
+  return drops;
+}
+// Freed roster spots: name the FA(s) to actually add — the ones the post-trade
+// lineup starts, else the best remaining by ros. Display only: the value model
+// already banks the FA pool for both sides.
+function resolveAdds(post, startCount, lu, M){
+  if (post.length >= startCount) return null;
+  const names = new Set(post.map(p => p.name));
+  const starting = [], seen = new Set();
+  for (const r of lu.rows){
+    const p = r.p;
+    if (p && p.fa && !names.has(p.name) && !seen.has(p.name)){ starting.push(p); seen.add(p.name); }
+  }
+  const rest = M.topFA.filter(f => !names.has(f.name) && !seen.has(f.name))
+    .sort((a, b) => b.ros - a.ros);
+  return starting.concat(rest).slice(0, startCount - post.length);
+}
+function buildTrades(L){
+  const M = tradeModel(L);
+  const me = L.teams.find(t => t.mine);
+  const pre = {};
+  for (const t of L.teams){
+    const plist = teamPlayersT(t);
+    // lu = pure-roster lineup (needs/surplus semantics: an FA seat IS a need);
+    // val = FA-pooled team value (the delta baseline)
+    pre[t.id] = {t, plist, lu: rosLineup(plist, M), val: teamValue(plist, M)};
+  }
+  // league-wide starter distribution per dedicated slot -> median (rail "needs")
+  // and bottom decile (the "fills their hole" chip)
+  const posVals = {};
+  for (const id in pre)
+    for (const r of pre[id].lu.rows)
+      if (r.slot !== "FLEX") (posVals[r.slot] = posVals[r.slot] || []).push(r.p?.ros || 0);
+  const median = {}, decile = {};
+  for (const k in posVals){
+    const v = [...posVals[k]].sort((a, b) => a - b);
+    median[k] = v[Math.floor(v.length / 2)];
+    decile[k] = v[Math.floor(v.length * 0.1)];
+  }
+  // K/DST are streamable week-to-week commodities: never trade pieces, and a
+  // "needs DST" is a waiver note, not a trade need — they're excluded throughout.
+  const STREAMED = new Set(["K", "DST"]);
+  // Injured stashes aren't currency either: OUT/IR/suspended, or unranked by the
+  // ROS consensus (boris null — the market won't price him), can't headline a
+  // deal that survives first contact. Q/D players are playing and stay tradeable.
+  // Stashes remain eligible as rebalance DROPS.
+  const tradeable = p => !STREAMED.has(p.pos) && !isStash(M, p);
+  const needsOf = id => {
+    const needs = new Set(), holes = new Set();
+    for (const r of pre[id].lu.rows){
+      if (r.slot === "FLEX" || STREAMED.has(r.slot)) continue;
+      const faSeat = !r.p || !!r.p.fa, v = r.p?.ros || 0;
+      if (faSeat || v < median[r.slot]) needs.add(r.slot);
+      if (faSeat || v <= decile[r.slot]) holes.add(r.slot);
+    }
+    return {needs, holes};
+  };
+  // my worst starter per pos (and worst FLEX) — an opponent bench player who
+  // beats one of these would START on MY team: that's their surplus
+  const myStartMin = {};
+  let myFlexMin = Infinity;
+  for (const r of pre[me.id].lu.rows){
+    const p = r.p;
+    if (!p || p.fa) continue;
+    if (r.slot === "FLEX") myFlexMin = Math.min(myFlexMin, p.ros);
+    else myStartMin[p.pos] = Math.min(myStartMin[p.pos] ?? Infinity, p.ros);
+  }
+  const surplusOf = id => {
+    const started = new Set(pre[id].lu.rows.map(r => r.p?.name).filter(Boolean));
+    const out = new Set();
+    for (const p of pre[id].plist){
+      if (started.has(p.name) || STREAMED.has(p.pos)) continue;
+      const beatsPos = myStartMin[p.pos] != null && p.ros > myStartMin[p.pos];
+      const beatsFlex = FLEX_POS.includes(p.pos) && p.ros > myFlexMin;
+      if (beatsPos || beatsFlex) out.add(p.pos);
+    }
+    return out;
+  };
+  const myP = pre[me.id].plist, myPreVal = pre[me.id].val.perWeek;
+  const untouch = new Set([...myP].filter(tradeable)
+    .sort((a, b) => b.ros - a.ros).slice(0, 2).map(p => p.name));
+  const gives = myP.filter(p => tradeable(p) && !untouch.has(p.name));
+  // 2-for-1 pair pool: non-lineup players + the bottom-3 owned starters, <=40 pairs
+  const pairPool = id => {
+    const {plist, lu} = pre[id];
+    const started = new Set(lu.rows.map(r => r.p?.name).filter(Boolean));
+    const owned = lu.rows.map(r => r.p).filter(p => p && !p.fa);
+    const fringe = [...owned].sort((a, b) => a.ros - b.ros).slice(0, 3);
+    const cand = plist.filter(p => !started.has(p.name)).concat(fringe)
+      .filter(p => tradeable(p) && !(id === me.id && untouch.has(p.name)))
+      .sort((a, b) => b.ros - a.ros);
+    const pairs = [];
+    for (let i = 0; i < cand.length && pairs.length < 40; i++)
+      for (let j = i + 1; j < cand.length && pairs.length < 40; j++)
+        pairs.push([cand[i], cand[j]]);
+    return pairs;
+  };
+  const myPairs = pairPool(me.id);
+  const perTeam = {};   // id -> kept suggestions, best first
+  for (const t of L.teams){
+    if (t.mine) continue;
+    const theirP = pre[t.id].plist, theirPreVal = pre[t.id].val.perWeek;
+    const kept = [];
+    const tryTrade = (give, get) => {
+      const gn = new Set(give.map(p => p.name)), tn = new Set(get.map(p => p.name));
+      const mPost = myP.filter(p => !gn.has(p.name)).concat(get);
+      const mv = teamValue(mPost, M);
+      const myD = mv.perWeek - myPreVal;
+      if (myD <= 0.15) return;                    // must clearly help me
+      const tPost = theirP.filter(p => !tn.has(p.name)).concat(give);
+      const tv = teamValue(tPost, M);
+      const thD = tv.perWeek - theirPreVal;
+      if (thD < 0.3) return;                      // honest win-win: they gain too
+      const myDrop = resolveDrop(mPost, myP.length, mv, M);
+      if (myDrop === DROP_REJECT) return;         // never force cutting a top-12 player
+      const thDrop = resolveDrop(tPost, theirP.length, tv, M);
+      if (thDrop === DROP_REJECT) return;
+      kept.push({teamId: t.id, give, get, myD, thD, score: myD + 0.25 * thD,
+                 myDrop, thDrop,
+                 myAdd: resolveAdds(mPost, myP.length, mv, M),
+                 thAdd: resolveAdds(tPost, theirP.length, tv, M)});
+    };
+    const theirGets = theirP.filter(tradeable);
+    for (const g of gives) for (const r of theirGets) tryTrade([g], [r]);
+    for (const pr of myPairs) for (const r of theirGets) tryTrade(pr, [r]);
+    const theirPairs = pairPool(t.id);
+    for (const g of gives) for (const pr of theirPairs) tryTrade([g], pr);
+    // dominance dedupe: same "get" with myΔ within ±0.15 -> keep only the
+    // cheapest outbound package; richer variants fold into a negotiation
+    // ladder ("if refused, sweeten"). A human opens cheap.
+    const outRos = c => c.give.reduce((s, p) => s + p.ros, 0);
+    const byGet = {};
+    for (const c of kept){
+      const k = c.get.map(p => p.name).sort().join("|");
+      (byGet[k] = byGet[k] || []).push(c);
+    }
+    const deduped = [];
+    for (const grp of Object.values(byGet)){
+      grp.sort((a, b) => outRos(a) - outRos(b));
+      const bases = [];
+      for (const c of grp){
+        const b = bases.find(u => Math.abs(u.myD - c.myD) <= 0.15);
+        if (b){
+          // a sweetener must stay a sweetener: worth ≤ half the base send's VBD
+          const baseVbd = b.give.reduce((s, p) => s + (meanRosVbd(M.pool, p.name) ?? 0), 0);
+          for (const p of c.give)
+            if (!b.give.some(x => x.name === p.name) && !b.ladder.includes(p.name)){
+              const v = meanRosVbd(M.pool, p.name);
+              if (v != null && v <= 0.5 * baseVbd) b.ladder.push(p.name);
+            }
+        } else { c.ladder = []; bases.push(c); }
+      }
+      deduped.push(...bases);
+    }
+    // same-SEND collapse: one card per outbound package. The primary ask is the
+    // max-return variant (you open HIGH on incoming pieces); lesser returns
+    // become the concession ladder — "ask for + X; settle: …", cheapest last.
+    const byGive = {};
+    for (const c of deduped){
+      const k = c.give.map(p => p.name).sort().join("|");
+      (byGive[k] = byGive[k] || []).push(c);
+    }
+    const collapsed = [];
+    for (const grp of Object.values(byGive)){
+      grp.sort((a, b) => (b.myD - a.myD)
+        || (b.get.reduce((s, p) => s + p.ros, 0) - a.get.reduce((s, p) => s + p.ros, 0)));
+      const prim = grp[0];
+      if (grp.length > 1){
+        const core = prim.get.filter(p => grp.every(c => c.get.some(x => x.name === p.name)));
+        const label = c => {
+          const extra = c.get.filter(p => !core.some(x => x.name === p.name));
+          return extra.length ? "+ " + extra.map(p => p.name).join(" + ")
+                              : `${c.give.length}-for-${c.get.length}`;
+        };
+        const asks = prim.get.filter(p => !core.some(x => x.name === p.name));
+        const falls = grp.slice(1);                       // already best-first
+        const shown = falls.length > 2 ? [falls[0], falls[falls.length - 1]] : falls;
+        prim.askLadder = (asks.length ? `ask for + ${asks.map(p => p.name).join(" + ")}; ` : "")
+          + "settle: " + shown.map(label).join(", then ");
+      }
+      collapsed.push(prim);
+    }
+    collapsed.sort((a, b) => b.score - a.score);
+    // per-opponent top 3, no two moving the identical player set
+    const seen = new Set(), top = [];
+    for (const c of collapsed){
+      const key = [...c.give, ...c.get].map(p => p.name).sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key); top.push(c);
+      if (top.length === 3) break;
+    }
+    perTeam[t.id] = top;
+  }
+  // global feed: top ~18 across the league, deduped on the moved player set,
+  // capped so no single player appears in more than 6 of the cards
+  const seen = new Set(), global = [], perPlayer = {};
+  for (const c of Object.values(perTeam).flat().sort((a, b) => b.score - a.score)){
+    const movers = [...c.give, ...c.get].map(p => p.name);
+    const key = [...movers].sort().join("|");
+    if (seen.has(key)) continue;
+    if (movers.some(n => (perPlayer[n] || 0) >= 6)) continue;
+    seen.add(key);
+    movers.forEach(n => perPlayer[n] = (perPlayer[n] || 0) + 1);
+    global.push(c);
+    if (global.length === 18) break;
+  }
+  const partners = L.teams.filter(t => !t.mine).map(t => {
+    const {needs} = needsOf(t.id);
+    const surplus = surplusOf(t.id);
+    const bits = [];
+    if (needs.size) bits.push("needs " + [...needs].join(", "));
+    if (surplus.size) bits.push("deep at " + [...surplus].join(", "));
+    return {team: t, needLine: bits.join(" · ") || "balanced roster",
+            best: perTeam[t.id][0] ?? null};
+  }).sort((a, b) => (b.best?.myD ?? -1e9) - (a.best?.myD ?? -1e9));
+  const holesOf = {};
+  for (const t of L.teams) holesOf[t.id] = needsOf(t.id).holes;
+  return {M, me, pre, partners, perTeam, global, holesOf,
+          hasKD: M.slots.some(([s]) => s === "K" || s === "DST")};
+}
+function tradeChips(c, T, L){
+  const pool = T.M.pool, chips = [];
+  const short = n => {
+    const w = n.trim().split(/\s+/).filter(t => !/^(Jr\.?|Sr\.?|II|III|IV|V)$/i.test(t));
+    return w[w.length - 1] || n;
+  };
+  chips.push({cls: "", txt: c.give.length > c.get.length ? `consolidates ${c.give.length}→${c.get.length}`
+                        : c.get.length > c.give.length ? `expands ${c.give.length}→${c.get.length}`
+                        : `${c.give.length}-for-${c.get.length}`});
+  const holes = T.holesOf[c.teamId] || new Set();
+  for (const pos of new Set(c.give.map(p => p.pos)))
+    if (holes.has(pos)) chips.push({cls: "blue", txt: `fills their ${pos} hole`});
+  const havePrev = L.prev_vbd && Object.keys(L.prev_vbd).length > 0;
+  const eng = n => pool[n]?.ros?.elb?.posrank ?? pool[n]?.ros?.csg?.posrank ?? null;
+  const bor = n => pool[n]?.ros?.boris?.posrank ?? null;
+  for (const p of c.get){
+    if (havePrev){
+      const prev = L.prev_vbd[p.name], cur = meanRosVbd(pool, p.name);
+      if (prev != null && prev > 0 && cur != null){
+        const drop = (prev - cur) / Math.abs(prev);
+        const e = eng(p.name), b = bor(p.name);
+        if (drop >= 0.15 && e != null && b != null && Math.abs(b - e) <= 3)
+          chips.push({cls: "blue", txt: `${short(p.name)} ▼ ${Math.round(drop * 100)}% wk/wk`});
+      }
+    }
+    const e = eng(p.name), b = bor(p.name);
+    if (e != null && b != null && b - e >= 5)
+      chips.push({cls: "blue", txt: `${short(p.name)}: model likes him more than the market`});
+  }
+  for (const p of c.give){
+    if (havePrev){
+      const prev = L.prev_vbd[p.name], cur = meanRosVbd(pool, p.name);
+      if (prev != null && prev > 0 && cur != null && (cur - prev) / Math.abs(prev) >= 0.2)
+        chips.push({cls: "orange",
+          txt: `${short(p.name)} ▲ ${Math.round((cur - prev) / Math.abs(prev) * 100)}% wk/wk`});
+    }
+    const e = eng(p.name), b = bor(p.name);
+    if (e != null && b != null && e - b >= 5)
+      chips.push({cls: "orange", txt: `${short(p.name)}: market likes him more than the model`});
+  }
+  return chips;
+}
+function renderTrades(){
+  if (view !== "trades") return;
+  const L = DATA.leagues[league];
+  const hasTeams = L.teams && L.teams.length;
+  $("#trade-sync").hidden = !!hasTeams;
+  $("#tradegrid").style.display = hasTeams ? "" : "none";
+  if (!hasTeams) return;
+  const key = league + "|" + A.built;
+  if (!TRADES_CACHE[key]) TRADES_CACHE[key] = buildTrades(L);
+  const T = TRADES_CACHE[key];
+  if (tradePartner != null && !T.perTeam[tradePartner]) tradePartner = null;
+
+  const sd = d => (d >= 0 ? "+" : "") + d.toFixed(1);
+  $("#trade-partners").innerHTML = T.partners.map(p => {
+    const has = !!p.best;
+    return `<li class="${!has ? "none" : String(p.team.id) === String(tradePartner) ? "on" : ""}">
+      <button type="button" data-team="${esc(String(p.team.id))}" ${has ? "" : "disabled"}>
+        <span class="tp-row"><span class="n">${esc(p.team.name)}</span>
+          <span class="d mono">${has ? sd(p.best.myD) : ""}</span></span>
+        <span class="tp-need">${esc(p.needLine)}${has ? "" : " · no win-win found"}</span>
+      </button></li>`;
+  }).join("");
+  document.querySelectorAll("#trade-partners button[data-team]").forEach(b =>
+    b.onclick = () => {
+      if (b.disabled) return;
+      tradePartner = String(tradePartner) === b.dataset.team ? null : b.dataset.team;
+      renderTrades();
+    });
+
+  const shown = tradePartner != null
+    ? T.perTeam[tradePartner] || []
+    : T.global;
+  const teamById = id => T.pre[id].t;
+  const partnerLine = id => T.partners.find(p => String(p.team.id) === String(id))?.needLine || "";
+  $("#trade-list-head").textContent = shown.length
+    ? (tradePartner != null
+        ? `Deals with ${teamById(tradePartner).name} · win-win only`
+        : `Top deals across the league · win-win only`)
+    : "";
+  const prow = (p, incoming) => {
+    const v = meanRosVbd(T.M.pool, p.name);
+    return `<div class="tprow"><span class="n"><span class="posmark">${esc(p.pos)}</span>${esc(p.name)}${
+      incoming && p.inj ? `<span class="inj">${esc(p.inj)}</span>` : ""}</span>
+      <span class="v mono">${fmt(p.ros, 0)} pts · ${v == null ? "—" : fmt(v, 0).replace(/^-0$/, "0")} VBD</span></div>`;
+  };
+  const rebalLine = c => {
+    const bits = [];
+    if (c.myAdd?.length)
+      bits.push("you then add " + c.myAdd.map(f => `${esc(f.name)} (${f.pos}, FA)`).join(", "));
+    if (c.myDrop?.length)
+      bits.push("you then drop " + c.myDrop.map(f => esc(f.name)).join(", "));
+    if (c.thAdd?.length)
+      bits.push("they add " + c.thAdd.map(f => `${esc(f.name)} (FA)`).join(", "));
+    if (c.thDrop?.length)
+      bits.push("they drop " + c.thDrop.map(f => esc(f.name)).join(", "));
+    return bits.length ? `<div class="trebal">${bits.join(" · ")}</div>` : "";
+  };
+  $("#trade-list").innerHTML = shown.map((c, ci) => {
+    const t = teamById(c.teamId);
+    const chips = tradeChips(c, T, L)
+      .map(ch => `<span class="tchip ${ch.cls}">${esc(ch.txt)}</span>`).join("");
+    const getNames = c.get.map(p => p.name).join(" and ");
+    const giveNames = c.give.map(p => p.name).join(" and ");
+    return `<li class="tcard">
+      <div class="tcard-head"><span class="tpartner">${esc(t.name)}</span>
+        <span class="ecr">${esc(partnerLine(c.teamId))}</span>
+        <button type="button" class="refreshbtn tc-editbtn" data-ci="${ci}">edit this offer</button></div>
+      <div class="tcols">
+        <div><div class="eyebrow">You send</div>${c.give.map(p => prow(p, false)).join("")}</div>
+        <div><div class="eyebrow">You get</div>${c.get.map(p => prow(p, true)).join("")}</div>
+      </div>
+      <div class="tdeltas mono">You: ${sd(c.myD)} pts/wk <span class="them">· Them: ${sd(c.thD)} pts/wk</span></div>
+      <div class="tchips">${chips}</div>
+      ${rebalLine(c)}
+      ${c.askLadder ? `<div class="tladder">${esc(c.askLadder)}</div>` : ""}
+      ${c.ladder && c.ladder.length ? `<div class="tladder">if refused, sweeten: + ${c.ladder.slice(0, 3).map(esc).join(" or + ")}</div>` : ""}
+      <div class="tswap">Swap test: if you already owned ${esc(getNames)}, would you send ${c.get.length > 1 ? "them" : "him"} back for ${esc(giveNames)}?</div>
+    </li>`;
+  }).join("");
+  $("#trade-empty").textContent = shown.length ? "" :
+    "No win-win trades found this week — the league's rosters don't mirror your needs. Check again after waivers move.";
+  $("#trade-note").textContent = shown.length
+    ? `Deltas are optimal rest-of-season lineup points per week (weeks ${A.week}–${A.final_week}), measured over roster + top waiver options for both sides — so a deal is only credited for edge the wire can't give you. Injured stashes (OUT/IR) and consensus-unranked players aren't offered as trade pieces.` +
+      (T.hasKD ? " K/DST are streamable week to week, so they're never trade pieces here." : "")
+    : "";
+  document.querySelectorAll("#trade-list .tc-editbtn").forEach(b =>
+    b.onclick = () => {
+      const c = shown[+b.dataset.ci];
+      TC.open = true; TC.partner = String(c.teamId); TC.result = null;
+      TC.send = new Set(c.give.map(p => p.name));
+      TC.get = new Set(c.get.map(p => p.name));
+      renderTrades();
+      $("#tc-body").scrollIntoView({behavior: "smooth", block: "nearest"});
+    });
+
+  // ── the offer composer: score a leaguemate's exact proposal ────────────────
+  function renderComposer(){
+    const opps = L.teams.filter(x => !x.mine);
+    $("#tc-toggle").textContent = TC.open ? "Evaluate an offer ▴" : "Evaluate an offer ▾";
+    $("#tc-body").hidden = !TC.open;
+    if (!TC.open) return;
+    if (TC.partner == null || !opps.some(x => String(x.id) === String(TC.partner))){
+      TC.partner = String(opps[0].id); TC.get.clear(); TC.result = null;
+    }
+    $("#tc-partner").innerHTML = opps.map(x =>
+      `<option value="${esc(String(x.id))}"${String(x.id) === String(TC.partner) ? " selected" : ""}>${esc(x.name)}</option>`).join("");
+    const row = (p, selSet) => `<li class="${selSet.has(p.name) ? "sel" : ""}">
+      <button type="button" data-n="${esc(p.name)}">
+        <span class="posmark">${esc(p.pos)}</span><span class="n">${esc(p.name)}${p.inj ? `<span class="inj">${esc(p.inj)}</span>` : ""}</span>
+        <span class="v mono">${fmt(p.ros, 0)} pts</span></button></li>`;
+    const mine = [...T.pre[T.me.id].plist].sort((a, b) => b.ros - a.ros);
+    const theirs = [...T.pre[TC.partner].plist].sort((a, b) => b.ros - a.ros);
+    $("#tc-mine").innerHTML = mine.map(p => row(p, TC.send)).join("");
+    $("#tc-theirs").innerHTML = theirs.map(p => row(p, TC.get)).join("");
+    $("#tc-sendct").textContent = TC.send.size ? `${TC.send.size}/3` : "";
+    $("#tc-getct").textContent = TC.get.size ? `${TC.get.size}/3` : "";
+    $("#tc-eval").disabled = !(TC.send.size && TC.get.size);
+    const toggle = (set, b) => {
+      const n = b.dataset.n;
+      if (set.has(n)) set.delete(n);
+      else if (set.size < 3) set.add(n);
+      else return;
+      TC.result = null;
+      renderTrades();
+    };
+    document.querySelectorAll("#tc-mine button").forEach(b => b.onclick = () => toggle(TC.send, b));
+    document.querySelectorAll("#tc-theirs button").forEach(b => b.onclick = () => toggle(TC.get, b));
+
+    const r = TC.result;
+    if (!r){ $("#tc-result").innerHTML = ""; return; }
+    const t = teamById(r.teamId);
+    // warnings, not exclusions: this is an evaluator scoring a real proposal
+    const warns = [];
+    for (const p of r.get){
+      if (["K", "DST"].includes(p.pos))
+        warns.push(`${p.name}: streamable — near-zero trade value`);
+      else if (isStash(T.M, p))
+        warns.push(`${p.name}: stash risk — consensus won't rank him; you're buying rehab, price accordingly`);
+    }
+    for (const d of (r.myDrop || []).concat(r.thDrop || []))
+      if (topRanked(T.M, d.name))
+        warns.push(`forced cut: ${d.name} is a consensus top-12 ${T.M.pool[d.name]?.pos ?? ""}`);
+    const chips = tradeChips(r, T, L)
+      .map(ch => `<span class="tchip ${ch.cls}">${esc(ch.txt)}</span>`)
+      .concat(warns.map(w => `<span class="tchip warn">${esc(w)}</span>`)).join("");
+    const verdict = r.myD >= 0.5
+      ? {cls: "take", txt: `Take it — raises your lineup ~+${r.myD.toFixed(1)} pts/wk over replacement.`}
+      : r.myD >= -0.25
+      ? {cls: "side", txt: "Sideways — only if it fixes something the model can't see (byes, injuries you believe in)."}
+      : {cls: "decline", txt: `Decline — costs your lineup ${Math.abs(r.myD).toFixed(1)} pts/wk.`};
+    const getNames = r.get.map(p => p.name).join(" and ");
+    const giveNames = r.give.map(p => p.name).join(" and ");
+    $("#tc-result").innerHTML = `<div class="tcard">
+      <div class="tcard-head"><span class="tpartner">${esc(t.name)}</span>
+        <span class="ecr">your offer, scored</span></div>
+      <div class="tcols">
+        <div><div class="eyebrow">You send</div>${r.give.map(p => prow(p, false)).join("")}</div>
+        <div><div class="eyebrow">You get</div>${r.get.map(p => prow(p, true)).join("")}</div>
+      </div>
+      <div class="tdeltas mono">You: ${sd(r.myD)} pts/wk <span class="them">· Them: ${sd(r.thD)} pts/wk</span></div>
+      <div class="tverdict ${verdict.cls}">${verdict.txt}</div>
+      <div class="tchips">${chips}</div>
+      ${rebalLine(r)}
+      <div class="tswap">Swap test: if you already owned ${esc(getNames)}, would you send ${r.get.length > 1 ? "them" : "him"} back for ${esc(giveNames)}?</div>
+    </div>`;
+  }
+  renderComposer();
+}
+// composer state + actions (the static controls exist once; rows rebind per render)
+const TC = {open: false, partner: null, send: new Set(), get: new Set(), result: null};
+function evalOffer(){
+  const T = TRADES_CACHE[league + "|" + A.built];
+  if (!T || !TC.send.size || !TC.get.size) return;
+  const M = T.M;
+  const myP = T.pre[T.me.id].plist, theirP = T.pre[TC.partner].plist;
+  const give = myP.filter(p => TC.send.has(p.name));
+  const get = theirP.filter(p => TC.get.has(p.name));
+  if (!give.length || !get.length) return;
+  const mPost = myP.filter(p => !TC.send.has(p.name)).concat(get);
+  const tPost = theirP.filter(p => !TC.get.has(p.name)).concat(give);
+  const mv = teamValue(mPost, M), tv = teamValue(tPost, M);
+  TC.result = {teamId: TC.partner, give, get,
+    myD: mv.perWeek - T.pre[T.me.id].val.perWeek,
+    thD: tv.perWeek - T.pre[TC.partner].val.perWeek,
+    myDrop: resolveDropLoose(mPost, myP.length, mv, M),
+    thDrop: resolveDropLoose(tPost, theirP.length, tv, M),
+    myAdd: resolveAdds(mPost, myP.length, mv, M),
+    thAdd: resolveAdds(tPost, theirP.length, tv, M)};
+  renderTrades();
+}
+$("#tc-toggle").onclick = () => { TC.open = !TC.open; renderTrades(); };
+$("#tc-partner").onchange = e => {
+  TC.partner = e.target.value; TC.get.clear(); TC.result = null; renderTrades();
+};
+$("#tc-eval").onclick = evalOffer;
+$("#tc-clear").onclick = () => { TC.send.clear(); TC.get.clear(); TC.result = null; renderTrades(); };
+
+// ── Account switcher: the dropdown is a status board across your teams ───────
+function setLeague(k){
+  if (!DATA.leagues[k] || k === league) { closeAcct(); return; }
+  league = k;
+  tradePartner = null;   // partner filter is per-league; team ids collide across leagues
+  TC.partner = null; TC.send.clear(); TC.get.clear(); TC.result = null;
+  try { localStorage.setItem("fc.league", k); } catch (e) {}
+  closeAcct();
+  render();
+}
+function closeAcct(){
+  $("#acct-menu").hidden = true;
+  $("#acct-chip").setAttribute("aria-expanded", "false");
+}
+function monogram(team){
+  const w = (team || "?").split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] || "?") + (w[1]?.[0] || "")).toUpperCase();
+}
+function renderAccount(){
+  const L = DATA.leagues[league];
+  const status = {};
+  for (const [k, lg] of Object.entries(DATA.leagues)) status[k] = computeLineup(lg);
+  $("#acct-mono").textContent = monogram(L.team);
+  $("#acct-team").textContent = L.team || L.label;
+  $("#acct-league").textContent = `${L.label} · ${L.size} tm · ${L.scoring}`;
+  // the dot warns about teams you're NOT looking at
+  $("#acct-alert").hidden = !Object.entries(status)
+    .some(([k, s]) => k !== league && s.haveSlots && s.changes > 0);
+  $("#acct-menu").innerHTML = Object.entries(DATA.leagues).map(([k, lg]) => {
+    const s = status[k];
+    const st = !s.haveSlots ? "" : s.changes
+      ? `<span class="st warn">⚠ ${s.changes} to set</span>`
+      : `<span class="st ok">lineup set ✓</span>`;
+    return `<button type="button" role="menuitem" data-league="${esc(k)}">
+      <span class="acct-mono">${esc(monogram(lg.team))}</span>
+      <span class="acct-row-id"><span class="t">${esc(lg.team || lg.label)}</span>
+        <span class="l">${esc(lg.label)} · ${lg.size} tm · ${esc(lg.scoring)}</span></span>
+      <span class="acct-row-st"><span class="pts mono">${s.total.toFixed(1)}</span>${st}</span>
+      <span class="check">${k === league ? "✓" : ""}</span></button>`;
+  }).join("");
+  document.querySelectorAll("#acct-menu button[data-league]").forEach(b =>
+    b.onclick = () => setLeague(b.dataset.league));
+}
+$("#acct-chip").onclick = () => {
+  const menu = $("#acct-menu");
+  menu.hidden = !menu.hidden;
+  $("#acct-chip").setAttribute("aria-expanded", String(!menu.hidden));
+  if (!menu.hidden) menu.querySelector("button")?.focus();
+};
+document.addEventListener("click", e => {
+  if (!e.target.closest("#account")) closeAcct();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeAcct(); });
+
+const _render = render;
+render = function(){ _render(); renderLineup(); renderWire(); renderTrades(); renderAccount(); };
+function renderAsof(){
+  const a = DATA.asof;
+  $("#lu-eyebrow").innerHTML =
+    `Optimal lineup &middot; week ${a.week}`;
+  const built = new Date(a.built);
+  const days = (Date.now() - built.getTime()) / 864e5;
+  const dot = $("#freshdot");
+  dot.className = "freshdot " + (days < 3 ? "ok" : days < 7 ? "warn" : "stale");
+  const dfmt = d => {
+    const s = String(d);
+    const dt = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + "T12:00:00") : new Date(s);
+    return dt.toLocaleDateString(undefined, {month:"short", day:"numeric"});
+  };
+  $("#asof-text").textContent = `Week ${a.week} \u00b7 ${dfmt(built)}` +
+    (days >= 3 ? ` (${Math.floor(days)}d old)` : "");
+  $("#asof-line").title = Object.entries(a.sources)
+    .map(([k, v]) => `${k}: ${dfmt(v)}`).join("\n");
+}
+// remember which team you were: ?league beats the saved choice beats the first league
+try {
+  league = new URLSearchParams(location.search).get("league")
+        || localStorage.getItem("fc.league") || null;
+} catch (e) {}
+bindData(DATA);
+renderAsof();
+render();
+
+// Live data: ask the server for the latest snapshot (Supabase-backed when
+// configured). Newer build than what's on screen -> re-render.
+// Any failure leaves the current data, so a static copy still works.
+async function adoptLatest(){
+  try {
+    const r = await fetch("/api/board-data", {cache: "no-store"});
+    if (!r.ok) return false;
+    const j = await r.json();
+    const d = j && j.data;
+    if (d && d.asof && d.leagues && d.asof.built !== A.built) {
+      bindData(d);
+      renderAsof();
+      render();
+      return true;
+    }
+  } catch (e) { /* offline / file:// — keep what's on screen */ }
+  return false;
+}
+adoptLatest();
+
+// Refresh buttons: kick the server-side pipeline run (sync = fast ESPN state,
+// full = everything), poll until it lands, then swap in the new data.
+// Needs the deploy to carry the pipeline (501 if not).
+const REFRESH_BTNS = [...document.querySelectorAll("button[data-mode]")];
+const BTN_LABEL = {sync: "Sync lineup", full: "Full refresh"};
+const btnFor = mode => REFRESH_BTNS.find(b => b.dataset.mode === mode) || REFRESH_BTNS[0];
+function refreshIdle(){
+  REFRESH_BTNS.forEach(b => { b.disabled = false; b.textContent = BTN_LABEL[b.dataset.mode]; });
+}
+async function pollRefresh(){
+  let s;
+  try { s = await (await fetch("/api/refresh/status", {cache: "no-store"})).json(); }
+  catch (e) { setTimeout(pollRefresh, 8000); return; }
+  if (s.running) {
+    REFRESH_BTNS.forEach(b => b.disabled = true);
+    const secs = Math.round(Date.now()/1000 - s.started);
+    btnFor(s.mode).textContent =
+      (s.mode === "sync" ? "Syncing… " : "Refreshing… ") +
+      (secs < 90 ? `${secs}s` : `${(secs/60).toFixed(1)} min`);
+    setTimeout(pollRefresh, s.mode === "sync" ? 2500 : 5000);
+    return;
+  }
+  refreshIdle();
+  if (s.ok === false) { btnFor(s.mode).textContent = BTN_LABEL[s.mode] + " — failed, retry"; return; }
+  await adoptLatest();
+}
+REFRESH_BTNS.forEach(btn => btn.onclick = async () => {
+  REFRESH_BTNS.forEach(b => b.disabled = true);
+  btn.textContent = "Starting…";
+  let r;
+  try {
+    r = await fetch("/api/refresh", {method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({mode: btn.dataset.mode})});
+  } catch (e) { refreshIdle(); btn.textContent = BTN_LABEL[btn.dataset.mode] + " (server offline)"; return; }
+  if (r.status === 501) { btn.textContent = "Unavailable in this deploy"; return; }
+  pollRefresh();   // 409 (already running) just joins the poll
+});
+</script>

@@ -8,7 +8,8 @@ each example to its real name and fill it in.
 |---|---|---|
 | `config/league.json` | `league.example.json` | Your league: `league_id`, `season`, your team name (`me`), the projections `.xlsm` path, and your positional tilt (`my_mult`). Read by `scraping/scrape_league.py` and `draft_sheets/build_tool_data.py`. |
 | `config/briefing.md` | `briefing.example.md` | The advisor's system prompt — your league's opponent tendencies, roster rules, and draft plan. The richer this is, the sharper the advisor. Loaded by `draft_app/server.py` at startup. |
-| `config/.env` | `env.example` | Secrets: `ANTHROPIC_API_KEY` (advisor) and, if you scrape, `ESPN_SWID` / `ESPN_S2`. |
+| `config/.env` | `env.example` | Secrets: `ANTHROPIC_API_KEY` (advisor), `ESPN_SWID` / `ESPN_S2` (scraping + manage pull), and `FANTASYPROS_API_KEY` (manage consensus ranks). |
+| `config/boards.json` | `boards.example.json` | The manage board's league registry: league key → `league_id`, `team_id`, display `label`, and the `leagues/<key>.yaml` path. Read by `fftiers/board.py` and `pipeline.py`'s manage stages. Real league ids/names, so it stays local. |
 | `config/tendencies.json` *(optional)* | `tendencies.example.json` | Calibrated per-manager bid tendencies (`mult`/`conc`/`maxbuy`). Overrides the neutral default. Produced by `analysis/calibrate.py` (`pipeline.py calibrate`). Omit to keep all opponents neutral. |
 | `config/manager_canon.json` *(optional)* | `manager_canon.example.json` | Maps ESPN owner GUID → canonical manager name for the local `analysis/` pipeline — real leaguemate names, so it stays local. Only needed to merge a manager's multiple ESPN accounts or fix inconsistent scraped names; absent → analysis uses scraped owner names. |
 | `config/plan.json` *(optional)* | `plan.example.json` | Per-slot budget (bid ceilings) the console seeds from — a disciplined default to enter with, not a validated-optimal allocation. Absent → neutral frame. Vet any plan with `analysis/research/strategy_search.py` before trusting it. |
@@ -35,4 +36,5 @@ one, so the app still runs.
 
 Generated/large league data lives next to the pipeline that produces it, not here:
 `draft_sheets/tool_data.json`, `draft_sheets/*.xlsm`, `draft_app/static/index.html`,
-`reports/`, `analysis/`, `scraping/raw/`. See the root `README.md` for how those are built.
+`draft_app/static/board.html`, `leagues/*.yaml` (except the example), `dat/`, `out/`,
+`reports/`, `scraping/raw/`. See the root `README.md` for how those are built.
