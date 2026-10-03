@@ -349,7 +349,7 @@ def build_league(key: str, lg: dict, cfg: LeagueConfig, meta: dict, roster: list
                  for t in json.loads(teams_p.read_text())]
     no_ranks = [hz for hz, h in horizons.items() if not h["boris"]]
     return {
-        "label": lg.get("label", key),
+        "label": lg.get("label") or meta.get("league_name") or key,
         "platform": PLATFORM_LABEL.get(meta.get("platform", "espn"), "ESPN"),
         "no_ranks": no_ranks,
         "size": cfg.teams,
