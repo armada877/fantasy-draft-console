@@ -194,22 +194,25 @@ Environment variables (Production; the build and the function both read them):
 | Name | Value | Used by |
 |---|---|---|
 | `LEAGUE_CONFIG_JSON` | the content of `config/league.json`: `sleeper_league_id`, `season`, `sleeper_username` or `me`, `roster` with K and DST | build (required) |
-| `CONSOLE_PASSWORD` | a long random password | function: HTTP Basic, user `draft` |
+| `CONSOLE_PASSWORD` | a long random password | build (required) and function: HTTP Basic, user `draft` |
 | `DEFAULT_MODE` | `draft` | function: `/` goes to `/draft` |
 | `ANTHROPIC_API_KEY` | your API key | function: the advisor |
 | `STRATEGY_BRIEFING_MD` | the content of `config/briefing.md` | function: the advisor prompt (optional) |
 | `CONSOLE_USER` | the HTTP Basic user name | function (optional, default `draft`) |
+| `ALLOW_PUBLIC_CONSOLE` | `1` | build (optional): permits a deploy without `CONSOLE_PASSWORD` |
 
 All env vars together must be smaller than 64 KB. Without `CONSOLE_PASSWORD`, the
-console is public and `/api/advise` spends your API credit. The build fails without
-`LEAGUE_CONFIG_JSON` or without `roster`, because `scrape_sleeper.py` drops the K and DEF
-slots. Vercel reads env vars at deploy time, so redeploy after you change one.
+console is public and `/api/advise` spends your API credit. So the build fails when
+`CONSOLE_PASSWORD` is empty. To deploy a public console on purpose, set
+`ALLOW_PUBLIC_CONSOLE=1`. The build also fails without `LEAGUE_CONFIG_JSON` or without
+`roster`, because `scrape_sleeper.py` drops the K and DEF slots. Vercel reads env vars at
+deploy time, so redeploy after you change one.
 
 To test the build on your machine, run it in a temporary clone, because it overwrites
 `config/league.json`:
 
 ```bash
-LEAGUE_CONFIG_JSON="$(cat config/league.json)" python3 vercel_build.py
+CONSOLE_PASSWORD=test LEAGUE_CONFIG_JSON="$(cat config/league.json)" python3 vercel_build.py
 ```
 
 ## Refresh data

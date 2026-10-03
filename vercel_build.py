@@ -21,6 +21,17 @@ def fail(message):
     sys.exit(f"✗ vercel build: {message}")
 
 
+def require_password_gate():
+    if os.environ.get("CONSOLE_PASSWORD", "").strip():
+        return
+    if os.environ.get("ALLOW_PUBLIC_CONSOLE", "").strip() == "1":
+        print("• CONSOLE_PASSWORD not set and ALLOW_PUBLIC_CONSOLE=1: the console is public.")
+        return
+    fail("CONSOLE_PASSWORD is not set, so the deploy would serve your league data and "
+         "/api/advise to anyone. Set CONSOLE_PASSWORD, or set ALLOW_PUBLIC_CONSOLE=1 "
+         "to deploy a public console.")
+
+
 def write_league_config():
     raw = os.environ.get("LEAGUE_CONFIG_JSON", "").strip()
     if not raw:
@@ -85,6 +96,7 @@ def report_console():
 
 
 def main():
+    require_password_gate()
     write_league_config()
     env = build_env()
     run("scraping/scrape_sleeper.py", env=env)

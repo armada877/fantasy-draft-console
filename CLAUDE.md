@@ -333,7 +333,9 @@ Vercel builds from git, so it cannot use the staged bundle. Instead the build ma
 payload: Root Directory `draft_app`, with "include files outside the root directory"
 enabled. `draft_app/vercel.json` runs `cd .. && python vercel_build.py`, which writes
 `config/league.json` from the `LEAGUE_CONFIG_JSON` env var and scrapes the public Sleeper
-league. It works for Sleeper leagues only, because ESPN needs private cookies. Vercel
+league. It works for Sleeper leagues only, because ESPN needs private cookies. The build
+fails when `CONSOLE_PASSWORD` is empty, unless `ALLOW_PUBLIC_CONSOLE=1`, so a deploy never
+serves league data publicly by mistake. Vercel
 installs the function's packages from `draft_app/pyproject.toml`, not `requirements.txt`
 (the first manifest up from `server.py` wins, and `pyproject.toml` beats `requirements.txt`).
 Keep its pins in step with `requirements.txt`. The function holds only `draft_app/`, so
