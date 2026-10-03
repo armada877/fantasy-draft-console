@@ -90,6 +90,10 @@ POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST",
 _LOAD_CACHE = {}
 
 
+def has_season(season):
+    return os.path.exists(os.path.join(RAW, str(season), "league_full.json"))
+
+
 def load(season):
     """Return the league_full object (unwrapping the historical list form)."""
     if season in _LOAD_CACHE:
@@ -210,6 +214,8 @@ def member_names(season=None):
     out = {}
     seasons = [season] if season else ALL_SEASONS
     for yr in seasons:
+        if not has_season(yr):
+            continue
         d = load(yr)
         for mem in d.get("members", []):
             mid = mem.get("id")
