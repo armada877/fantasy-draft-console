@@ -6,12 +6,13 @@ each example to its real name and fill it in.
 
 | You create | From | What it is |
 |---|---|---|
-| `config/league.json` | `league.example.json` | Your league: `league_id`, `season`, your team name (`me`), the projections `.xlsm` path, and your positional tilt (`my_mult`). Read by `scraping/scrape_league.py` and `draft_sheets/build_tool_data.py`. |
+| `config/league.json` | `league.example.json` | Your league: `league_id` (ESPN) or `sleeper_league_id` (Sleeper), `season`, your team name (`me`), the projections `.xlsm` path, and your positional tilt (`my_mult`). Read by `scraping/scrape_league.py`, `scraping/scrape_sleeper*.py` and `draft_sheets/build_tool_data.py`. |
 | `config/briefing.md` | `briefing.example.md` | The advisor's system prompt — your league's opponent tendencies, roster rules, and draft plan. The richer this is, the sharper the advisor. Loaded by `draft_app/server.py` at startup. |
 | `config/.env` | `env.example` | Secrets: `ANTHROPIC_API_KEY` (advisor), `ESPN_SWID` / `ESPN_S2` (scraping + manage pull), and `FANTASYPROS_API_KEY` (manage consensus ranks). |
 | `config/boards.json` | `boards.example.json` | The manage board's league registry: league key → `league_id`, `team_id`, display `label`, and the `leagues/<key>.yaml` path. Read by `fftiers/board.py` and `pipeline.py`'s manage stages. Real league ids/names, so it stays local. |
 | `config/tendencies.json` *(optional)* | `tendencies.example.json` | Calibrated per-manager bid tendencies (`mult`/`conc`/`maxbuy`). Overrides the neutral default. Produced by `analysis/calibrate.py` (`pipeline.py calibrate`). Omit to keep all opponents neutral. |
 | `config/manager_canon.json` *(optional)* | `manager_canon.example.json` | Maps ESPN owner GUID → canonical manager name for the local `analysis/` pipeline — real leaguemate names, so it stays local. Only needed to merge a manager's multiple ESPN accounts or fix inconsistent scraped names; absent → analysis uses scraped owner names. |
+| `config/player_status.json` *(generated)* | — | Availability flags (IR, PUP, out, unsigned) for board players. Written by `scraping/scrape_sleeper_status.py`; the build attaches them as `risk`. Absent → no flags. |
 | `config/plan.json` *(optional)* | `plan.example.json` | Per-slot budget (bid ceilings) the console seeds from — a disciplined default to enter with, not a validated-optimal allocation. Absent → neutral frame. Vet any plan with `analysis/research/strategy_search.py` before trusting it. |
 
 ## Setup

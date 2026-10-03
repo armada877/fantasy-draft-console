@@ -36,6 +36,9 @@ One app, two modes:
 | `draft_sheets/build_tool_data.py` | Draft console builder — projections + scrape → `tool_data.json` | yes |
 | `scraping/scrape_league.py` | Fresh-setup ESPN scraper (settings + managers, config-driven) | yes |
 | `scraping/scrape_sleeper.py` | Fresh-setup **Sleeper** scraper — adapts to ESPN-shaped `league_full.json`, no auth | yes |
+| `scraping/scrape_sleeper_history.py` | Sleeper prior seasons (priced picks) → ESPN-shaped `raw/{season}/` for calibration | yes |
+| `scraping/scrape_sleeper_keepers.py` | Keepers declared on Sleeper → `announced_keepers` in `config/league.json` | yes |
+| `scraping/scrape_sleeper_status.py` | Sleeper injury/roster status for board players → `config/player_status.json` | yes |
 | `draft_sheets/*_elboberto.xlsm` | Universal projection baseline (checked in) | yes |
 | `draft_sheets/CSG*auction.xlsm` | CSG sheet — **complementary market view** (third-party) | no (local) |
 | `draft_sheets/extract_csg.py` | CSG `Overall` tab → `csg_consensus.json` | yes |
@@ -52,6 +55,10 @@ One app, two modes:
 | `analysis/price_curve.py` | Full-supply price + tier curve → `config/price_curve.json` | yes |
 | `analysis/plan_tiers.py` | Grades a budget plan → the tiers it actually buys | yes |
 | `analysis/a5`, `a18`, `a19`, `backtest_willgo.py` | Calibration + auction-sim engine | yes |
+| `analysis/a20_llm_auction.py` | Hybrid auction sim: LLM agents choose, calibrated agents bid | yes |
+| `analysis/keeper_outlook.py`, `season_values.py` | Keeper/budget/RFA projection; past-season valuation basis | yes |
+| `analysis/refresh_briefing_opponents.py` | Writes the briefing's opponent table from `config/tendencies.json` | yes |
+| `sync_league_data.py` | Copies the gitignored league data to a folder, and back, for a second machine | yes |
 | `analysis/research/a1..a17` | Archived one-off research behind `reports/league_analysis.md` | yes |
 | `config/tendencies.json`, `price_curve.json` | Calibration outputs | no (local) |
 | `scraping/raw/`, `reports/`, `league/` | League data / analysis outputs | no (local) |
@@ -130,6 +137,22 @@ manager whose display name drifted still matches. `elboberto_projections.json` (
 from the tracked `*_elboberto.xlsm` by `extract_elboberto_master.py`) feeds
 calibration/research **only**, never the console valuation.
 
+**Sleeper leagues (draft mode only).** Set `sleeper_league_id` in `config/league.json`.
+Run `scraping/scrape_sleeper.py` instead of `pipeline.py scrape`. It writes the same
+ESPN-shaped `league_full.json`, so the build does not know the platform. Optional, before
+`build`: `scrape_sleeper_history.py` (prior seasons, for calibration),
+`scrape_sleeper_keepers.py` (declared keepers), and, after a first `build`,
+`scrape_sleeper_status.py` (availability flags). See `scraping/README.md`.
+
+**Keepers, RFA round, K and DEF (draft console).** The console has three draft phases:
+`keepers` (formula price: `keeper_bump` + last season's price), `rfa` (each manager
+nominates one player from their own prior roster; the incumbent may match), and `auction`.
+Each phase has its own inflation. `rfa_round`, `keeper_bump`, `keeper_waiver_value`,
+`draft_order` and `announced_keepers` come from `config/league.json`. K and DST slots come
+from the ESPN scrape. `scrape_sleeper.py` drops them, so a Sleeper league sets `roster` in
+`config/league.json` to add them. When
+`sleeper_league_id` is set, the console follows the live Sleeper draft and logs each pick.
+
 For a brand-new league with no history, `all` skips `calibrate` and builds a
 neutral-opponent console. The archived `analysis/research/a1..a17` run with
 `PYTHONPATH=analysis python3 analysis/research/<script>.py`.
@@ -202,6 +225,10 @@ Key conventions (do not regress):
   threshold changes.
 
 ## Cross-season price normalization (read before touching any historical $)
+
+These numbers describe the upstream league, which records a keeper at `cost+$100`
+(`keeper_inflation: 100` in its `config/league.json`). The default is 0: trust the
+recorded bid. `lib.KEEPER_SEASONS` and `lib.FULL_SUPPLY_SEASONS` are also that league's.
 
 **The nominal `auctionBudget` is not spending power.** 2020–2024 report $300, but that extra
 $100 existed only to carry the keeper encoding (a keeper is recorded as a bid of `cost+$100`,
